@@ -1,0 +1,85 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const path=require('node:path');
+const os=require('node:os');
+const {createApp}=require('../server.js');
+
+test('HTTP 專案隔離、參考唯讀、對話持久化、重啟不恢復修改能力',async t=>{
+  const temp=await fs.mkdtemp(path.join(os.tmpdir(),'cda-project-http-'));
+  let instance,server,url;
+  t.after(async()=>{if(server){await new Promise(r=>server.close(r));await instance.saved.queue;}await fs.rm(temp,{recursive:true,force:true});});
+  const start=async()=>{instance=await createApp({runtime:path.join(temp,'state'),adminToken:'abcdef'});server=instance.app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));url='http://127.0.0.1:'+server.address().port;};
+  await start();
+  const session=await fetch(url+'/api/session');
+  const headers={cookie:session.headers.get('set-cookie').split(';')[0],'x-cda-token':(await session.json()).csrf,'content-type':'application/json'};
+  const request=async(endpoint,body,project='demo',references=[],conversation,method=body===undefined?'GET':'POST')=>{
+    const r=await fetch(url+endpoint,{method,headers:{...headers,'x-cda-project':project,'x-cda-references':JSON.stringify(references),...(conversation?{'x-cda-conversation':conversation}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+    return {status:r.status,body:await r.json()};
+  };
+  const grant=async dir=>{const q=await request('/api/roots/request',{path:dir,write:true,verify:true});return (await request('/api/roots/'+q.body.id+'/approve',{adminToken:'abcdef'})).body.root;};
+  const roots=[];
+  for(const name of ['a','b','c']){const dir=path.join(temp,name);await fs.mkdir(dir);await fs.writeFile(path.join(dir,'index.js'),'const marker = "'+name+'";');roots.push(await grant(dir));}
+  const [a,b,c]=roots;
+  const listBefore=instance.saved.data.conversations.length;
+  assert.equal((await request('/api/conversation-list',undefined,a.id)).body.conversations.length,0);
+  assert.equal(instance.saved.data.conversations.length,listBefore,'只展開對話清單不可新建對話');
+  const denied=await request('/api/roots/request',{path:path.join(temp,'state','assistant-state')});
+  assert.equal((await request('/api/roots/'+denied.body.id+'/approve',{adminToken:'abcdef'})).status,400);
+  const files=async id=>(await request('/api/files',undefined,id)).body.files;
+  const [af,bf,cf]=await Promise.all(roots.map(async r=>(await files(r.id))[0]));
+  assert.deepEqual((await files(a.id)).map(f=>f.projectId),[a.id]);
+  const visible=(await request('/api/files',undefined,a.id,[b.id])).body.files;
+  assert.deepEqual(new Set(visible.map(f=>f.projectId)),new Set([a.id,b.id]));
+  assert.equal(visible.find(f=>f.rootId===b.id).writable,false);
+  assert.equal((await request('/api/files/'+cf.id,undefined,a.id,[b.id])).status,400);
+  assert.equal((await request('/api/files/'+af.id)).status,400,'省略 target 不可讀取外部專案');
+  assert.equal((await request('/api/files/'+bf.id+'/verify',{adminToken:'abcdef'},a.id,[b.id])).status,400);
+  assert.equal((await request('/api/proposals',{fileId:bf.id,version:bf.hash,after:'const edited=1;',adminToken:'abcdef'},a.id,[b.id])).status,400);
+  assert.equal((await request('/api/jobs',{question:'搜尋 marker',fileIds:[cf.id]},a.id,[b.id])).status,400);
+  const ca=(await request('/api/conversations',undefined,a.id)).body.id;
+  const cb=(await request('/api/conversations',undefined,b.id)).body.id;
+  const q=(await request('/api/jobs',{question:'搜尋 marker'},a.id,[b.id],ca)).body;
+  await instance.engine.jobs.get(q.id).finished;
+  const evidence=(await request('/api/jobs/'+q.id,undefined,a.id,[],ca)).body.evidence;
+  assert.deepEqual(new Set(evidence.map(e=>e.projectId)),new Set([a.id,b.id]));
+  assert.equal((await request('/api/jobs/'+q.id,undefined,b.id)).status,400);
+  assert.equal((await request('/api/conversations',undefined,b.id,[],ca)).status,400);
+  assert.equal((await request('/api/conversations',undefined,b.id,[],cb)).body.jobs.length,0);
+  const p=(await request('/api/proposals',{fileId:af.id,version:af.hash,after:'const edited=1;',adminToken:'abcdef'},a.id,[],ca)).body;
+  assert.equal((await request('/api/jobs/'+p.id+'/apply',{adminToken:'abcdef'},b.id)).status,400);
+  assert.equal((await request('/api/jobs/'+p.id+'/apply',{adminToken:'abcdef'},a.id,[],ca)).status,200);
+  assert.equal(await fs.readFile(bf.path,'utf8'),'const marker = "b";');
+  const newChat=(await request('/api/conversations',{},a.id)).body.id;
+  assert.notEqual(newChat,ca);
+  assert.equal((await request('/api/conversations/'+newChat,{},a.id,[],undefined,'DELETE')).body.status,'deleted');
+  assert.equal((await request('/api/conversation-list',undefined,a.id)).body.conversations.some(c=>c.id===newChat),false);
+  assert.equal((await request('/api/conversations/'+ca,{},b.id,[],undefined,'DELETE')).status,400,'不可刪除其他專案的對話');
+  assert.equal((await request('/api/jobs/'+p.id+'/restore',{adminToken:'abcdef'},a.id,[],newChat)).status,400);
+  assert.equal((await request('/api/conversations',undefined,a.id,[],ca)).body.jobs.length,2);
+  // Refresh only A: external edits in C must not refresh C's index implicitly.
+  await fs.writeFile(cf.path,'const marker="changed";');await request('/api/index',{},a.id);
+  assert.equal(instance.workspace.files.find(f=>f.id===cf.id).hash,cf.hash);
+  await new Promise(r=>server.close(r));server=null;await instance.saved.queue;
+  await start();
+  const renewed=await fetch(url+'/api/session',{headers:{cookie:headers.cookie}});headers['x-cda-token']=(await renewed.json()).csrf;
+  const catalog=(await request('/api/catalog')).body.projects;
+  assert.equal(catalog.find(p=>p.id===a.id).active,false);
+  assert.equal((await request('/api/files',undefined,a.id)).status,400);
+  const history=(await request('/api/conversations',undefined,a.id,[],ca)).body.jobs;
+  assert.equal(history.length,2);assert.equal(history[0].archived,true);assert.equal(history[1].proposal,undefined);
+  assert.equal((await request('/api/jobs/'+p.id+'/apply',{adminToken:'abcdef'},a.id)).status,400);
+  assert.equal((await grant(a.path)).id,a.id,'重新授權保留 projectId');
+  const other=await fetch(url+'/api/session');const otherHeaders={cookie:other.headers.get('set-cookie').split(';')[0],'x-cda-token':(await other.json()).csrf,'x-cda-project':a.id,'x-cda-conversation':ca};
+  assert.equal((await fetch(url+'/api/conversations',{headers:otherHeaders})).status,400);
+});
+
+test('設定檔僅登錄專案，沒有讀取資料夾或自動授權',async t=>{
+  const temp=await fs.mkdtemp(path.join(os.tmpdir(),'cda-config-'));t.after(()=>fs.rm(temp,{recursive:true,force:true}));
+  const config=path.join(temp,'projects.json'),missing=path.join(temp,'not-created');
+  await fs.writeFile(config,JSON.stringify({projects:[{name:'未授權專案',path:missing}]}));
+  const app=await createApp({runtime:path.join(temp,'state'),projectConfig:config});
+  assert.equal(app.workspace.roots.find(r=>r.path===missing).permissions.read,false);
+  assert.equal(app.workspace.files.some(f=>f.path.startsWith(missing)),false);
+  await assert.rejects(fs.access(missing));await app.saved.queue;
+});

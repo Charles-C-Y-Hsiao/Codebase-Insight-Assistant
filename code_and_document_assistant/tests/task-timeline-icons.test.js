@@ -1,0 +1,42 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+
+const js=fs.readFileSync(path.join(__dirname,'../public/task-timeline.js'),'utf8');
+const app=fs.readFileSync(path.join(__dirname,'../public/app.js'),'utf8');
+const css=fs.readFileSync(path.join(__dirname,'../public/styles.css'),'utf8');
+
+test('時間線主要項目使用指定圖示並置中',()=>{
+  assert.match(js,/ai:'br-brain-circuit'/);
+  assert.match(js,/read:'br-assessment'/);
+  assert.match(js,/edit:'rc-settings-sliders'/);
+  assert.match(js,/verify:'rr-memo-circle-check'/);
+  assert.match(js,/warning:'br-file-exclamation'/);
+  assert.match(js,/event:'rr-arrow-progress'/);
+  assert.match(js,/task-toggle-icon fi fi-br-angle-small-'\+\(detail\.open\?'down':'right'\)/);
+  assert.match(css,/\.task-detail summary\s*\{[\s\S]*?display:flex[\s\S]*?align-items:center/);
+  assert.match(css,/\.task-detail > summary::-webkit-details-marker\s*\{\s*display:none/);
+  assert.match(css,/\.task-detail summary > \.task-toggle-icon\s*\{[\s\S]*?transform:translateY\(1px\)/);
+  assert.match(css,/\.task-detail summary > \.task-event-icon\s*\{[\s\S]*?flex-basis:18px/);
+  assert.match(css,/\.task-detail pre, #inspector-verification pre\s*\{[\s\S]*?margin: 0/);
+  assert.match(css,/\.task-actions > button,[\s\S]*?#history article > \[id\^="task-details-"\]\s*\{\s*padding: 3px 6px;/);
+  assert.match(app,/View diff & verify/);
+  assert.match(app,/View sources/);
+  assert.match(app,/Confirm requirement/);
+  assert.match(js,/View full verification output/);
+  assert.match(js,/View task details/);
+  assert.match(css,/\.message\s*\{[\s\S]*?display:flex[\s\S]*?flex-direction:column/);
+  assert.match(css,/\.message\s*\{[\s\S]*?gap:9px/);
+  assert.match(css,/\.message > \*\s*\{\s*margin:0/);
+  assert.match(css,/\.task-timeline\s*\{[\s\S]*?border-top: 1px solid #e3e9ef[\s\S]*?min-width: 0/);
+  assert.doesNotMatch(css,/\.task-timeline\s*\{[\s\S]*?padding: 10px 0/);
+  assert.match(css,/\.history-group\s*\{[\s\S]*?display:flex[\s\S]*?gap:8px/);
+  assert.match(css,/\.history-title\s*\{[\s\S]*?flex:0 0 84px[\s\S]*?font-weight:700/);
+  assert.match(css,/\.history-content::after\s*\{[\s\S]*?content:attr\(data-tooltip\)[\s\S]*?display:none/);
+  assert.match(css,/\.history-content\s*\{[\s\S]*?flex-direction:row[\s\S]*?white-space:nowrap/);
+  assert.match(css,/\.history-content:hover::after,[\s\S]*?display:block/);
+  assert.match(css,/\.answer-details > \[id\$="-facts"\]\s*\{\s*margin-left:20px/);
+  assert.match(css,/\.answer-details > \[id\$="-facts"\] \.history-title\s*\{\s*flex:0 0 auto/);
+  assert.match(css,/#history article > \[id\$="-conclusions"\],[\s\S]*?#history article > \[id\$="-unknown"\]\s*\{\s*margin-left:20px/);
+});

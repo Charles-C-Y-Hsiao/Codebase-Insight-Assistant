@@ -1,0 +1,42 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const {Workspace} = require('../src/workspace.js');
+const {ProjectScope} = require('../src/project-scope.js');
+test('A 目標、B 唯讀參考、C 不可見；跨範圍提案與撤銷授權均拒絕', async t => {
+  const base = await fs.mkdtemp(path.join(os.tmpdir(), 'cda-scope-'));
+  t.after(() => fs.rm(base, {recursive:true, force:true}));
+  const ws = new Workspace(path.join(base,'state'), {maxFileBytes:100000,maxFiles:100,maxIndexBytes:1000000});
+  await fs.mkdir(ws.base);
+  const roots = [];
+  for (const name of ['a','b','c','empty']) {
+    const dir = path.join(base,name); await fs.mkdir(dir);
+    if (name !== 'empty') await fs.writeFile(path.join(dir,'index.js'), 'const marker = "'+name+'";');
+    roots.push(await ws.authorize(dir,{write:true}));
+  }
+  const [a,b,c,empty] = roots;
+  const scope = new ProjectScope(ws,a.id,[b.id]);
+  const file = id => ws.files.find(f => f.rootId === id);
+  assert.deepEqual(new Set(scope.files.map(f => f.projectId)),new Set([a.id,b.id]));
+  assert.equal((await scope.read(file(b.id).id)).writable,false);
+  assert.deepEqual(new Set((await scope.search('marker')).map(e => e.projectId)),new Set([a.id,b.id]));
+  await assert.rejects(scope.read(file(c.id).id),/範圍/);
+  await assert.rejects(scope.search('marker',[file(c.id).id]),/範圍/);
+  await assert.rejects(scope.createProposal(file(b.id).id,'const x = 1;'),/唯讀/);
+  const foreign = await ws.createProposal(file(b.id).id,'const x = 1;');
+  await assert.rejects(scope.apply(foreign),/唯讀/);
+  assert.deepEqual(await new ProjectScope(ws,empty.id).search('marker'),[]);
+  const proposal = await scope.createProposal(file(a.id).id,'const changed = true;');
+  await scope.apply(proposal);
+  assert.equal(await fs.readFile(path.join(a.path,'index.js'),'utf8'),'const changed = true;');
+  assert.equal(await fs.readFile(path.join(b.path,'index.js'),'utf8'),'const marker = "b";');
+  await ws.revoke(b.id);
+  assert.equal(scope.files.some(f => f.projectId === b.id),false);
+  assert.throws(() => new ProjectScope(ws,a.id,[b.id]),/失效/);
+  const nested = path.join(a.path,'nested'); await fs.mkdir(nested);
+  await ws.authorize(nested,{write:true});
+  assert.throws(() => new ProjectScope(ws,a.id),/重疊/);
+  await assert.rejects(scope.read(file(a.id).id),/重疊/);
+});

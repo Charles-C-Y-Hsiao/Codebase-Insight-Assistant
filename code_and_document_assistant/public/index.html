@@ -1,0 +1,180 @@
+
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Code & Document Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="sidebar.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/css/diff2html.min.css">
+  <link rel="stylesheet" href="vendor/photoswipe-5.4.4/photoswipe.css">
+  <link rel="stylesheet" href="review-viewers.css">
+  <!-- tr -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-thin-rounded/css/uicons-thin-rounded.css"/>
+  <!-- tc -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-thin-chubby/css/uicons-thin-chubby.css"/>
+  <!-- rr -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css"/>
+  <!-- rc -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-chubby/css/uicons-regular-chubby.css"/>
+  <!-- ts -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-thin-straight/css/uicons-thin-straight.css" />
+  <!-- br -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css" />
+  <!-- sr -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css" />
+  <!-- ss -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css" />
+</head>
+<body>
+<header id="app-header">
+  <div id="header-identity">
+    <div id="header-title-row"><strong id="app-title">Code &amp; Document</strong><span id="app-subtitle" class="muted">Assistant · Phase 2</span></div>
+    <span id="current-model" class="muted" role="status">目前模型：載入中</span>
+  </div>
+  <span class="badge" id="mode-label">文件解析 real · AI／業務工具 mock</span>
+</header>
+<div class="layout">
+<aside id="workspace-sidebar" class="sidebar">
+  <div class="panel-heading"><button id="sidebarToggle" class="panel-toggle" type="button" aria-controls="workspace-sidebar" aria-expanded="true" aria-label="收合工作區" title="收合工作區"><i class="fi fi-br-angle-small-left" aria-hidden="true"></i></button><span class="panel-title">工作區</span></div>
+  <div id="workspace-sidebar-content">
+  <div class="project-heading"><button id="project-section-toggle" aria-expanded="true" aria-controls="project-panel">專案 <i class="fi fi-br-angle-small-down" aria-hidden="true"></i></button><button id="project-menu" title="管理目前專案" aria-label="管理目前專案"><i class="fi fi-br-menu-dots" aria-hidden="true"></i></button><button id="open-permission" type="button" title="新增專案／管理授權" aria-label="新增專案／管理授權"><i class="fi fi-br-plus-small" aria-hidden="true"></i></button></div>
+  <details id="project-panel" open><summary hidden>專案與對話</summary>
+    <select id="active-project" hidden aria-label="目前修改目標"></select>
+    <select id="active-conversation" hidden aria-label="此專案的對話"></select>
+    <div id="project-list" aria-label="專案清單"></div>
+    <button id="new-conversation" type="button" hidden>新對話</button>
+    <span id="project-location" class="muted" hidden></span>
+  </details>
+  <button id="refresh">更新文件索引</button><span id="index-status" class="muted"></span>
+  <details id="files-panel" open><summary><i id="files-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>已索引檔案</span></summary><div id="files" aria-label="可引用的檔案"></div></details>
+  <details id="global-reference-panel"><summary><i id="global-reference-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>全域唯讀參考</span></summary><p>授權期間自動加入搜尋，包含各專案 demo/。助手、runtime、backups、.git、.env* 與 node_modules 等排除。</p><div id="global-reference-list"></div></details>
+
+  <details id="connections-panel"><summary><i id="connections-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>真實連線缺少哪些設定</span></summary><pre id="connections"></pre></details>
+  <details id="issues-panel"><summary><i id="issues-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>未索引項目</span></summary><div id="issues"></div></details>
+  <details id="registry-panel"><summary><i id="registry-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>工具白名單</span></summary><pre id="registry"></pre></details>
+  <details id="version-panel"><summary><i id="version-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>版本清理</span></summary><span class="muted">勾選後清除 runtime 備份檔與對應程式記錄。</span><button id="version-load" type="button">載入版本清單</button><div id="version-list"></div><button id="version-cleanup" type="button" hidden>清除勾選版本</button></details>
+  </div>
+</aside>
+<main id="main-content">
+  <div id="main-scroll">
+  <div id="workflow-header">
+  <div id="intro" class="intro"><span id="intro-eyebrow" class="eyebrow">FILE → PLAN → DIFF → APPLY → VERIFY</span><span id="intro-title">從檔案開始，把問題處理清楚。</span><span id="intro-description" class="muted">查詢附上來源；修改先看差異；驗證清楚列出已做與未做。</span></div>
+
+  <div id="mode-switch" class="mode-switch" role="group" aria-label="操作模式">
+    <button id="mode-query" type="button" aria-pressed="true" hidden>查詢文件</button>
+    <button id="mode-ai-edit" type="button" aria-pressed="false" hidden>AI 修改程式</button>
+    <button id="mode-edit" type="button" aria-pressed="false">人工編輯／靜態驗證</button>
+  </div>
+  </div>
+  <button id="scroll-history-bottom" type="button" aria-label="跳到最後一則對話" title="跳到最後一則對話"><i class="fi fi-rr-arrow-small-down" aria-hidden="true"></i></button>
+  <div id="history" aria-live="polite"></div>
+  <p id="notice" role="status"></p>
+
+  <details id="demo-panel"><summary><i id="demo-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>展示與測試</span></summary>
+    <span class="muted">固定 Mock 展示；一般程式修改請使用上方「修改程式」。</span>
+  <div class="examples" aria-label="展示情境">
+    <button data-question="比較產品 A 2026 Q1 文件與資料">資料一致</button>
+    <button data-question="比較產品 B 2026 Q1 文件與資料">資料衝突</button>
+    <button data-question="查詢訂單">缺少條件</button>
+    <button data-question="查詢薪資">能力缺口</button>
+    <button data-question="產品 A 2026 Q1 API 失敗">API 失敗</button>
+    <button data-question="產品 A 2026 Q1 API 逾時">API 逾時</button>
+    <button id="demo-edit">修改 JavaScript 範例</button>
+  </div>
+  <details id="project-builder"><summary><i id="project-builder-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>建立新專案 · Select2 模擬需求</span></summary>
+    <span>MOCK 固定範本：使用 jQuery + Select2 CDN 建立產品名稱搜尋、多選、清除與選取摘要。確認後建立真實 index.html；其他需求仍需 AI 串接。</span>
+    <label for="project-root">已授權的父資料夾</label><select id="project-root"></select>
+    <span>新位置請先按「新增專案／管理授權」授權既有父資料夾，勾選允許修改，再開啟該專案。專案子資料夾會在確認後建立。</span>
+    <label for="project-name">新專案名稱</label><input id="project-name" value="select2_product_picker" maxlength="64">
+    <button id="project-propose" type="button">模擬需求並預覽新增內容</button>
+    <div id="project-output" aria-live="polite"></div>
+  </details>
+  </details>
+  </div>
+  <details id="manual-editor" open hidden><summary><i id="manual-editor-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>實際程式檔案修改與驗證</span></summary><div id="manual-editor-content"><p id="manual-editor-help">選取已授權程式檔，載入後人工編輯候選內容。AI 修改請在 real 模式的對話區勾選「允許 AI 提出單檔修改」。</p><button id="load-edit" type="button">載入選取檔案</button><p id="editor-file"></p><label id="edit-content-label">修改後內容<textarea id="edit-content" rows="12" spellcheck="false"></textarea></label><details id="edit-result-panel"><summary><i id="edit-result-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>建立差異提案，或不寫入檔案地進行靜態驗證</span></summary><div id="edit-result-content"><div id="edit-actions"><button id="propose-edit" type="button">產生差異提案</button><button id="verify-file" type="button">僅靜態驗證</button></div><pre id="verification"></pre></div></details></div></details>
+  <details id="composer-panel" open>
+    <summary><i id="composer-panel-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>對話與需求輸入</span></summary>
+    <form id="composer">
+      <div id="composer-content">
+    <div id="composer-context">
+      <section id="conversation-memory" aria-labelledby="conversation-memory-title">
+        <div class="memory-heading"><h2 id="conversation-memory-title">對話記憶</h2><span id="memory-status" class="muted">尚無已確認需求</span></div>
+        <details id="memory-details"><summary><i id="memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>查看已確認需求與壓縮摘要</span></summary><div id="confirmed-requirements"></div><pre id="memory-summary"></pre></details>
+      </section>
+      <details id="skill-panel" aria-labelledby="skill-panel-title"><summary><span id="skill-panel-heading"><i id="skill-panel-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span id="skill-panel-title">建議技能</span></span><span id="active-skill" class="muted">尚未啟用</span></summary><div id="skill-suggestions"></div></details>
+    </div>
+    <div id="composer-request">
+      <div id="selected" class="chips"></div>
+      <div id="question-editor">
+        <div id="image-draft" class="attachment-gallery"></div>
+        <label class="visually-hidden" for="question">問題或修改需求</label><textarea id="question" rows="3" placeholder="想做什麼都可以" required maxlength="12000"></textarea>
+      </div>
+      <div id="mentions" hidden aria-label="檔案選擇"></div>
+    </div>
+    <div id="composer-actions" class="compose-actions">
+      <div class="composer-leading-actions">
+        <button id="composer-more" type="button" aria-expanded="false" aria-controls="composer-menu" aria-label="更多功能" title="更多功能"><i class="fi fi-br-plus-small" aria-hidden="true"></i></button>
+        <label id="ai-edit-label" hidden><input type="checkbox" id="ai-allow-edits"> 允許 AI 修改</label>
+      </div>
+      <section id="scope-banner" aria-label="目前操作範圍">
+        <div id="target-badge"><span id="target-label">Target:</span><span id="target-name">Loading</span></div>
+        <div class="scope-references"><span id="scope-references-label">Refs:</span><div id="reference-chips" class="chips"></div><button id="add-reference" type="button">Add</button></div>
+      </section>
+      <span id="model-help" class="composer-model" title="目前使用的模型" hidden>模型為固定規則</span>
+      <div id="composer-submit-actions">
+        <button id="cancel" type="button" disabled aria-label="停止任務" title="停止任務"><i class="fi fi-sr-stop-circle" aria-hidden="true"></i></button>
+        <button id="send" aria-label="送出問題" title="送出問題"><i class="fi fi-ss-arrow-circle-up" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div id="composer-menu" class="composer-menu" hidden>
+      <button id="composer-files" type="button">選取檔案</button>
+      <button id="composer-images" type="button">圖片與貼圖設定</button>
+      <button id="composer-create-image" type="button">創作圖片</button>
+      <button id="composer-reference" type="button">加入唯讀參考</button>
+      <button id="composer-permission" type="button">專案／授權管理</button>
+      <div id="composer-attachments">
+        <div id="image-controls"><label for="image-limit">單張圖片上限（MB）<input id="image-limit" type="number" min="1" max="20" step="1" value="10"></label><span id="image-count">0 / 5 張</span><span>可貼入 PNG／JPEG／WebP，最多 5 張</span></div>
+        <span id="image-support" class="muted"></span><span class="muted">圖片僅在送出問題時傳給 AI；重新整理保留，服務停止後清除。</span><p id="image-notice" role="status"></p>
+      </div>
+    </div>
+      </div>
+    </form>
+  </details>
+</main>
+<aside id="execution-inspector" class="inspector">
+  <div class="panel-heading"><button id="inspectorToggle" class="panel-toggle" type="button" aria-controls="execution-inspector" aria-expanded="true" aria-label="收合執行詳情" title="收合執行詳情"><i class="fi fi-br-angle-small-right" aria-hidden="true"></i></button><span class="panel-title">執行詳情</span></div>
+  <div id="execution-inspector-content"><p id="progress" role="status">等待提問</p>
+  <p id="inspector-question"></p><p id="inspector-usage"></p><p id="inspector-duration"></p>
+  <p class="muted">完整計畫、來源、差異與驗證請在各任務卡片中查看。</p>
+  </div>
+</aside>
+</div>
+<dialog id="permission-dialog" aria-labelledby="permission-title">
+  <div class="dialog-heading"><h2 id="permission-title">新增專案／管理授權</h2><button id="close-permission" type="button" aria-label="關閉授權視窗">關閉</button></div>
+  <label id="root-kind-label" for="root-kind">授權類型<select id="root-kind"><option value="project">個別專案（可另授權修改）</option><option value="global-reference">全域唯讀參考根目錄</option></select></label>
+  <details id="root-permission-panel" open><summary id="root-permission-summary"><i id="root-permission-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>指定新資料夾與權限</span></summary><div id="permission-fields"><p id="root-permission-help">這是主機路徑，非客戶端上傳。授權後文件可被本服務使用者搜尋；實際寫入仍需主機管理碼確認。</p><label id="folder-label" for="folder">完整路徑<input id="folder" placeholder="C:\Company\Docs"></label><div id="permission-options"><label id="create-folder-label" for="create-folder"><input type="checkbox" id="create-folder"> 路徑不存在時建立新的空資料夾 <small>父資料夾必須已存在；不建立多層路徑，也不覆寫既有資料夾。</small></label><label id="write-label" for="allow-write"><input type="checkbox" id="allow-write"> 允許修改</label><label id="verify-label" for="allow-verify"><input type="checkbox" id="allow-verify"> 允許靜態驗證（不執行程式）</label><label id="ai-label" for="allow-ai"><input type="checkbox" id="allow-ai"> 允許內容送往核准 AI（尚未接入）</label></div><label id="minutes-label" for="grant-minutes">授權分鐘（1–1440）<input id="grant-minutes" type="number" value="60" min="1" max="1440"></label></div><div id="permission-actions"><button id="request-root">提出授權請求</button><p id="root-status" role="status"></p><label id="admin-label" for="admin">本機資料夾授權管理碼（6 碼十六進位，僅本分頁使用）<input type="password" id="admin" inputmode="text" maxlength="6" autocomplete="off"></label><button id="approve-root">主機端確認授權</button></div></details><div id="roots"></div>
+  <button id="open-granted-project" type="button" class="primary" hidden>開啟此專案</button>
+  <button id="ai-test" type="button" hidden>測試 AI 連線（僅固定文字，會使用 API 額度）</button><p id="ai-test-status" role="status"></p>
+  <p id="permission-error" role="alert"></p>
+</dialog>
+<dialog id="reference-dialog" aria-labelledby="reference-title">
+  <div class="dialog-heading"><h2 id="reference-title">加入唯讀參考</h2><button id="close-reference" type="button">完成</button></div>
+  <p>勾選已授權的專案，只加入讀取與搜尋範圍，不切換修改目標。</p>
+  <div id="reference-projects"></div><p id="reference-error" role="alert"></p>
+</dialog>
+<dialog id="discard-dialog" aria-labelledby="discard-title">
+  <h2 id="discard-title">有未送出的內容</h2><p>切換會清除尚未送出的問題或候選修改。是否放棄這些內容？</p>
+  <div class="dialog-actions"><button id="keep-draft" type="button" autofocus>留下繼續編輯</button><button id="discard-draft" type="button">放棄並切換</button></div>
+</dialog>
+<dialog id="image-create-dialog" aria-labelledby="image-create-title">
+  <div id="image-create-heading"><h2 id="image-create-title">圖片創作</h2><span>偵測到這可能是圖片創作需求。</span><span id="image-create-model"></span><span>圖片會直接加入目前對話，並保存為本任務的第 <strong id="image-create-version">1</strong> 版。</span><span>是否開始創作？</span><span>將使用 Image Generation Tool 根據以下內容產生圖片：</span></div>
+  <div id="image-create-prompt" tabindex="0" aria-label="待確認的圖片提示詞"></div>
+  <p id="image-create-error" role="alert"></p>
+  <div id="image-create-actions"><label id="image-create-model-picker" for="image-create-model-select">圖片模型<select id="image-create-model-select" aria-label="選擇圖片模型"><option value="gpt-image-2.5-sunburst" selected>gpt-image-2.5-sunburst</option><option value="gpt-image-1">gpt-image-1</option></select></label><div id="image-create-buttons"><button id="image-create-back" type="button">返回修改</button><button id="image-create-confirm" type="button">開始創作</button></div></div>
+</dialog>
+<dialog id="project-actions-dialog" aria-labelledby="project-actions-title"><div class="dialog-heading"><h2 id="project-actions-title">專案管理</h2><button id="close-project-actions">關閉</button></div><p id="project-actions-path"></p><p id="project-expiry" role="status"></p><div class="dialog-actions"><button id="project-open">Open</button><button id="quick-renew">重新授權／延長授權</button><button id="project-reindex">更新此專案索引</button><button id="project-revoke">撤銷授權</button></div><p id="project-actions-status" role="status"></p></dialog>
+<dialog id="quick-grant-dialog" aria-labelledby="quick-grant-title"><div class="dialog-heading"><h2 id="quick-grant-title">快速重新授權</h2><button id="close-quick-grant">關閉</button></div><p id="quick-grant-path"></p><p id="quick-grant-settings"></p><label for="quick-grant-code">本次服務的 6 碼管理碼<input id="quick-grant-code" type="password" maxlength="6" autocomplete="off"></label><button id="quick-grant-confirm">確認授權</button><p id="quick-grant-status" role="status"></p></dialog>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script><script src="vendor/photoswipe-5.4.4/photoswipe.umd.min.js"></script><script src="image-viewer.js"></script><script src="diff-viewer.js"></script><script src="task-timeline.js"></script><script src="attachments.js"></script><script src="new-files-ui.js"></script><script src="app.js"></script><script src="image-creation.js"></script><script src="sidebar.js"></script>
+</body></html>

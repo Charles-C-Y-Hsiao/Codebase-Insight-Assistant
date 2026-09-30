@@ -1,0 +1,7 @@
+{
+  "projects": [
+    { "name": "全域唯讀參考", "path": "C:\\Web_Practice\\ReAct", "kind": "global-reference" },
+    { "name": "project_a", "path": "C:\\Company\\Projects\\project_a" },
+    { "name": "project_b", "path": "C:\\Company\\Projects\\project_b" }
+  ]
+}

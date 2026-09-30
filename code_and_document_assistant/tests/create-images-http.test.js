@@ -1,0 +1,53 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const path=require('node:path');
+const os=require('node:os');
+const {createApp}=require('../server');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5n8AAAAASUVORK5CYII=','base64');
+test('HTTP 帶圖新增流程：草稿隔離、授權、確認、持久化與重啟清除',async t=>{
+  const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-create-images-'));let server,instance,url,requests=[];
+  const runtime=path.join(base,'state'),dir=path.join(base,'project');await fs.mkdir(dir);
+  const fetchImpl=async(url,options)=>{
+    requests.push(JSON.parse(options.body));
+    return Response.json({status:'completed',usage:{input_tokens:20,output_tokens:40},output:[{type:'function_call',name:'propose_new_files',call_id:'call',arguments:JSON.stringify({files:[{path:'index.html',purpose:'兩顆按鈕',content:'<!doctype html><html lang="zh-Hant"><head><title>Test</title></head><body><button>Cancel</button><button>Confirm</button></body></html>'},{path:'skip.js',purpose:'不需要',content:'const x=1;'}]})}]});
+  };
+  const start=async()=>{instance=await createApp({runtime,adminToken:'abcdef',aiOptions:{env:{CDA_MODEL_MODE:'real',CDA_AI_MODEL:'gpt-5.6-luna',CDA_AI_KEY:'FAKE'},fetchImpl}});server=instance.app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));url='http://127.0.0.1:'+server.address().port;};
+  t.after(async()=>{if(server)await new Promise(r=>server.close(r));if(instance)await instance.saved.queue;await fs.rm(base,{recursive:true,force:true});});
+  await start();const response=await fetch(url+'/api/session'),session=await response.json();
+  const headers={cookie:response.headers.get('set-cookie').split(';')[0],'x-cda-token':session.csrf,'content-type':'application/json'};
+  async function request(endpoint,body,method=body===undefined?'GET':'POST',extra={}){
+    const r=await fetch(url+endpoint,{method,headers:{...headers,...extra},body:body===undefined?undefined:Buffer.isBuffer(body)?body:JSON.stringify(body)});
+    return {status:r.status,data:await r.json()};
+  }
+  const grant=async ai=>{const q=await request('/api/roots/request',{path:dir,write:true,verify:true,ai});return (await request('/api/roots/'+q.data.id+'/approve',{adminToken:'abcdef'})).data.root;};
+  const root=await grant(false);headers['x-cda-project']=root.id;
+  const conversation=(await request('/api/conversations')).data.id;headers['x-cda-conversation']=conversation;
+  assert.equal((await request('/api/image-settings',{maxImageMB:20})).data.maxImageMB,20);
+  assert.equal((await request('/api/image-settings',{maxImageMB:21})).status,400);
+  const image=(await request('/api/image-draft',png,'POST',{'content-type':'image/png'})).data;
+  assert.ok(image.id);assert.equal((await request('/api/image-draft')).data.images.length,1);
+  assert.equal((await request('/api/jobs',{question:'建立 HTML',allowEdits:true,imageIds:[image.id]})).status,400);assert.equal(requests.length,0);
+  await grant(true);instance.engine.model.config.supportsImages=false;
+  assert.match((await request('/api/jobs',{question:'建立 HTML',allowEdits:true,imageIds:[image.id]})).data.error,/AI_IMAGE_UNSUPPORTED/);assert.equal(requests.length,0);
+  instance.engine.model.config.supportsImages=true;
+  const otherSession=await fetch(url+'/api/session'),otherCookie=otherSession.headers.get('set-cookie').split(';')[0];
+  assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:otherCookie}})).status,400);
+  const accepted=await request('/api/jobs',{question:'建立 HTML',allowEdits:true,imageIds:[image.id]});assert.equal(accepted.status,202);
+  const internal=instance.engine.jobs.get(accepted.data.id);await internal.finished;await instance.saved.queue;
+  assert.equal(internal.status,'awaiting_approval');assert.deepEqual(await fs.readdir(dir),[]);assert.equal((await request('/api/image-draft')).data.images.length,0);
+  assert.equal(requests[0].input[1].content[1].type,'input_image');assert.match(requests[0].input[1].content[1].image_url,/data:image\/png;base64,/);
+  const [first,second]=internal.creations,endpoint='/api/jobs/'+internal.id+'/new-files/';
+  assert.equal((await request(endpoint+first.id,{decision:'create'})).status,403);
+  assert.equal((await request(endpoint+second.id,{decision:'create',adminToken:'abcdef'})).status,400);
+  assert.equal((await request(endpoint+first.id,{decision:'create',adminToken:'abcdef'})).status,200);
+  assert.match(await fs.readFile(path.join(dir,'index.html'),'utf8'),/Confirm/);
+  assert.equal((await request(endpoint+second.id,{decision:'skip',adminToken:'abcdef'})).status,200);await assert.rejects(fs.access(path.join(dir,'skip.js')));
+  const history=(await request('/api/conversations')).data.jobs[0];assert.equal(history.attachments[0].id,image.id);assert.equal(history.creations[0].status,'created');
+  assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:headers.cookie}})).status,200);
+  const disk=await fs.readFile(path.join(runtime,'assistant-state','state.json'),'utf8');assert.ok(!disk.includes(png.toString('base64')));assert.ok(!disk.includes('imageInputs'));
+  await new Promise(r=>server.close(r));await instance.saved.queue;server=null;await start();
+  assert.equal((await request('/api/image-draft')).data.images.length,0);assert.equal((await request('/api/image-settings')).data.maxImageMB,10);
+  assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:headers.cookie}})).status,400);
+  const archived=(await request('/api/conversations')).data.jobs[0];assert.equal(archived.archived,true);assert.equal(archived.creations[0].content,undefined);assert.equal(archived.creations[0].result.verification.status,'passed');
+});

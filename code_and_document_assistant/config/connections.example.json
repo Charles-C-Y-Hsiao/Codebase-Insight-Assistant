@@ -1,0 +1,7 @@
+{
+  "note": "此檔為資料連線待填清單；AI 實際設定請用 ai.openai.example.json 或 ai.company.example.json，詳見 docs/ai_connection_flow.md。key 只放後端環境變數。",
+  "ai": { "provider": null, "url": null, "model": null, "authEnvironmentVariable": "CDA_AI_KEY", "requestExample": null, "responseExample": null, "nativeToolsConfirmed": false },
+  "sqlServer": { "host": null, "database": null, "readonlyUser": null, "passwordEnvironmentVariable": "CDA_SQLSERVER_PASSWORD", "approvedQueryIds": [] },
+  "oracle": { "connectString": null, "readonlyUser": null, "passwordEnvironmentVariable": "CDA_ORACLE_PASSWORD", "approvedQueryIds": [] },
+  "internalApi": { "baseUrl": null, "authEnvironmentVariable": "CDA_INTERNAL_API_KEY", "approvedReadonlyOperations": [] }
+}

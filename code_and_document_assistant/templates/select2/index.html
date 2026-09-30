@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>產品選擇器 · Select2 展示</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" integrity="sha384-KZO2FRYNmIHerhfYMjCIUaJeGBRXP7CN24SiNSG+wdDzgwvxWbl16wMVtWiJTcMt" crossorigin="anonymous">
+  <style>
+    * { box-sizing: border-box; } body { margin: 0; background: #eef3f5; color: #182e38; font: 16px/1.6 system-ui, sans-serif; }
+    main { max-width: 760px; margin: 8vh auto; padding: 32px; background: white; border-radius: 20px; box-shadow: 0 16px 60px #18333e14; }
+    h1 { margin: 12px 0; font-size: 32px; } .badge { color: #805616; background: #fff2ce; border-radius: 20px; padding: 5px 12px; font-size: 13px; }
+    label { display: block; font-weight: 600; margin: 24px 0 8px; } select { width: 100%; } button { background: #126b62; color: white; padding: 10px 20px; border: 0; border-radius: 8px; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; } #summary { padding: 18px; background: #eef7f5; border-radius: 10px; margin: 24px 0; }
+    #cdn-status { font-size: 14px; } .select2-container .select2-selection--multiple { min-height: 48px; padding: 6px; } .select2-results__option { font-family: system-ui, sans-serif; }
+    @media(max-width: 800px) { main { margin: 20px 12px; padding: 24px; } h1 { font-size: 28px; } }
+  </style>
+</head>
+<body>
+<main>
+  <span class="badge">MOCK 固定範本 · 範例產品資料</span>
+  <h1>找到這次需要的產品</h1>
+  <p>輸入名稱搜尋，可選擇多個產品，並查看選取摘要。</p>
+  <p id="cdn-status" role="status">正在載入 jQuery 與 Select2 CDN…</p>
+  <label for="products">搜尋及選擇產品</label>
+  <select id="products" multiple disabled>
+    <option value="A">產品 A · 標準方案</option>
+    <option value="B">產品 B · 進階方案</option>
+    <option value="C">產品 C · 團隊方案</option>
+    <option value="D">產品 D · 文件服務</option>
+  </select>
+  <div id="summary" aria-live="polite">尚未選擇產品</div>
+  <button id="clear" type="button" disabled>清除選取</button>
+  <p>功能：名稱搜尋、多選、清除、選取摘要。產品為固定範例；沒有 AI 或資料庫連線。</p>
+</main>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js" integrity="sha384-JnbsSLBmv2/R0fUmF2XYIcAEMPHEAO51Gitn9IjL4l89uFTIgtLF1+jqIqqd9FSk" crossorigin="anonymous"></script>
+<script>
+  'use strict';
+  const status = document.getElementById('cdn-status');
+  if (!window.jQuery || !window.jQuery.fn.select2) {
+    status.textContent = 'CDN 載入失敗：請確認網路及公司 CDN 存取政策；Select2 功能未啟用。';
+    status.dataset.state = 'error';
+  } else {
+    const $products = window.jQuery('#products');
+    $products.prop('disabled', false).select2({
+      placeholder: '輸入產品名稱…', width: '100%', closeOnSelect: false,
+      language: { noResults: () => '找不到符合的產品', searching: () => '搜尋中…' }
+    });
+    $products.on('change', () => {
+      const selected = $products.select2('data');
+      document.getElementById('summary').textContent = selected.length
+        ? '已選 ' + selected.length + ' 項：' + selected.map(item => item.text).join('、')
+        : '尚未選擇產品';
+    });
+    const clear = document.getElementById('clear');
+    clear.disabled = false;
+    clear.addEventListener('click', () => $products.val(null).trigger('change'));
+    status.textContent = 'CDN 已載入 · jQuery ' + window.jQuery.fn.jquery + ' · Select2 4.0.13';
+    status.dataset.state = 'ready';
+  }
+</script>
+</body>
+</html>

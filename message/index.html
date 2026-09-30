@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>確認操作</title>
+
+  <!-- tr -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-thin-rounded/css/uicons-thin-rounded.css" />
+  <!-- tc -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-thin-chubby/css/uicons-thin-chubby.css" />
+  <!-- rr -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css" />
+  <!-- rc -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-chubby/css/uicons-regular-chubby.css" />
+  <!-- ts -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-thin-straight/css/uicons-thin-straight.css" />
+  <!-- br -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css" />
+  <!-- sr -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css" />
+  <!-- ss -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css" />
+
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      background-color: #f5f3ff;
+    }
+
+    #modal {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      width: min(420px, calc(100% - 40px));
+      padding: 16px;
+      box-sizing: border-box;
+      border: 1px solid #c4b5fd;
+      border-radius: 10px;
+      background-color: #faf5ff;
+      box-shadow: 0 12px 30px rgba(109, 40, 217, 0.15);
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #dialog-title {
+      color: inherit;
+      font-size: 19px;
+      font-weight: bold;
+      line-height: 1.2;
+    }
+
+    #close-button {
+      align-self: center;
+    }
+
+    .close-button {
+      flex: 0 0 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      color: #7c3aed;
+      border: 0;
+      border-radius: 50%;
+      background-color: transparent;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .close-button i {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .close-button:hover,
+    .close-button:focus-visible {
+      background-color: #ede9fe;
+    }
+
+    .button-frame {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .button-frame button {
+      padding: 10px 22px;
+      border: 1px solid #c4b5fd;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .cancel {
+      color: #6d28d9;
+      background-color: #ede9fe;
+    }
+
+    .confirm {
+      color: #fff;
+      border-color: #7c3aed !important;
+      background-color: #7c3aed;
+    }
+
+    .button-frame button:hover {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <section id="modal" class="modal" role="dialog" aria-labelledby="dialog-title" aria-modal="true">
+    <div class="dialog-header">
+      <span id="dialog-title" class="dialog-title">確認操作</span>
+      <button id="close-button" type="button" class="close-button" aria-label="關閉">
+        <i class="fi fi-br-circle-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="button-frame">
+      <button type="button" class="cancel">Cancel</button>
+      <button type="button" class="confirm">Confirm</button>
+    </div>
+  </section>
+</body>
+</html>

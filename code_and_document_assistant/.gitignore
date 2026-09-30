@@ -1,0 +1,6 @@
+runtime/
+.env
+.env.*
+config/ai.local.json
+config/local.json
+*.log

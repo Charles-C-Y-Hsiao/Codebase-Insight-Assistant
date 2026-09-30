@@ -1,0 +1,15 @@
+{
+  "host": "127.0.0.1",
+  "port": 4317,
+  "limits": {
+    "indexTimeoutMs": 30000,
+    "toolTimeoutMs": 800,
+    "overallTimeoutMs": 15000,
+    "maxCalls": 8,
+    "maxRetries": 1,
+    "maxRows": 20,
+    "maxFileBytes": 8388608,
+    "maxFiles": 200,
+    "maxIndexBytes": 33554432
+  }
+}

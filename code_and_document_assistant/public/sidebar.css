@@ -1,0 +1,41 @@
+/* Flaticon UIcons loads the supplied fi classes from the approved CDN. */
+.fi { display:inline-flex; align-items:center; justify-content:center; line-height:1; }
+#workspace-sidebar { background:#eef5f6; }
+#workspace-sidebar #project-list { display:flex; flex-direction:column; gap:2px; }
+.project-heading { display:flex; align-items:center; gap:4px; margin:8px 0; }
+.project-heading button { border:0; background:transparent; padding:6px; margin:0; }
+#project-section-toggle { flex:1; display:flex; align-items:center; height:32px; gap:2px; text-align:left; color:#657589; }
+#project-section-toggle > .fi { transform:translateY(2px); }
+#workspace-sidebar .project-row { display:flex; align-items:center; min-height:30px; height:30px; gap:0; border-radius:7px; cursor:pointer; }
+#workspace-sidebar [id^="project-row-project-"] { min-height:30px; height:30px; }
+#workspace-sidebar .project-row > * { align-self:center; }
+#workspace-sidebar .project-row:hover,#workspace-sidebar .project-row:focus-within,#workspace-sidebar .project-row.project-current { background:#dcebec; }
+#workspace-sidebar .project-row button { border:0; background:transparent; padding:7px 4px; box-shadow:none; cursor:pointer; }
+#workspace-sidebar [id^="project-row-"] button:not(:first-child) { flex:0 0 20px; width:20px; min-width:20px; height:100%; min-height:100%; padding:0; }
+#workspace-sidebar .project-row .project-choice { display:flex; align-items:center; gap:3px; padding:3px 5px; }
+#workspace-sidebar .project-choice span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+#workspace-sidebar .project-choice[aria-current=true],#workspace-sidebar .conversation-choice[aria-current=true] { border:0; border-radius:7px; }
+#workspace-sidebar .project-choice > .fi { flex:0 0 18px; transform:translateY(0px); }
+#workspace-sidebar .conversation-new .fi { transform:translateY(1.5px); }
+#workspace-sidebar .project-renew .fi,#workspace-sidebar .project-actions .fi { transform:translateY(2.5px); }
+#workspace-sidebar .project-row .conversation-new { flex:0 0 17px; width:17px; height:17px; display:inline-flex; align-items:center; justify-content:center; padding:0; color:#657589; font-size:16px; }
+#workspace-sidebar .conversation-new,#workspace-sidebar .project-renew,#workspace-sidebar .project-actions { opacity:0; pointer-events:none; transition:opacity 140ms ease; }
+#workspace-sidebar .project-row:hover .conversation-new,#workspace-sidebar .project-row:hover .project-renew,#workspace-sidebar .project-row:hover .project-actions,#workspace-sidebar .project-row:focus-within .conversation-new,#workspace-sidebar .project-row:focus-within .project-renew,#workspace-sidebar .project-row:focus-within .project-actions { opacity:1; pointer-events:auto; }
+#workspace-sidebar button:hover { background-color:#dae7e9; }
+#workspace-sidebar .project-row button:hover { background:transparent; }
+#workspace-sidebar button:focus-visible { outline:2px solid #357171; outline-offset:2px; }
+#workspace-sidebar .project-conversations { border:0; padding:0 0 0 28px; margin:2px 0 2px; }
+#workspace-sidebar .project-conversations:hover,
+#workspace-sidebar .project-conversations:focus-within { background:#dcebec; border-radius:7px; }
+#workspace-sidebar .conversation-choice { width:100%; text-align:left; margin:0; padding:4px 8px; background:transparent; border:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px; }
+#workspace-sidebar .conversation-row { display:flex; align-items:center; gap:2px; min-height:30px; height:30px; width:100%; }
+#workspace-sidebar .conversation-row .conversation-choice { flex:1; min-width:0; }
+#workspace-sidebar .conversation-row .conversation-choice:hover,
+#workspace-sidebar .conversation-row .conversation-delete:hover { background:transparent; }
+#workspace-sidebar .conversation-delete .fi { font-size:16px; line-height:1; transform:translateY(4px); }
+#workspace-sidebar .conversation-delete { flex:0 0 26px; border:0; background:transparent; padding:0 4px; color:#657589; opacity:0; pointer-events:none; }
+#workspace-sidebar .conversation-row:hover .conversation-delete,#workspace-sidebar .conversation-row:focus-within .conversation-delete { opacity:1; pointer-events:auto; }
+#workspace-sidebar .conversation-delete:hover,#workspace-sidebar .conversation-delete:focus-visible { color:#934b35; }
+#workspace-sidebar .conversation-new:hover,#workspace-sidebar .conversation-new:focus-visible { color:#205a69; }
+#workspace-sidebar .project-grant-time { display:inline; flex:0 0 auto; margin-left:4px; color:#657589; font-size:11px; white-space:nowrap; }
+#quick-grant-status,#project-actions-status { overflow-wrap:anywhere; }

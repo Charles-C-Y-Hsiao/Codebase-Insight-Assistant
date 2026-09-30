@@ -1,0 +1,17 @@
+{
+  "provider": "openai",
+  "protocol": "responses",
+  "endpoint": "https://api.openai.com/v1/responses",
+  "model": "",
+  "imageGenerationModel": "",
+  "keyEnvironmentVariable": "CDA_AI_KEY",
+  "authHeader": "Authorization",
+  "authPrefix": "Bearer ",
+  "toolMode": "native",
+  "timeoutMs": 30000,
+  "overallTimeoutMs": 120000,
+  "maxRetries": 1,
+  "maxRounds": 8,
+  "maxToolCalls": 12,
+  "maxOutputTokens": 4096
+}

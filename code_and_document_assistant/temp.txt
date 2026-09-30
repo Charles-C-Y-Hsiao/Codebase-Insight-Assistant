@@ -1,0 +1,18 @@
+
+-- 使用grill me每次詢問我1~3個問題，直到你有95%把握
+
+
+- id="ai-edit-label" 幫我垂直置中
+- id="history" 中元素是固定的? 將article中的<h>改為span，每個<h>與對應下方內容都使用label包起來，並且將label的使用flex，並給id，且讓article使用flex控制內容
+
+
+按鈕外框
+└── 右側按鈕群組
+    ├── Cancel
+       └── Confirm
+
+
+.task-category > :not(summary)
+margin-left: 20px;
+
+  <i class="fi fi-br-circle-xmark"></i>
