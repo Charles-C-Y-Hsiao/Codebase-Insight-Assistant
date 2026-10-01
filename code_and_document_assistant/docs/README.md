@@ -2,6 +2,14 @@
 
 本文件是專案入口，提供啟動方式、功能總覽、限制與詳細文件索引。實際流程以各專題文件為準。
 
+## Diff2Html 單欄行號預覽
+
+已建立獨立的 Diff2Html 格式預覽頁，不會影響正式任務的程式差異比較。啟動原本服務後，開啟 `http://127.0.0.1:4317/diff-preview.html`。
+
+- 頁面使用固定的獨立程式碼範例；刪除列顯示舊行號、新增列顯示新行號，每列只保留一欄行號。
+- 可直接調整 `public/diff-preview.css` 與 `public/diff-preview.js`，重新整理預覽頁立即確認結果。
+- 已驗證：`node .\code_and_document_assistant\tests\diff-preview-browser.js` 通過，確認 Diff2Html 輸出每列僅有一個行號。
+
 ## 文件導覽
 
 - [AI 連線流程](ai_connection_flow.md)：啟動 AI、公司端點、模型、API key、外送授權、圖片能力、錯誤排查與驗收。

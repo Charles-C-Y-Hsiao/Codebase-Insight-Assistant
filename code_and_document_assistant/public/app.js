@@ -192,8 +192,8 @@ async function loadConversation(){
   await listConversations(state.project);
   for(const job of data.jobs)show(job);
   await loadImageDraft();
-  const active=data.jobs.findLast(j=>!j.archived&&['running','awaiting_approval'].includes(j.status));
-  if(active){state.job=active.id;if(active.status==='running')poll(active).catch(fail);}
+  const active=data.jobs.findLast(j=>!j.archived&&(['running','awaiting_approval'].includes(j.status)||j.memoryUpdating));
+  if(active){state.job=active.id;if(active.status==='running'||active.memoryUpdating)poll(active).catch(fail);}
 }
 function renderMemory(){
   const memory=state.memory||{confirmed:[],summary:'',sourceJobCount:0};
@@ -202,6 +202,15 @@ function renderMemory(){
   $('confirmed-requirements').replaceChildren(...(memory.confirmed||[]).map((x,i)=>node('span',`${i+1}. ${x.text}${x.status==='superseded'?'（已被後續需求取代）':'（有效）'}`,x.status==='superseded'?'muted':'')));
   if(!(memory.confirmed||[]).length)$('confirmed-requirements').append(node('span','可在任務下方按「確認為需求」。','muted'));
   $('memory-summary').textContent=memory.summary||'對話尚短，尚未建立壓縮摘要。完整原始紀錄仍保存在本機。';
+  if(memory.summaryVersion)$('memory-status').textContent+=` · ${memory.mode==='legacy'?'已保存的':''}模型摘要 v${memory.summaryVersion}`;
+  if(memory.lastUpdate?.status==='running')$('memory-status').textContent+=' · 自動整理中';
+  $('memory-update-history').replaceChildren(...(memory.updates||[]).slice().reverse().map(update=>{
+    const detail=node('details'),summary=node('summary');
+    const usage=(update.usage||[]),known=usage.length&&usage.every(x=>Number.isSafeInteger(x.inputTokens)&&Number.isSafeInteger(x.outputTokens));
+    const tokens=known?`API 用量：輸入 ${usage.reduce((n,x)=>n+x.inputTokens,0)}／輸出 ${usage.reduce((n,x)=>n+x.outputTokens,0)} token`:'API 用量未取得';
+    summary.textContent=`摘要 v${update.version} · ${update.status==='ok'?'成功':update.status==='running'?'整理中':'失敗，保留上一版'} · ${update.reason==='context_budget'?'上下文預算':'對話更新'} · ${update.finishedAt||update.startedAt}`;
+    detail.append(summary,node('p',tokens,'muted'),node('p',`本機估算：${update.estimatedTokens} token；記憶預算：${update.budgetTokens} token（非模型最大窗口）`,'muted'),node('pre',update.summary||update.code||'尚無摘要'));return detail;
+  }));
 }
 function renderSkillSuggestions(){
   $('active-skill').textContent=state.activeSkill?'已選：'+state.activeSkill.name:'尚未啟用';
@@ -239,7 +248,7 @@ async function setReferences(ids){
   const previous=state.references;state.references=[...new Set(ids)];
   try{await inventory();await catalog();renderScope();}catch(e){if(!e.stale){state.references=previous;await catalog();}throw e;}
 }
-async function poll(job){const epoch=state.epoch;let current=job;while(current.status==='running'&&epoch===state.epoch){await new Promise(r=>setTimeout(r,250));if(epoch!==state.epoch)return;current=await api('/api/jobs/'+job.id);show(current);}}
+async function poll(job){const epoch=state.epoch;let current=job;while((current.status==='running'||current.memoryUpdating)&&epoch===state.epoch){await new Promise(r=>setTimeout(r,250));if(epoch!==state.epoch)return;current=await api('/api/jobs/'+job.id);if(current.memory){state.memory=current.memory;renderMemory();}show(current);}}
 $('active-project').onchange=()=>switchProject($('active-project').value).catch(fail);
 $('active-conversation').onchange=()=>switchConversation(state.project,$('active-conversation').value).catch(fail);
 async function startNewConversation(project=state.project){if(!project)return;if(!await allowSwitch())return;const c=await api('/api/conversations',{});await switchProject(project,{force:true,approved:true,conversation:c.id});}
@@ -367,6 +376,7 @@ function taskOutput(job){
   return '';
 }
 function show(job){
+  if(job.memory&&(!job.projectId||job.projectId===state.project)&&(!job.conversationId||job.conversationId===state.conversation)){state.memory=job.memory;renderMemory();}
   if(job.projectId&&job.projectId!==state.project)return;
   if(job.conversationId&&job.conversationId!==state.conversation)return;
   if(job.kind==='image'){showImageJob(job);return;}
@@ -490,7 +500,7 @@ async function submit(event){event.preventDefault();$('notice').textContent='';$
     await submitImageCreation();return;
   }
   if(state.draftImages.length&&!state.imagesSupported)throw new Error('此模型／端點未啟用圖片輸入，請設定支援圖片的模型；圖片仍保留在草稿。');
-  const question=$('question').value;const selectedSkill=state.activeSkill;const payload={question,fileIds:[...state.selected],allowEdits:$('ai-allow-edits').checked,imageIds:state.draftImages.map(i=>i.id),...(state.editingTask||{}),...(selectedSkill?{skillId:selectedSkill.id}:{})};
+  const question=$('question').value;const selectedSkill=state.activeSkill;const payload={question,fileIds:[...state.selected],allowEdits:$('ai-allow-edits').checked,autoMemory:$('ai-auto-memory').checked,imageIds:state.draftImages.map(i=>i.id),...(state.editingTask||{}),...(selectedSkill?{skillId:selectedSkill.id}:{})};
   let job=await api('/api/jobs',payload);
   if(job.requiresContinuationSelection){const id=await chooseContinuation(job);if(!id)return;job=await api('/api/jobs',{...payload,continuationJobId:id});if(job.requiresContinuationSelection)throw new Error(job.message);}
   state.activeSkill=null;endTaskEdit(false);if($('question').value===question)$('question').value='';state.questionBaseline='';$('send').setAttribute('aria-label','送出問題');$('send').title='送出問題';renderSkillSuggestions();state.job=job.id;show(job);await loadImageDraft();await listConversations(state.project);
@@ -512,6 +522,7 @@ $('question').oninput=()=>{
 $('request-root').onclick=async()=>{state.grantedProject=null;$('open-granted-project').hidden=true;try{const create=$('create-folder').checked;const r=await api('/api/roots/request',{kind:$('root-kind').value,path:$('folder').value,create,write:$('allow-write').checked,verify:$('allow-verify').checked,ai:$('allow-ai').checked,minutes:Number($('grant-minutes').value)});state.request=r.id;$('permission-error').textContent='';$('notice').textContent='';$('root-status').textContent='待主機端核准：'+r.path+(create?'（確認時才建立資料夾）':'（尚未讀取）')+' '+JSON.stringify(r.permissions);}catch(e){fail(e);}};
 $('approve-root').onclick=async()=>{try{if(!state.request)throw new Error('請先提出授權請求');if(!$('admin').value.trim())throw new Error('請先輸入終端顯示的本機管理碼');const result=await api('/api/roots/'+state.request+'/approve',{adminToken:$('admin').value.trim()});const global=result.root.kind==='global-reference';state.grantedProject=global?null:result.root.id;state.request=null;$('permission-error').textContent='';$('notice').textContent='';$('root-status').textContent=global?'全域唯讀授權完成，已加入目前與後續查詢；目前修改目標保持不變。':(result.created?'已建立空資料夾並':'已')+'依請求授權：'+result.root.label+'。按「開啟此專案」才會切換；也可關閉視窗繼續目前工作。';$('open-granted-project').hidden=global;await catalog();if(state.catalog.find(p=>p.id===state.project)?.active)await inventory();}catch(e){$('root-status').textContent='授權失敗：'+e.message+'。請確認瀏覽器網址是 http://127.0.0.1:4317/，且管理碼來自目前服務視窗。';fail(e);}};
 function showConnectionStatus(connections,mode){
+  $('auto-memory-label').hidden=mode!=='real';if(mode!=='real')$('ai-auto-memory').checked=false;
   const ai=connections.ai;
   $('current-model').textContent='目前模型：'+(mode==='real'?`${ai.model} · ${ai.provider}`:mode==='error'?'設定未完成':'Mock（固定規則）');
   $('model-help').textContent=mode==='real'?ai.model:mode==='error'?'模型設定未完成':'Mock';$('model-help').title=mode==='real'?'目前使用的模型：'+ai.model:'目前使用固定規則模型';

@@ -21,6 +21,8 @@
   <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css" />
   <!-- ss -->
   <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
   <style>
     body {
@@ -63,6 +65,10 @@
 
     #close-button {
       align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
     }
 
     .close-button {
@@ -86,6 +92,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      line-height: 1;
+      transform: translateY(2px);
     }
 
     .close-button:hover,
@@ -93,15 +101,20 @@
       background-color: #ede9fe;
     }
 
-    .button-frame {
+    #button-frame {
       display: flex;
-      justify-content: flex-end;
+      align-items: center;
+      justify-content: flex-start;
       gap: 12px;
-      padding: 12px;
+    }
+
+    #button-frame > i {
+      color: #7c3aed;
+      font-size: 16px;
     }
 
     .button-frame button {
-      padding: 10px 22px;
+      padding: 6px 12px;
       border: 1px solid #c4b5fd;
       border-radius: 6px;
       font-size: 16px;
@@ -133,7 +146,8 @@
       </button>
     </div>
 
-    <div class="button-frame">
+    <div id="button-frame" class="button-frame">
+      <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
       <button type="button" class="cancel">Cancel</button>
       <button type="button" class="confirm">Confirm</button>
     </div>

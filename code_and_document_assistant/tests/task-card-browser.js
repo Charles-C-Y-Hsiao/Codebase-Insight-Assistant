@@ -12,8 +12,20 @@ async function main(){
     server=instance.app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
     browser=await require('puppeteer').launch({executablePath:process.env.CDA_BROWSER||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,userDataDir:path.join(base,'chrome-profile'),args:['--no-sandbox','--disable-dev-shm-usage']});
     const page=await browser.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
+    await page.setViewport({width:1440,height:900});
     await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>state.conversation&&state.imageReady);
+    const memoryControl=await page.evaluate(()=>{
+      const input=document.getElementById('ai-auto-memory'),label=document.getElementById('auto-memory-label');
+      const initial={unchecked:!input.checked,mockHidden:label.hidden};
+      document.getElementById('ai-edit-label').hidden=false;
+      showConnectionStatus({ai:{model:'test',provider:'test',status:'connected'}},'real');
+      const edit=document.getElementById('ai-edit-label').getBoundingClientRect(),auto=label.getBoundingClientRect();
+      state.memory={confirmed:[],summary:'目標：測試摘要',summaryVersion:1,updates:[{version:1,status:'ok',reason:'conversation_update',startedAt:'test',estimatedTokens:100,budgetTokens:8000,summary:'目標：測試摘要',usage:[{inputTokens:20,outputTokens:5}]}]};renderMemory();
+      const result={...initial,realVisible:!label.hidden,right:auto.left>=edit.right,usage:document.getElementById('memory-update-history').textContent.includes('輸入 20／輸出 5'),version:document.getElementById('memory-status').textContent.includes('v1')};
+      showConnectionStatus({ai:{}},'mock');return result;
+    });
+    assert.deepEqual(memoryControl,{unchecked:true,mockHidden:true,realVisible:true,right:true,usage:true,version:true});
     const view=await page.evaluate(()=>{
       const task={id:'card-check',projectId:state.project,conversationId:state.conversation,question:'請檢查資料並整理重點',status:'running',progress:'搜尋資料中',startedAt:Date.now()-2000,finishedAt:null,archived:false,plan:['搜尋'],tools:[],events:[],iterations:[],evidence:[],ai:{model:'mock',requests:0,usage:[]},result:null};
       show(task);

@@ -1874,6 +1874,10 @@ input[type=checkbox]  {
   margin:0;
 }
 .task-detail { margin:3px 0; }
+.timeline-operation { margin:3px 0 3px 20px; line-height:1.5; overflow-wrap:anywhere; }
+.timeline-evidence { margin:3px 0 3px 20px; }
+.timeline-evidence > small { display:block; }
+.timeline-evidence > pre { margin:3px 0; white-space:pre-wrap; }
 .task-detail summary {
   display:flex;
   align-items:center;
@@ -1932,12 +1936,18 @@ input[type=checkbox]  {
 }
 html { scroll-padding-top: var(--scope-offset, 140px); }
 #history button, #history summary, .task-workbench { scroll-margin-top: 16px; }
-#ai-edit-label:not([hidden]) {
+#ai-edit-label:not([hidden]),#auto-memory-label:not([hidden]) {
   display: flex;
   align-items: center;
   gap: 1px;
 }
 #ai-edit-label input { transform:translateY(1px); }
+#auto-memory-label input { transform:translateY(1px); }
+#composer #auto-memory-label { margin-left:8px; white-space:nowrap; }
+.composer-leading-actions { flex:0 0 auto; flex-wrap:nowrap; }
+#composer-actions > #scope-banner { flex-shrink:1; }
+@media (max-width:450px) { .composer-leading-actions { flex:1 1 auto; flex-wrap:wrap; } }
+#memory-update-history { display:flex; flex-direction:column; gap:6px; }
 #image-controls { display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-size:12px; }
 #image-controls label { display:flex; align-items:center; gap:8px; margin:0; }
 #image-limit { width:80px; height:32px; }

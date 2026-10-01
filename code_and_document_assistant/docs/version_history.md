@@ -18,6 +18,22 @@
 - 保存、權限、圖片、解析與 AI 連線的最新細節分別見 [README](README.md)、[AI 連線流程](ai_connection_flow.md) 與 [工作台流程](task_workbench_flow.md)。
 - 本文件的歷史測試結果已由 `archive/test_report.md` 與 `archive/test_report_phase1.md` 交叉核對；未把未驗證項目標為完成。
 
+## 可選自動對話記憶（2026-10-01）
+
+- 功能變更：
+  - 在「允許 AI 修改」右側加入「自動整理記憶（額外 token）」，預設關閉，real AI 模式才顯示。
+  - 文字任務明確傳送 `autoMemory`；未勾選維持本機整理，勾選才使用目前端點與模型產生五類記憶。
+  - 預算內使用完整文字歷史，超過預算改用有效摘要、近期與相關原文；記錄版本、更新原因及用量。
+  - 摘要失敗保留上一版；來源撤權、取消、修訂或刪除時，不提交失效摘要。
+- 驗證範圍：模擬 API、HTTP 模式切換、保存／重載、失敗處理與瀏覽器介面；未使用真實 API key。
+- 實際命令：
+  - `node --test tests/conversation-memory.test.js tests/context-skills.test.js tests/ai.test.js tests/task-edit-flow.test.js tests/task-timeline.test.js`
+  - `node tests/task-card-browser.js`
+- 驗證結果：相關測試 31 項通過；瀏覽器驗證預設關閉、右側位置、摘要版本與用量顯示通過，exit code 0。
+- 全套回歸：88 項中 81 項通過、7 項未通過；涉及其他版面樣式與圖片服務狀態斷言，未宣稱全套通過。
+- 限制：記憶 token 為本機估算預算，不是 Agent Loop 全部輸入的精確 token 計數；公司端點仍需實際驗證。
+- 相關文件：[工作台流程](task_workbench_flow.md#自動記憶整理與上下文壓縮勾選啟用)。
+
 ## 圖片創作與模型選擇（2026-09-30）
 
 - 功能變更：圖片創作支援 `gpt-image-2.5-sunburst` 與 `gpt-image-1` Select2 選擇器。

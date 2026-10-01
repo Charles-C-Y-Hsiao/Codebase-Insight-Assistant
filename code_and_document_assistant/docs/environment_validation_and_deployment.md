@@ -63,6 +63,10 @@ $env:CDA_PYTHON = 'Python.exe 的完整路徑'
 
 先不使用公司 API key，確認專案本身正常。
 
+以下命令從 ReAct 根目錄執行；搬移後請先切換到公司電腦上的新根目錄。
+「離線」指不呼叫真實 AI；部分瀏覽器測試仍會載入 CDN，因此不保證完全斷網可執行。
+瀏覽器測試會建立隔離暫存資料與臨時服務連接埠，不使用既有 4317 服務。
+
 ```powershell
 node --test .\code_and_document_assistant\tests\acceptance.test.js .\code_and_document_assistant\tests\phase2.test.js
 ```
@@ -99,10 +103,15 @@ node .\code_and_document_assistant\tests\review-viewers-browser.js
 
 判斷方式：
 
-- `PASS`：可進入公司端點驗證。
+- 所有指定測試 exit code 0，且顯示 `PASS` 或 `fail 0`：可進入公司端點驗證；單一測試成功不代表整套通過。
+- 評估結果應為 11/11 案例、13/13 引用正確，且 `failed` 為空陣列。
 - Node 語法錯誤：先修正本機程式。
 - Chrome 找不到：設定 `CDA_BROWSER` 指向核准的 Chrome 執行檔。
 - 版面或瀏覽器環境造成的測試差異：記錄後與 API 連線問題分開處理。
+
+2026-10-02 修正與實測：評估語料改用系統暫存目錄，避免被 runtime 排除規則拒絕；三個瀏覽器測試對齊任務專屬 ID 與收合區塊，透過實際點擊展開後操作。
+驗證結果：`evaluation/run.js` 通過 11/11 案例與 13/13 引用；`browser-smoke.js`、`ai-browser-smoke.js`、`review-viewers-browser.js` 均通過，exit code 0。
+本次未使用真實 API key、未重啟既有服務；此結果不代表全套測試或公司環境已通過。
 
 ## 4. 建立公司 AI 設定
 

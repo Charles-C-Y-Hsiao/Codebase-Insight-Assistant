@@ -26,7 +26,7 @@ class Engine {
     const job={id:crypto.randomUUID(),owner,question,fileIds,status:'running',progress:'搜尋文件',events:[],iterations:[],plan:[],evidence:[],tools:[],calls:0,result:null,controller:new AbortController()};
     Object.assign(job,context,{scope,startedAt:Date.now()});this.event(job,'開始處理需求');this.jobs.set(job.id,job); job.finished=this.run(job); return this.public(job);
   }
-  public(j) {const {controller,owner,finished,scope,imageInputs,historyContext,...result}=j;return result;}
+  public(j) {const {controller,owner,finished,scope,imageInputs,historyContext,historyCheck,...result}=j;return result;}
   get(id,owner) {const j=this.jobs.get(id);if(!j||j.owner!==owner) throw new Error('找不到任務');return j;}
   cancel(id,owner) {const j=this.get(id,owner);if(['running','awaiting_approval'].includes(j.status)) {j.controller.abort();j.status='cancelled';j.finishedAt=Date.now();for(const item of j.creations||[])if(item.status==='pending'){item.status='cancelled';j.scope.workspace.proposals.delete(item.id);}this.event(j,'已取消');j.result={conclusions:[],facts:[],unknown:['使用者取消任務；已建立的檔案保留，其餘不再建立'],inferences:[]};}return this.public(j);}
   event(j,message) {j.progress=message;j.events.push({time:new Date().toISOString(),message});}
@@ -82,6 +82,10 @@ class Engine {
       if(j.status!=='cancelled') {j.status='partial';j.result={...this.result('流程未完成，保留已取得的證據',[],[e.message]),...(real?{mock:false,origin:'ai',unknown:[e.message,'未回退 Mock；來源片段可供人工核對。']}: {})};}
     } finally {
       delete j.imageInputs;
+      for(const iteration of j.iterations||[])if(iteration.status==='running'){
+        iteration.status='stop';iteration.next=j.status==='cancelled'?'任務已取消':'流程未完成，請查看錯誤與已取得結果';
+        iteration.observation||=j.result?.unknown?.[0]||'本輪未取得工具結果';
+      }
       j.finishedAt=j.status==='awaiting_approval'?null:Date.now();
       clearTimeout(timer);
       if(j.status==='cancelled') j.result={...this.result('使用者已取消任務',[],['僅保留已取得的證據；未繼續執行']),...(real?{mock:false,origin:'ai'}:{})};

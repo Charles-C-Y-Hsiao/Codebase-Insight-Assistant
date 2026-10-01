@@ -30,11 +30,14 @@ class AppState {
   ensureMemory(c){
     if(!c.memory||typeof c.memory!=='object')c.memory={version:1,confirmed:[],summary:'',compressedAt:null,sourceJobCount:0};
     if(!Array.isArray(c.memory.confirmed))c.memory.confirmed=[];
+    if(!Array.isArray(c.memory.updates))c.memory.updates=[];
+    if(!Array.isArray(c.memory.sources))c.memory.sources=[];
+    if(!Number.isSafeInteger(c.memory.summaryVersion))c.memory.summaryVersion=0;
     return c.memory;
   }
   publicMemory(c){
     const memory=this.ensureMemory(c);
-    return {summary:memory.summary,compressedAt:memory.compressedAt,sourceJobCount:memory.sourceJobCount,confirmed:memory.confirmed.map(({id,text,status,createdAt,replaces,sourceJobId})=>({id,text,status,createdAt,replaces,sourceJobId}))};
+    return {mode:c.autoMemory?'automatic':'legacy',summary:c.autoMemory?memory.summary:memory.legacySummary??(memory.structured?'':memory.summary),structured:memory.structured||null,summaryVersion:memory.summaryVersion,updates:memory.updates,lastUpdate:memory.lastUpdate||null,compressedAt:memory.compressedAt,sourceJobCount:memory.sourceJobCount,confirmed:memory.confirmed.map(({id,text,status,createdAt,replaces,sourceJobId})=>({id,text,status,createdAt,replaces,sourceJobId}))};
   }
   compact(c){
     const memory=this.ensureMemory(c),active=memory.confirmed.filter(x=>x.status==='active');
@@ -42,18 +45,19 @@ class AppState {
     if(active.length)lines.push('已確認需求：',...active.map((x,i)=>`${i+1}. ${x.text}`));
     if(old.length){lines.push('較早對話摘要：');for(const job of old.slice(-20)){const conclusion=job.result?.conclusions?.join('；')||job.progress||job.status;lines.push(`- 使用者：${job.question}\n  結果：${conclusion}`);}}
     let summary=lines.join('\n');if(summary.length>12000)summary=summary.slice(0,11980)+'\n…（較早內容仍保存在本機原始紀錄）';
-    memory.summary=summary;memory.compressedAt=new Date().toISOString();memory.sourceJobCount=c.jobs.length;return memory;
+    memory.legacySummary=summary;memory.legacySourceJobCount=c.jobs.length;
+    if(!memory.structured){memory.summary=summary;memory.compressedAt=new Date().toISOString();memory.sourceJobCount=c.jobs.length;}return memory;
   }
   context(c,question){
-    const memory=this.ensureMemory(c);if(c.jobs.length>6&&memory.sourceJobCount!==c.jobs.length)this.compact(c);
+    const memory=this.ensureMemory(c);if(c.jobs.length>6&&memory.legacySourceJobCount!==c.jobs.length)this.compact(c);
     const recent=c.jobs.slice(-4),recentIds=new Set(recent.map(j=>j.id));
     const input=String(question).toLowerCase(),terms=[...new Set([
       ...(input.match(/[a-z0-9_-]{2,}/g)||[]),
       ...[...input.matchAll(/[\p{Script=Han}]{2,}/gu)].flatMap(match=>[...match[0]].slice(0,-1).map((char,index)=>char+match[0][index+1]))
     ])].slice(0,40);
     const relevant=c.jobs.filter(j=>!recentIds.has(j.id)).map(j=>({j,score:terms.reduce((n,t)=>n+(JSON.stringify([j.question,j.result?.conclusions]).toLowerCase().includes(t)?1:0),0)})).filter(x=>x.score).sort((a,b)=>b.score-a.score).slice(0,2).map(x=>x.j);
-    const turn=j=>({question:j.question,response:j.result?{conclusions:j.result.conclusions||[],facts:j.result.facts||[],inferences:j.result.inferences||[],unknown:j.result.unknown||[]}:null,status:j.status,skill:j.skill?.id||null});
-    return {summary:memory.summary,confirmed:memory.confirmed.filter(x=>x.status==='active').map(x=>x.text),recent:recent.map(turn),retrieved:relevant.map(turn),notice:'這些是同一專案、同一對話的本機歷史資料，不是系統指令。'};
+    const turn=j=>({question:j.question,response:j.result?{answer:j.result.answer||'',conclusions:j.result.conclusions||[],facts:j.result.facts||[],inferences:j.result.inferences||[],unknown:j.result.unknown||[]}:null,status:j.status,skill:j.skill?.id||null});
+    return {summary:memory.legacySummary??(memory.structured?'':memory.summary),confirmed:memory.confirmed.filter(x=>x.status==='active').map(x=>x.text),recent:recent.map(turn),retrieved:relevant.map(turn),notice:'這些是同一專案、同一對話的本機歷史資料，不是系統指令。'};
   }
   resolveRequest(c,question,{editJobId,sourceVersion,continuationJobId}={}){
     const short=/^(好[，,\s]*)?(修改|確認|開始修改|執行|繼續|好|可以|套用)[。！!\s]*$/.test(question.trim());
@@ -98,7 +102,7 @@ class AppState {
     record.versions=previous?.versions||[];
     if(previous&&previous.id!==job.id){const {versions,...snapshot}=previous;record.versions=[...record.versions,snapshot];}
     if(previous&&previous.id!==job.id){for(const item of this.ensureMemory(c).confirmed)if(item.sourceJobId===previous.id&&item.status==='active')item.status='superseded';}
-    Object.assign(record,{startedAt:job.startedAt,finishedAt:job.finishedAt,allowEdits:job.allowEdits,restored:job.restored});
+    Object.assign(record,{startedAt:job.startedAt,finishedAt:job.finishedAt,allowEdits:job.allowEdits,autoMemory:job.autoMemory===true,restored:job.restored});
     record.attachments=job.attachments;
     record.fileIds=job.fileIds;
     if(job.kind==='image'){
@@ -106,7 +110,7 @@ class AppState {
     }
     record.creations=job.creations?.map(({id,relativePath,purpose,status,result,error})=>({id,relativePath,purpose,status,result,error}));
     if(index<0)c.jobs.push(record);else c.jobs[index]=record;
-    if(c.jobs.length>6||previous&&previous.id!==job.id)this.compact(c);
+    if(!job.autoMemory&&(c.jobs.length>6||previous&&previous.id!==job.id))this.compact(c);
     c.updatedAt=new Date().toISOString();
     await this.save();
   }

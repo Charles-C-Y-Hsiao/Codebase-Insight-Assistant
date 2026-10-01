@@ -30,6 +30,12 @@ test('Responses 原生工具：讀檔、引用、用量、外送僅授權資料'
   assert.equal(requests[0].store,false);assert.equal(j.ai.usage[0].inputTokens,12);
   assert.ok(!JSON.stringify(requests).includes('private.txt'));assert.ok(!JSON.stringify(j.result).includes('FAKE_TEST_KEY'));
   assert.equal(f.ws.roots.find(r=>r.id===g.id).permissions.write,false);
+  assert.match(j.iterations[0].purpose,/讀取原文/);assert.equal(j.iterations[0].target,f.f.path);
+  assert.match(j.iterations[0].observation,/main.js 原文.*bytes.*版本/);
+  assert.equal(j.iterations[0].previews[0].excerpt,'const marker=1;');
+  assert.match(j.iterations[0].next,/整理已取得結果/);
+  assert.equal(j.iterations[1].next,'本次回答完成');
+  assert.equal(j.tools.find(t=>t.name==='read_file').result,j.iterations[0].observation);
 });
 test('AI 修改：版本及目標檢查，確認前不寫入，套用後靜態驗證',async t=>{
   const f=await setup(t,{},{verify:true});let round=0;

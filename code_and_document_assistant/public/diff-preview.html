@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Diff2Html 格式預覽</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/css/diff2html.min.css">
+  <link rel="stylesheet" href="diff-preview.css">
+</head>
+<body>
+  <main class="diff-preview-page">
+    <header><p>Diff2Html 格式調整</p><h1>單欄行號預覽</h1><span>固定獨立範例；重新整理此頁即可套用 CSS／JS 修改。</span></header>
+    <section aria-label="程式差異範例">
+      <div id="diff-preview-output" aria-live="polite">正在載入 Diff2Html…</div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/js/diff2html-ui-slim.min.js"></script>
+  <script src="diff-preview.js"></script>
+</body>
+</html>

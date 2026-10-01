@@ -101,7 +101,7 @@
     <div id="composer-context">
       <section id="conversation-memory" aria-labelledby="conversation-memory-title">
         <div class="memory-heading"><h2 id="conversation-memory-title">對話記憶</h2><span id="memory-status" class="muted">尚無已確認需求</span></div>
-        <details id="memory-details"><summary><i id="memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>查看已確認需求與壓縮摘要</span></summary><div id="confirmed-requirements"></div><pre id="memory-summary"></pre></details>
+        <details id="memory-details"><summary><i id="memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>查看已確認需求與壓縮摘要</span></summary><div id="confirmed-requirements"></div><pre id="memory-summary"></pre><div id="memory-update-history"></div></details>
       </section>
       <details id="skill-panel" aria-labelledby="skill-panel-title"><summary><span id="skill-panel-heading"><i id="skill-panel-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span id="skill-panel-title">建議技能</span></span><span id="active-skill" class="muted">尚未啟用</span></summary><div id="skill-suggestions"></div></details>
     </div>
@@ -117,6 +117,7 @@
       <div class="composer-leading-actions">
         <button id="composer-more" type="button" aria-expanded="false" aria-controls="composer-menu" aria-label="更多功能" title="更多功能"><i class="fi fi-br-plus-small" aria-hidden="true"></i></button>
         <label id="ai-edit-label" hidden><input type="checkbox" id="ai-allow-edits"> 允許 AI 修改</label>
+        <label id="auto-memory-label" hidden title="勾選後使用目前模型自動整理記憶，額外消耗 token；未勾選沿用本機整理。設定套用於下一次送出的文字任務。"><input type="checkbox" id="ai-auto-memory"> 自動整理記憶（額外 token）</label>
       </div>
       <section id="scope-banner" aria-label="目前操作範圍">
         <div id="target-badge"><span id="target-label">Target:</span><span id="target-name">Loading</span></div>

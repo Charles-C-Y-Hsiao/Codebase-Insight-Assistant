@@ -1,0 +1,21 @@
+:root { color:#203047; background:#f4f7fb; font-family:Arial,"Microsoft JhengHei",sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; }
+.diff-preview-page { width:min(1200px,calc(100% - 32px)); margin:32px auto; }
+header { margin-bottom:18px; }
+header p { margin:0 0 6px; color:#1769aa; font-size:14px; font-weight:700; }
+h1 { margin:0 0 8px; font-size:24px; }
+header span { color:#657589; font-size:14px; }
+.diff-preview-page section { overflow:auto; border:1px solid #dce3eb; border-radius:8px; background:#fff; }
+.d2h-file-wrapper { margin:0; border:0; }
+.d2h-file-header { height:auto; padding:9px 12px; background:#f5f7fa; }
+.d2h-diff-table { width:100%; margin:0; border-collapse:collapse; font:14px/1.55 Consolas,monospace; }
+.d2h-diff-table td { padding:0; border:0; }
+.d2h-code-linenumber { position:static; display:table-cell; width:56px; min-width:56px; padding:3px 8px; text-align:right; direction:ltr; background:#f5f7fa; color:#657589; border-right:1px solid #dce3eb; }
+.d2h-code-line { width:auto; padding:3px 12px; }
+.d2h-ins { background:#e6f5e8; }
+.d2h-del { background:#ffebe9; }
+.d2h-code-line ins { background:#acebbb; text-decoration:none; }
+.d2h-code-line del { background:#ffc1ba; text-decoration:none; }
+.d2h-info { color:#657589; }
+@media (max-width:600px) { .diff-preview-page { width:calc(100% - 20px); margin:20px auto; } }

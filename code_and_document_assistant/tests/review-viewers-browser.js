@@ -2,6 +2,7 @@ const fs=require('node:fs/promises');
 const os=require('node:os');
 const path=require('node:path');
 const assert=require('node:assert/strict');
+const {click,reveal}=require('./browser-controls');
 const {createApp}=require('../server');
 async function main(){
   const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-viewers-'));let server,browser,instance;
@@ -19,18 +20,20 @@ async function main(){
     await page.waitForSelector('#diff-output-compare .d2h-file-wrapper',{timeout:25000}).catch(async e=>{console.error(await page.$eval('#diff-output-compare',el=>el.textContent.slice(0,400)));throw e;});
     const diff=await page.$eval('#diff-output-compare',e=>({ins:!!e.querySelector('.d2h-ins'),del:!!e.querySelector('.d2h-del'),folds:e.querySelectorAll('.diff-fold-row').length,hidden:e.querySelectorAll('tr[hidden]').length,unsafe:!!e.querySelector('script'),highlight:!!e.querySelector('[class*="hljs-"]')}));
     assert.equal(diff.ins,true);assert.equal(diff.del,true);assert.ok(diff.folds>0);assert.ok(diff.hidden>0);assert.equal(diff.unsafe,false);assert.equal(diff.highlight,true);
+    await reveal(page,'#diff-output-compare');
+    await page.waitForFunction(()=>document.getElementById('diff-details-compare')?.open);
     await page.$eval('#diff-details-compare',e=>e.scrollIntoView({block:'center'}));await (await page.$('#diff-details-compare')).screenshot({path:path.join(__dirname,'../runtime/review-diff-preview.png')});
-    await page.click('#diff-output-compare .diff-fold-row button');assert.ok(await page.$eval('#diff-output-compare .diff-fold-row button',e=>e.getAttribute('aria-expanded')==='true'));
+    await click(page,'#diff-output-compare .diff-fold-row button');assert.ok(await page.$eval('#diff-output-compare .diff-fold-row button',e=>e.getAttribute('aria-expanded')==='true'));
     await page.select('#diff-mode-compare','side-by-side');await page.waitForSelector('#diff-output-compare .d2h-file-side-diff');
     await page.evaluate(()=>{window.copied='';Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copied=text;}}});});
     await page.evaluate(()=>[...document.querySelectorAll('.diff-view-toolbar button')].find(b=>b.textContent==='複製修改前').click());assert.equal(await page.evaluate(()=>window.copied),original);
     await page.evaluate(()=>{const original=state.taskJobs.get('compare');show({...original,status:'completed'});show({...original,id:'second-comparison',status:'completed'});});
-    await page.click('#task-more-compare > summary');await page.click('#task-view-workbench-compare');
-    await page.waitForFunction(()=>$('diff-details-compare')?.open&&$('task-workbench').getClientRects().length>0);
-    assert.equal(await page.$eval('#task-workbench',e=>e.closest('.task-main-details').id),'task-more-compare');
-    await page.click('#task-view-workbench-compare');assert.equal(await page.$eval('#diff-details-compare',e=>e.open),true);
-    await page.evaluate(()=>{const source=state.taskJobs.get('compare');show({...source,id:'historical-comparison',proposal:undefined,archived:true,allowEdits:true,tools:[{name:'apply_edit',status:'ok',verification:{status:'passed',message:'歷史靜態驗證通過'}}]});$('task-more-historical-comparison').open=true;$('task-view-workbench-historical-comparison').click();});
-    assert.match(await page.$eval('#diff',e=>e.textContent),/未保存修改前後原文/);assert.match(await page.$eval('#diff',e=>e.textContent),/歷史靜態驗證通過/);
+    await reveal(page,'#diff-output-compare');
+    await page.waitForFunction(()=>$('diff-details-compare')?.open&&$('task-workbench-compare').getClientRects().length>0);
+    assert.equal(await page.$eval('#task-workbench-compare',e=>e.closest('.task-main-details').id),'task-more-compare');
+    assert.equal(await page.$eval('#diff-details-compare',e=>e.open),true);
+    await page.evaluate(()=>{const source=state.taskJobs.get('compare');show({...source,id:'historical-comparison',proposal:undefined,archived:true,allowEdits:true,tools:[{name:'apply_edit',status:'ok',verification:{status:'passed',message:'歷史靜態驗證通過'}}]});document.getElementById('task-more-historical-comparison').open=true;document.getElementById('task-workbench-historical-comparison').open=true;});
+    assert.match(await page.$eval('#diff-historical-comparison',e=>e.textContent),/未保存修改前後原文/);assert.match(await page.$eval('#diff-historical-comparison',e=>e.textContent),/歷史靜態驗證通過/);
     // Broken CDN must preserve both complete source texts.
     const fallback=await page.evaluate(async()=>{const load=loadDiffLibraries;loadDiffLibraries=()=>Promise.reject(new Error('CDN unavailable'));const j={...state.taskJobs.get('compare'),id:'fallback',status:'awaiting_approval'};const view=createDiffViewer(j);document.body.append(view);await new Promise(r=>setTimeout(r,20));const text=view.textContent;view.remove();loadDiffLibraries=load;return text;});assert.match(fallback,/CDN unavailable/);assert.match(fallback,/item39/);
     const png=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=800;canvas.height=500;const ctx=canvas.getContext('2d');ctx.fillStyle='#edf4ff';ctx.fillRect(0,0,800,500);ctx.fillStyle='#265aa0';ctx.fillRect(100,100,600,300);return canvas.toDataURL().split(',')[1];});
@@ -38,7 +41,7 @@ async function main(){
     await page.evaluate(()=>{
       const template={...state.taskJobs.get('compare'),proposal:undefined,id:'pictures',status:'completed',result:{conclusions:[],facts:[],inferences:[],unknown:[]},attachments:[{id:'img1',name:'第一張',width:800,height:500,size:100},{id:'img2',name:'第二張',width:800,height:500,size:100}]};show(template);show({...template,id:'other-pictures',attachments:[{id:'img3',name:'其他任務',width:800,height:500,size:100}]});
     });
-    await page.click('#task-more-pictures > summary');await page.click('#task-images-pictures img');await page.waitForSelector('.pswp');
+    await click(page,'#task-images-pictures img');await page.waitForSelector('.pswp');
     await page.waitForFunction(()=>activeImageViewer?.opener.isOpen);
     await page.screenshot({path:path.join(__dirname,'../runtime/review-image-preview.png')});
     assert.equal(await page.evaluate(()=>activeImageViewer.getNumItems()),2);
@@ -47,6 +50,11 @@ async function main(){
     await page.evaluate(()=>{state.articles.forEach(article=>article.hidden=true);for(let version=1;version<=2;version++)showImageJob({id:'generated'+version,kind:'image',projectId:state.project,conversationId:state.conversation,question:'圖片',status:'completed',startedAt:Date.now(),imageCreation:{seriesId:'one-series',slug:'流程',version,fileName:'flow-v'+version+'.png',width:800,height:500},result:{unknown:[]}});$('task-generated1').hidden=true;});
     await page.click('#task-generated2 .image-task-result img');await page.waitForFunction(()=>activeImageViewer?.currIndex===1&&activeImageViewer.opener.isOpen).catch(async e=>{console.error(await page.evaluate(()=>({index:activeImageViewer?.currIndex,open:activeImageViewer?.opener.isOpen,notice:$('notice').textContent,errors:!!document.querySelector('.pswp')})));throw e;});assert.equal(await page.evaluate(()=>activeImageViewer.getNumItems()),2);await page.click('.pswp__button--close');await page.waitForFunction(()=>!activeImageViewer);
     assert.deepEqual(errors,[]);console.log('PASS: highlighted diff, folding, side-by-side, exact copy, CDN fallback, task-scoped PhotoSwipe, zoom, keys, close and generated versions');
-  }finally{if(browser)await browser.close();if(server)await new Promise(r=>server.close(r));if(instance)await instance.saved.queue;await fs.rm(base,{recursive:true,force:true});}
+  }finally{
+    if(browser)await browser.close();
+    if(server)await new Promise(r=>server.close(r));
+    if(instance)await instance.saved.queue;
+    await fs.rm(base,{recursive:true,force:true});
+  }
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

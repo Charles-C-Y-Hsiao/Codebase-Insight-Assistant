@@ -7,6 +7,7 @@ const {registry}=require('./src/tools.js');
 const config=require('./config/example.json');
 const {ProjectScope}=require('./src/project-scope.js');
 const {AppState}=require('./src/app-state.js');
+const {ConversationMemory,estimateTokens,turn}=require('./src/conversation-memory.js');
 const sessionLifetime=30*86400000;
 async function createApp({runtime=path.join(__dirname,'runtime'),limits={...config.limits},adminToken=crypto.randomBytes(3).toString('hex'),projectConfig=process.env.CDA_PROJECTS_CONFIG,aiOptions={}}={}) {
   const workspace=new Workspace(runtime,limits);await workspace.init(path.join(__dirname,'examples'),[path.join(__dirname,'docs','example_data')]);
@@ -27,6 +28,16 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }
   for(const p of saved.data.projects)workspace.roots.push({...p,generation:0,writable:false,permissions:{read:false,write:false,verify:false,ai:false},expiresAt:1});
   const engine=new Engine(workspace,limits,require('./src/connections.js').createModel(aiOptions));const app=express();const sessions=new Map(saved.data.sessions.filter(s=>Date.now()-s.created<sessionLifetime).map(s=>[s.id,s]));const requests=new Map();
+  const memories=new ConversationMemory(saved,engine.model);
+  const recordAndSummarize=async job=>{
+    if(job.deletedConversation)return;
+    await saved.record(job);
+    if(job.autoMemory!==true||engine.model.mode!=='real')return;
+    const conversation=saved.conversation(job.owner,job.projectId,job.conversationId);
+    try{await memories.update(conversation,job.scope,{question:job.question,job});}
+    catch{job.memoryError='記憶整理未完成；原始對話仍保留。';}
+    finally{job.memoryUpdating=false;if(!job.deletedConversation)await saved.record(job);}
+  };
   const persistProjects=async()=>{saved.data.projects=workspace.roots.filter(r=>r.id!=='demo').map(({id,path,label,kind,grantDefaults})=>({id,path,label,kind:kind||'project',grantDefaults}));await saved.save();};
   await persistProjects();
   const projects=new (require('./src/projects.js').Projects)(workspace);
@@ -150,7 +161,8 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }));
   app.post('/api/conversation-memory/confirm',route(async(req,res)=>{
     const c=saved.conversation(req.owner,target(req),req.headers['x-cda-conversation']);
-    const result=saved.confirmRequirement(req.owner,target(req),c.id,req.body.jobId,{replace:req.body.replace===true});await saved.save();res.json(result);
+    const result=saved.confirmRequirement(req.owner,target(req),c.id,req.body.jobId,{replace:req.body.replace===true});await saved.save();
+    if(c.autoMemory&&result.confirmed){await memories.update(c,scope(req));result.memory=saved.publicMemory(c);}res.json(result);
   }));
   app.delete('/api/conversations/:id',route(async(req,res)=>{
     const projectId=target(req);if(!workspace.roots.some(r=>r.id===projectId))throw new Error('找不到專案');
@@ -222,6 +234,7 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }));
   app.post('/api/jobs',route(async(req,res)=>{
     const {question,fileIds=[]}=req.body;
+    if(req.body.autoMemory!==undefined&&typeof req.body.autoMemory!=='boolean')throw new Error('自動記憶參數必須為布林值');
     if(typeof question!=='string'||!question.trim()||question.length>4000||!Array.isArray(fileIds)||fileIds.length>6||fileIds.some(id=>typeof id!=='string'))throw new Error('問題或檔案參數不合法');
     const s=scope(req),ctx=context(req),selectedImages=images.select(req.owner,ctx.projectId,ctx.conversationId,req.body.imageIds||[]);
     if(engine.model.mode==='real'&&!s.root(s.targetProjectId).permissions.ai)throw new Error('AI_PERMISSION：目前專案尚未授權內容送往 AI');
@@ -238,34 +251,39 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     if(resolved.taskId){const previous=conversation.jobs.find(j=>(j.taskId||j.id)===resolved.taskId),live=engine.jobs.get(previous.id);if(live&&['running','applying','awaiting_approval'].includes(live.status))throw new Error('請先完成或取消原任務再編輯');}
     if(resolved.requiresContinuationSelection)return res.status(200).json(resolved);
     if(resolved.enableEdits&&!s.root(s.targetProjectId).permissions.write)throw new Error('目前專案尚未授權修改，請先完成授權');
-    const historyContext=canSendHistory?saved.context(conversation,resolved.question):null;
+    const autoMemory=req.body.autoMemory===true&&engine.model.mode==='real';
+    conversation.autoMemory=autoMemory;
+    if(autoMemory&&estimateTokens({question:resolved.question,turns:memories.eligible(conversation,s).map(turn)})>=(engine.model.config.memoryBudgetTokens||8000)*0.75)await memories.update(conversation,s,{question:resolved.question});
+    const historyContext=canSendHistory?(autoMemory?memories.context(conversation,s,resolved.question):saved.context(conversation,resolved.question)):null;
+    const historySources=autoMemory?memories.eligible(conversation,s):[];
+    const historyCheck=()=>{if(autoMemory&&(!s.root(s.targetProjectId).permissions.ai||historySources.some(job=>!memories.canSend(job,s))))throw new Error('AI_PERMISSION：記憶来源外送授權已變更');};
     if(historyContext&&(resolved.continuationOf||resolved.taskId)){historyContext.currentRequest=resolved.question;historyContext.retrieved=[];historyContext.notice+=' 本次完整需求優先於舊記憶；依本次需求執行，舊需求僅供參考。';if(resolved.taskId){historyContext.recent=historyContext.recent.filter(t=>t.question!==conversation.jobs.find(j=>(j.taskId||j.id)===resolved.taskId)?.question);}}
     const effectiveFileIds=fileIds.length?fileIds:(resolved.sourceFileIds||[]).filter(id=>s.files.some(f=>f.id===id));
-    const job=engine.start(resolved.question,effectiveFileIds,req.owner,s,{...ctx,...resolved,allowEdits:skill?false:req.body.allowEdits===true||resolved.enableEdits===true,skill,historyContext,attachments:selectedImages.map(i=>images.meta(i)),imageInputs:selectedImages.map(({mime,buffer})=>({mime,buffer}))}),internal=engine.get(job.id,req.owner);
+    const job=engine.start(resolved.question,effectiveFileIds,req.owner,s,{...ctx,...resolved,autoMemory,memoryUpdating:autoMemory,allowEdits:skill?false:req.body.allowEdits===true||resolved.enableEdits===true,skill,historyContext,historyCheck,attachments:selectedImages.map(i=>images.meta(i)),imageInputs:selectedImages.map(({mime,buffer})=>({mime,buffer}))}),internal=engine.get(job.id,req.owner);
     for(const i of selectedImages)i.jobId=job.id;
     await saved.record(internal);
     job.versions=conversation.jobs.find(j=>j.id===job.id)?.versions||[];internal.versions=job.versions;
-    internal.finished.then(()=>internal.deletedConversation?undefined:saved.record(internal)).catch(e=>{internal.persistenceError='對話保存失敗：'+e.message;});
+    internal.finished.then(()=>recordAndSummarize(internal)).catch(e=>{internal.memoryUpdating=false;internal.persistenceError='對話保存失敗：'+e.message;});
     res.status(202).json(job);
   }));
-  app.get('/api/jobs/:id',route(async(req,res)=>{const job=anyJobFor(req);res.json(job.kind==='image'?creations.public(job):engine.public(job));}));
+  app.get('/api/jobs/:id',route(async(req,res)=>{const job=anyJobFor(req);res.json(job.kind==='image'?creations.public(job):{...engine.public(job),memory:saved.publicMemory(saved.conversation(req.owner,job.projectId,job.conversationId))});}));
   app.post('/api/jobs/:id/cancel',route(async(req,res)=>{const job=anyJobFor(req);if(job.kind==='image')return res.json(creations.cancel(job));const result=engine.cancel(req.params.id,req.owner);await saved.record(job);res.json(result);}));
   app.post('/api/jobs/:id/apply',route(async(req,res)=>{
     const job=jobFor(req);
     if(job.proposal?.rootId!=='demo'&&!isAdmin(req))return res.status(403).json({error:'真實檔案套用需主機管理碼確認'});
-    let result;try{result=await engine.apply(req.params.id,req.owner);}finally{await saved.record(job);}res.json(result);
+    let result;try{result=await engine.apply(req.params.id,req.owner);}finally{job.memoryUpdating=job.autoMemory===true;await recordAndSummarize(job);}res.json({...engine.public(job),memory:saved.publicMemory(saved.conversation(req.owner,job.projectId,job.conversationId))});
   }));
   app.post('/api/jobs/:id/new-files/:itemId',requireAdmin,route(async(req,res)=>{
     const job=jobFor(req);let result;
-    try{result=await engine.decideNewFile(job.id,req.owner,req.params.itemId,req.body.decision);}finally{await saved.record(job);}
-    res.json(result);
+    try{result=await engine.decideNewFile(job.id,req.owner,req.params.itemId,req.body.decision);}finally{job.memoryUpdating=job.autoMemory===true;await recordAndSummarize(job);}
+    res.json({...engine.public(job),memory:saved.publicMemory(saved.conversation(req.owner,job.projectId,job.conversationId))});
   }));
   app.post('/api/jobs/:id/restore',requireAdmin,route(async(req,res)=>{
     const job=jobFor(req);if(!job.applied||job.restored)throw new Error('沒有可還原的修改');
     const file=await job.scope.read(job.proposal.fileId);
     if(file.content!==job.proposal.after)throw new Error('套用後又有其他修改，拒絕覆蓋；請人工比較備份');
     const proposal=await job.scope.createProposal(file.id,job.proposal.before,'restore');
-    const result=await job.scope.apply(proposal);job.restored=true;engine.event(job,'已還原修改');job.finishedAt=Date.now();await saved.record(job);res.json(result);
+    const result=await job.scope.apply(proposal);job.restored=true;engine.event(job,'已還原修改');job.finishedAt=Date.now();job.memoryUpdating=job.autoMemory===true;await recordAndSummarize(job);res.json(result);
   }));
   app.use(express.static(path.join(__dirname,'public')));
   app.use((err,req,res,next)=>res.status(400).json({error:err.message||'操作失敗'}));

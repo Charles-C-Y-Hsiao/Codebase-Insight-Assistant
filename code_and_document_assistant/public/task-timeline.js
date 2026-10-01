@@ -29,6 +29,7 @@ function toolAction(job,tool){
   const elapsed=Number.isFinite(tool.elapsedMs)?` · ${tool.elapsedMs} ms`:'';
   const status=taskStatus(tool);
   if(tool.name==='ai.request')return {kind:'ai',text:`呼叫 ${job.ai?.model||'目前模型'} · ${status}${elapsed}`};
+  if(tool.name==='ai.memory_summary')return {kind:'ai',text:`整理對話記憶 · ${status}${tool.summaryVersion?' · v'+tool.summaryVersion:''}${elapsed}`};
   if(tool.name==='search_documents')return {kind:'read',text:`搜尋文件${tool.query?'「'+tool.query+'」':''}${Number.isFinite(tool.resultCount)?` · 找到 ${tool.resultCount} 筆`:''}${elapsed}`};
   if(tool.name==='read_file')return {kind:'read',text:`讀取檔案 ${tool.path||tool.file||''} · ${status}${elapsed}`};
   if(tool.name==='propose_edit')return {kind:'edit',text:`提出修改 ${tool.path||tool.file||''}${tool.summary?'：'+tool.summary:''}`};
@@ -84,10 +85,11 @@ function renderAgentIterations(job,panel){
   for(const [index,iteration] of iterations.entries()){
     const detail=taskDetails(job.id+':iteration-'+iteration.index,`Iteration ${iteration.index}`,!job.archived&&index===latest);
     detail.classList.add('agent-iteration');
-    detail.append(iterationStage('ai',`Decide · ${iteration.decision?.tool||'select action'}`));
-    detail.append(iterationStage('edit',`Act · ${iteration.action?.tool||'pending'}`));
+    detail.append(iterationStage('ai',`Decide · ${iteration.purpose||iteration.decision?.tool||'等待模型選擇操作'}`));
+    detail.append(iterationStage('edit',`Act · ${iteration.target||iteration.action?.tool||'尚未開始'}`));
     detail.append(iterationStage('read',`Observe · ${iteration.observation||'pending'}`));
     detail.append(iterationStage(iteration.status==='repeat'?'event':iteration.status==='stop'?'verify':'warning',`${iteration.status==='repeat'?'Repeat':'Stop'} · ${iteration.next||iteration.status}`));
+    for(const preview of iteration.previews||[]){const source=node('div',undefined,'timeline-evidence');source.append(node('small',`${preview.id} · ${preview.name} · ${preview.location}`),node('pre',preview.excerpt));detail.append(source);}
     panel.append(detail);
   }
 }
@@ -99,12 +101,15 @@ function renderTaskTimeline(job,article){
   for(const row of rows){
     const detail=taskDetails(job.id+':'+row.key,row.text);detail.firstChild.prepend(taskIcon(row.kind));
     if(Number.isFinite(row.time))detail.append(node('small',new Date(row.time).toLocaleString()));
+    if(row.tool?.purpose)detail.append(node('p','操作目的：'+row.tool.purpose,'timeline-operation'));
+    if(row.tool?.target)detail.append(node('p','操作對象：'+row.tool.target,'timeline-operation'));
+    if(row.tool?.result)detail.append(node('p','實際結果：'+row.tool.result,'timeline-operation'));
     if(row.verification){
       const view=node('button','View full verification output');view.id=`task-view-verification-${job.id}-${row.key}`;view.type='button';
       view.onclick=()=>{const panel=$('task-more-'+job.id);if(panel){panel.open=true;panel.scrollIntoView({behavior:'auto',block:'center'});}};detail.append(view);
     }
     const technical=row.tool?.verification?{...row.tool,verification:{...row.tool.verification,output:undefined}}:row.technical;
-    detail.append(node('pre',JSON.stringify(technical,null,2)));panel.append(detail);
+    const technicalDetail=taskDetails(job.id+':'+row.key+':technical','技術紀錄（JSON）');technicalDetail.append(node('pre',JSON.stringify(technical,null,2)));detail.append(technicalDetail);panel.append(detail);
   }
   if(!rows.length)panel.append(node('p','尚無執行紀錄'));
   article.append(panel);

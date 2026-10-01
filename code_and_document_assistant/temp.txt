@@ -16,3 +16,421 @@
 margin-left: 20px;
 
   <i class="fi fi-br-circle-xmark"></i>
+
+  PS C:\Web_Practice\Function\1-SideBar\(nav)sidebar-menu-pro_v3> cd "C:\Web_Practice\ReAct"
+PS C:\Web_Practice\ReAct> git init
+Initialized empty Git repository in C:/Web_Practice/ReAct/.git/
+PS C:\Web_Practice\ReAct> git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        README.md
+        cli-agent.js
+        code_and_document_assistant/
+        message/
+        my_collapsible_tool/
+        public/
+        server.js
+        tool-agent.js
+        tools/
+
+nothing added to commit but untracked files present (use "git add" to track)
+PS C:\Web_Practice\ReAct> git add .
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'cli-agent.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/code_and_document_assistant_auto_ip.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/config/ai.company.example.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/config/ai.openai.example.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/config/connections.example.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/config/example.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/config/projects.example.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/agent_loop_capabilities.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/ai_connection_flow.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/authorization_flow.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/diff_and_image_preview_flow.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/dual_layer_authorization_flow.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/evaluation_report.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/llm_tool_execution_flow.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/phase_guide.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/project_isolation_and_cross_reference.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/test_report.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/archive/test_report_phase1.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/environment_validation_and_deployment.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/example_data/sales.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/example_data/untrusted.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/task_version_flow.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/docs/version_history.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/evaluation/baseline.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/evaluation/cases.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/evaluation/results-2026-09-13.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/evaluation/run.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/examples/discount.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/examples/discount.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/examples/page.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/attachments.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/cye-flow.svg', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/diff-viewer.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/image-creation.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/image-viewer.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/new-files-ui.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/review-viewers.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/sidebar.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/sidebar.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/styles.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/task-timeline.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/public/vendor/photoswipe-5.4.4/photoswipe.umd.min.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/python/document_worker.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/server.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/ai-agent.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/ai-client.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/ai-config.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/app-state.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/connections.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/engine.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/image-creation.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/image-store.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/model.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/new-files.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/parsers.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/path-policy.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/project-scope.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/projects.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/search.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/skills.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/tools.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/src/workspace.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/start_ai.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/start_ai_luna_local.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/templates/select2/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/acceptance.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/ai-browser-smoke.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/ai.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/browser-smoke.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/composer-condensed-layout.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/context-skills-browser.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/context-skills.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/conversation-memory-layout.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/create-images-browser.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/create-images-http.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/file-list-tooltip.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/generate_fixtures.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/global-reference.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/header-compact-layout.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/hover-scrollbar-style.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/image-creation-browser.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/image-creation-flow.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/images.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/intro-structure.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/layout-shell.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/new-files.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/panel-toggle-layout.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/phase2.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/project-browser-smoke.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/project-http.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/project-scope.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/projects.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/quick-grant-layout.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/review-viewers-browser.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/sidebar-smoke.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/task-card-browser.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/task-edit-flow.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/task-timeline-icons.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'code_and_document_assistant/tests/task-timeline.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'message/index-codex-simulation-09261019_01.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'message/index-codex-simulation.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'message/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'my_collapsible_tool/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/style.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tool-agent.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/calc.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/time.js', LF will be replaced by CRLF the next time Git touches it
+PS C:\Web_Practice\ReAct> git status
+On branch master
+
+No commits yet
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+        new file:   README.md
+        new file:   cli-agent.js
+        new file:   code_and_document_assistant/.gitignore
+        new file:   code_and_document_assistant/code_and_document_assistant_auto_ip.bat
+        new file:   code_and_document_assistant/config/ai.company.example.json
+        new file:   code_and_document_assistant/config/ai.openai.example.json
+        new file:   code_and_document_assistant/config/connections.example.json
+        new file:   code_and_document_assistant/config/example.json
+        new file:   code_and_document_assistant/config/projects.example.json
+        new file:   code_and_document_assistant/docs/README.md
+        new file:   code_and_document_assistant/docs/agent_loop_capabilities.md
+        new file:   code_and_document_assistant/docs/ai_connection_flow.md
+        new file:   code_and_document_assistant/docs/archive/authorization_flow.md
+        new file:   code_and_document_assistant/docs/archive/diff_and_image_preview_flow.md
+        new file:   code_and_document_assistant/docs/archive/dual_layer_authorization_flow.md
+        new file:   code_and_document_assistant/docs/archive/evaluation_report.md
+        new file:   code_and_document_assistant/docs/archive/llm_tool_execution_flow.md
+        new file:   code_and_document_assistant/docs/archive/phase_guide.md
+        new file:   code_and_document_assistant/docs/archive/project_isolation_and_cross_reference.md
+        new file:   code_and_document_assistant/docs/archive/test_report.md
+        new file:   code_and_document_assistant/docs/archive/test_report_phase1.md
+        new file:   code_and_document_assistant/docs/environment_validation_and_deployment.md
+        new file:   code_and_document_assistant/docs/example_data/sales.md
+        new file:   code_and_document_assistant/docs/example_data/untrusted.md
+        new file:   code_and_document_assistant/docs/project_workspace_flow.md
+        new file:   code_and_document_assistant/docs/select2_project_flow.md
+        new file:   code_and_document_assistant/docs/task_version_flow.md
+        new file:   code_and_document_assistant/docs/task_workbench_flow.md
+        new file:   code_and_document_assistant/docs/version_history.md
+        new file:   code_and_document_assistant/evaluation/baseline.js
+        new file:   code_and_document_assistant/evaluation/cases.json
+        new file:   code_and_document_assistant/evaluation/results-2026-09-13.json
+        new file:   code_and_document_assistant/evaluation/run.js
+        new file:   code_and_document_assistant/examples/discount.js
+        new file:   code_and_document_assistant/examples/discount.py
+        new file:   code_and_document_assistant/examples/page.html
+        new file:   code_and_document_assistant/public/app.js
+        new file:   code_and_document_assistant/public/attachments.js
+        new file:   code_and_document_assistant/public/cye-flow.svg
+        new file:   code_and_document_assistant/public/diff-viewer.js
+        new file:   code_and_document_assistant/public/image-creation.js
+        new file:   code_and_document_assistant/public/image-viewer.js
+        new file:   code_and_document_assistant/public/index.html
+        new file:   code_and_document_assistant/public/new-files-ui.js
+        new file:   code_and_document_assistant/public/review-viewers.css
+        new file:   code_and_document_assistant/public/sidebar.css
+        new file:   code_and_document_assistant/public/sidebar.js
+        new file:   code_and_document_assistant/public/styles.css
+        new file:   code_and_document_assistant/public/task-timeline.js
+        new file:   code_and_document_assistant/public/vendor/photoswipe-5.4.4/LICENSE
+        new file:   code_and_document_assistant/public/vendor/photoswipe-5.4.4/photoswipe.css
+        new file:   code_and_document_assistant/public/vendor/photoswipe-5.4.4/photoswipe.umd.min.js
+        new file:   code_and_document_assistant/python/document_worker.py
+        new file:   code_and_document_assistant/server.js
+        new file:   code_and_document_assistant/src/ai-agent.js
+        new file:   code_and_document_assistant/src/ai-client.js
+        new file:   code_and_document_assistant/src/ai-config.js
+        new file:   code_and_document_assistant/src/app-state.js
+        new file:   code_and_document_assistant/src/connections.js
+        new file:   code_and_document_assistant/src/engine.js
+        new file:   code_and_document_assistant/src/image-creation.js
+        new file:   code_and_document_assistant/src/image-store.js
+        new file:   code_and_document_assistant/src/model.js
+        new file:   code_and_document_assistant/src/new-files.js
+        new file:   code_and_document_assistant/src/parsers.js
+        new file:   code_and_document_assistant/src/path-policy.js
+        new file:   code_and_document_assistant/src/project-scope.js
+        new file:   code_and_document_assistant/src/projects.js
+        new file:   code_and_document_assistant/src/search.js
+        new file:   code_and_document_assistant/src/skills.js
+        new file:   code_and_document_assistant/src/tools.js
+        new file:   code_and_document_assistant/src/workspace.js
+        new file:   code_and_document_assistant/start_ai.ps1
+        new file:   code_and_document_assistant/start_ai_luna_local.bat
+        new file:   code_and_document_assistant/temp.txt
+        new file:   code_and_document_assistant/templates/select2/index.html
+        new file:   code_and_document_assistant/tests/acceptance.test.js
+        new file:   code_and_document_assistant/tests/ai-browser-smoke.js
+        new file:   code_and_document_assistant/tests/ai.test.js
+        new file:   code_and_document_assistant/tests/browser-smoke.js
+        new file:   code_and_document_assistant/tests/composer-condensed-layout.test.js
+        new file:   code_and_document_assistant/tests/context-skills-browser.js
+        new file:   code_and_document_assistant/tests/context-skills.test.js
+        new file:   code_and_document_assistant/tests/conversation-memory-layout.test.js
+        new file:   code_and_document_assistant/tests/create-images-browser.js
+        new file:   code_and_document_assistant/tests/create-images-http.test.js
+        new file:   code_and_document_assistant/tests/file-list-tooltip.test.js
+        new file:   code_and_document_assistant/tests/generate_fixtures.py
+        new file:   code_and_document_assistant/tests/global-reference.test.js
+        new file:   code_and_document_assistant/tests/header-compact-layout.test.js
+        new file:   code_and_document_assistant/tests/hover-scrollbar-style.test.js
+        new file:   code_and_document_assistant/tests/image-creation-browser.js
+        new file:   code_and_document_assistant/tests/image-creation-flow.test.js
+        new file:   code_and_document_assistant/tests/images.test.js
+        new file:   code_and_document_assistant/tests/intro-structure.test.js
+        new file:   code_and_document_assistant/tests/layout-shell.test.js
+        new file:   code_and_document_assistant/tests/new-files.test.js
+        new file:   code_and_document_assistant/tests/panel-toggle-layout.test.js
+        new file:   code_and_document_assistant/tests/phase2.test.js
+        new file:   code_and_document_assistant/tests/project-browser-smoke.js
+        new file:   code_and_document_assistant/tests/project-http.test.js
+        new file:   code_and_document_assistant/tests/project-scope.test.js
+        new file:   code_and_document_assistant/tests/projects.test.js
+        new file:   code_and_document_assistant/tests/quick-grant-layout.js
+        new file:   code_and_document_assistant/tests/review-viewers-browser.js
+        new file:   code_and_document_assistant/tests/sidebar-smoke.js
+        new file:   code_and_document_assistant/tests/task-card-browser.js
+        new file:   code_and_document_assistant/tests/task-edit-flow.test.js
+        new file:   code_and_document_assistant/tests/task-timeline-icons.test.js
+        new file:   code_and_document_assistant/tests/task-timeline.test.js
+        new file:   message/index-codex-simulation-09261019_01.html
+        new file:   message/index-codex-simulation.html
+        new file:   message/index.html
+        new file:   my_collapsible_tool/index.html
+        new file:   my_collapsible_tool/styles.css
+        new file:   public/app.js
+        new file:   public/index.html
+        new file:   public/style.css
+        new file:   server.js
+        new file:   tool-agent.js
+        new file:   tools/calc.js
+        new file:   tools/index.js
+        new file:   tools/time.js
+
+PS C:\Web_Practice\ReAct> git commit -m "first commit"
+[master (root-commit) a4b220e] first commit
+ 123 files changed, 11826 insertions(+)
+ create mode 100644 README.md
+ create mode 100644 cli-agent.js
+ create mode 100644 code_and_document_assistant/.gitignore
+ create mode 100644 code_and_document_assistant/code_and_document_assistant_auto_ip.bat
+ create mode 100644 code_and_document_assistant/config/ai.company.example.json
+ create mode 100644 code_and_document_assistant/config/ai.openai.example.json
+ create mode 100644 code_and_document_assistant/config/connections.example.json
+ create mode 100644 code_and_document_assistant/config/example.json
+ create mode 100644 code_and_document_assistant/config/projects.example.json
+ create mode 100644 code_and_document_assistant/docs/README.md
+ create mode 100644 code_and_document_assistant/docs/agent_loop_capabilities.md
+ create mode 100644 code_and_document_assistant/docs/ai_connection_flow.md
+ create mode 100644 code_and_document_assistant/docs/archive/authorization_flow.md
+ create mode 100644 code_and_document_assistant/docs/archive/diff_and_image_preview_flow.md
+ create mode 100644 code_and_document_assistant/docs/archive/dual_layer_authorization_flow.md
+ create mode 100644 code_and_document_assistant/docs/archive/evaluation_report.md
+ create mode 100644 code_and_document_assistant/docs/archive/llm_tool_execution_flow.md
+ create mode 100644 code_and_document_assistant/docs/archive/phase_guide.md
+ create mode 100644 code_and_document_assistant/docs/archive/project_isolation_and_cross_reference.md
+ create mode 100644 code_and_document_assistant/docs/archive/test_report.md
+ create mode 100644 code_and_document_assistant/docs/archive/test_report_phase1.md
+ create mode 100644 code_and_document_assistant/docs/environment_validation_and_deployment.md
+ create mode 100644 code_and_document_assistant/docs/example_data/sales.md
+ create mode 100644 code_and_document_assistant/docs/example_data/untrusted.md
+ create mode 100644 code_and_document_assistant/docs/project_workspace_flow.md
+ create mode 100644 code_and_document_assistant/docs/select2_project_flow.md
+ create mode 100644 code_and_document_assistant/docs/task_version_flow.md
+ create mode 100644 code_and_document_assistant/docs/task_workbench_flow.md
+ create mode 100644 code_and_document_assistant/docs/version_history.md
+ create mode 100644 code_and_document_assistant/evaluation/baseline.js
+ create mode 100644 code_and_document_assistant/evaluation/cases.json
+ create mode 100644 code_and_document_assistant/evaluation/results-2026-09-13.json
+ create mode 100644 code_and_document_assistant/evaluation/run.js
+ create mode 100644 code_and_document_assistant/examples/discount.js
+ create mode 100644 code_and_document_assistant/examples/discount.py
+ create mode 100644 code_and_document_assistant/examples/page.html
+ create mode 100644 code_and_document_assistant/public/app.js
+ create mode 100644 code_and_document_assistant/public/attachments.js
+ create mode 100644 code_and_document_assistant/public/cye-flow.svg
+ create mode 100644 code_and_document_assistant/public/diff-viewer.js
+ create mode 100644 code_and_document_assistant/public/image-creation.js
+ create mode 100644 code_and_document_assistant/public/image-viewer.js
+ create mode 100644 code_and_document_assistant/public/index.html
+ create mode 100644 code_and_document_assistant/public/new-files-ui.js
+ create mode 100644 code_and_document_assistant/public/review-viewers.css
+ create mode 100644 code_and_document_assistant/public/sidebar.css
+ create mode 100644 code_and_document_assistant/public/sidebar.js
+ create mode 100644 code_and_document_assistant/public/styles.css
+ create mode 100644 code_and_document_assistant/public/task-timeline.js
+ create mode 100644 code_and_document_assistant/public/vendor/photoswipe-5.4.4/LICENSE
+ create mode 100644 code_and_document_assistant/public/vendor/photoswipe-5.4.4/photoswipe.css
+ create mode 100644 code_and_document_assistant/public/vendor/photoswipe-5.4.4/photoswipe.umd.min.js
+ create mode 100644 code_and_document_assistant/python/document_worker.py
+ create mode 100644 code_and_document_assistant/server.js
+ create mode 100644 code_and_document_assistant/src/ai-agent.js
+ create mode 100644 code_and_document_assistant/src/ai-client.js
+ create mode 100644 code_and_document_assistant/src/ai-config.js
+ create mode 100644 code_and_document_assistant/src/app-state.js
+ create mode 100644 code_and_document_assistant/src/connections.js
+ create mode 100644 code_and_document_assistant/src/engine.js
+ create mode 100644 code_and_document_assistant/src/image-creation.js
+ create mode 100644 code_and_document_assistant/src/image-store.js
+ create mode 100644 code_and_document_assistant/src/model.js
+ create mode 100644 code_and_document_assistant/src/new-files.js
+ create mode 100644 code_and_document_assistant/src/parsers.js
+ create mode 100644 code_and_document_assistant/src/path-policy.js
+ create mode 100644 code_and_document_assistant/src/project-scope.js
+ create mode 100644 code_and_document_assistant/src/projects.js
+ create mode 100644 code_and_document_assistant/src/search.js
+ create mode 100644 code_and_document_assistant/src/skills.js
+ create mode 100644 code_and_document_assistant/src/tools.js
+ create mode 100644 code_and_document_assistant/src/workspace.js
+ create mode 100644 code_and_document_assistant/start_ai.ps1
+ create mode 100644 code_and_document_assistant/start_ai_luna_local.bat
+ create mode 100644 code_and_document_assistant/temp.txt
+ create mode 100644 code_and_document_assistant/templates/select2/index.html
+ create mode 100644 code_and_document_assistant/tests/acceptance.test.js
+ create mode 100644 code_and_document_assistant/tests/ai-browser-smoke.js
+ create mode 100644 code_and_document_assistant/tests/ai.test.js
+ create mode 100644 code_and_document_assistant/tests/browser-smoke.js
+ create mode 100644 code_and_document_assistant/tests/composer-condensed-layout.test.js
+ create mode 100644 code_and_document_assistant/tests/context-skills-browser.js
+ create mode 100644 code_and_document_assistant/tests/context-skills.test.js
+ create mode 100644 code_and_document_assistant/tests/conversation-memory-layout.test.js
+ create mode 100644 code_and_document_assistant/tests/create-images-browser.js
+ create mode 100644 code_and_document_assistant/tests/create-images-http.test.js
+ create mode 100644 code_and_document_assistant/tests/file-list-tooltip.test.js
+ create mode 100644 code_and_document_assistant/tests/generate_fixtures.py
+ create mode 100644 code_and_document_assistant/tests/global-reference.test.js
+ create mode 100644 code_and_document_assistant/tests/header-compact-layout.test.js
+ create mode 100644 code_and_document_assistant/tests/hover-scrollbar-style.test.js
+ create mode 100644 code_and_document_assistant/tests/image-creation-browser.js
+ create mode 100644 code_and_document_assistant/tests/image-creation-flow.test.js
+ create mode 100644 code_and_document_assistant/tests/images.test.js
+ create mode 100644 code_and_document_assistant/tests/intro-structure.test.js
+ create mode 100644 code_and_document_assistant/tests/layout-shell.test.js
+ create mode 100644 code_and_document_assistant/tests/new-files.test.js
+ create mode 100644 code_and_document_assistant/tests/panel-toggle-layout.test.js
+ create mode 100644 code_and_document_assistant/tests/phase2.test.js
+ create mode 100644 code_and_document_assistant/tests/project-browser-smoke.js
+ create mode 100644 code_and_document_assistant/tests/project-http.test.js
+ create mode 100644 code_and_document_assistant/tests/project-scope.test.js
+ create mode 100644 code_and_document_assistant/tests/projects.test.js
+ create mode 100644 code_and_document_assistant/tests/quick-grant-layout.js
+ create mode 100644 code_and_document_assistant/tests/review-viewers-browser.js
+ create mode 100644 code_and_document_assistant/tests/sidebar-smoke.js
+ create mode 100644 code_and_document_assistant/tests/task-card-browser.js
+ create mode 100644 code_and_document_assistant/tests/task-edit-flow.test.js
+ create mode 100644 code_and_document_assistant/tests/task-timeline-icons.test.js
+ create mode 100644 code_and_document_assistant/tests/task-timeline.test.js
+ create mode 100644 message/index-codex-simulation-09261019_01.html
+ create mode 100644 message/index-codex-simulation.html
+ create mode 100644 message/index.html
+ create mode 100644 my_collapsible_tool/index.html
+ create mode 100644 my_collapsible_tool/styles.css
+ create mode 100644 public/app.js
+ create mode 100644 public/index.html
+ create mode 100644 public/style.css
+ create mode 100644 server.js
+ create mode 100644 tool-agent.js
+ create mode 100644 tools/calc.js
+ create mode 100644 tools/index.js
+ create mode 100644 tools/time.js
+PS C:\Web_Practice\ReAct> git branch
+* master
+PS C:\Web_Practice\ReAct> git branch -M main
+PS C:\Web_Practice\ReAct> git branch
+* main
+PS C:\Web_Practice\ReAct> git remote add origin https://github.com/Charles-C-Y-Hsiao/Codebase-Insight-Assistant.git
+PS C:\Web_Practice\ReAct> git push -u origin main
+Enumerating objects: 143, done.
+Counting objects: 100% (143/143), done.
+Delta compression using up to 12 threads
+Compressing objects: 100% (138/138), done.
+Writing objects: 100% (143/143), 305.10 KiB | 4.55 MiB/s, done.
+Total 143 (delta 4), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (4/4), done.
+To https://github.com/Charles-C-Y-Hsiao/Codebase-Insight-Assistant.git
+ * [new branch]      main -> main
+branch 'main' set up to track 'origin/main'.
+PS C:\Web_Practice\ReAct> git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+PS C:\Web_Practice\ReAct> 
