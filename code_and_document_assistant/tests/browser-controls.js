@@ -20,4 +20,7 @@ async function click(page, selector) {
   await reveal(page, selector);
   await page.locator(selector).click();
 }
-module.exports = { reveal, click };
+async function checked(page, selector) {
+  await page.$eval(selector, element => { if (!element.checked) element.click(); });
+}
+module.exports = { reveal, click, checked };

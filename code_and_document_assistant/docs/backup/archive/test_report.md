@@ -16,7 +16,7 @@
 - 完整 `node --test` 回歸 **48/48 通過**；涵蓋路徑限制、逐檔決策順序、取消、圖片格式／大小／數量、所有權、外送權限、兩種 API 圖片格式及實際服務重啟後清除圖片與設定。
 - `node tests/create-images-browser.js`、`node tests/ai-browser-smoke.js`、`node tests/browser-smoke.js` 三套瀏覽器測試均通過。新流程確認貼圖不觸發模型、重載保留、逐份按鈕、確認後才寫入、略過不寫入、驗證失敗保留檔案，以及 390px 版面無水平溢出。
 - 新增／修改的主要伺服器及前端 JavaScript 通過 `node --check`。測試使用隔離服務、暫存專案與假模型；未使用付費 API，未關閉使用者的 4317 服務。未宣稱真實模型圖片理解或生成檔案的瀏覽器功能測試已通過。
-- 操作及限制見 [查詢與修改工作台](../task_workbench_flow.md)。以下保留較早版本的測試紀錄。
+- 操作及限制見 [查詢與修改工作台](../../task_workbench_flow.md)。以下保留較早版本的測試紀錄。
 
 ## 對話內執行紀錄增量（2026-09-19）
 
@@ -28,7 +28,7 @@
 - `node tests/ai-browser-smoke.js`：**通過**。離線模型驗證對話內時間線、手動收合、兩項任務的右側選取、取消、重載後的驗證紀錄、用量及手機版無水平溢出。
 - `node tests/browser-smoke.js`：**通過**。原有查詢、展開依據及引用、專案切換、草稿提示、人工修改、靜態檢查、還原及響應版面回歸；無未處理頁面 JavaScript 錯誤。
 - 測試使用臨時資料夾與隔離服務，結束後關閉。未呼叫付費 API，未重啟或關閉使用者的 4317 服務。
-- 本次沒有新增任意命令、多檔修改或使用者專案的瀏覽器功能驗證能力。新版使用方式與重啟注意事項見 [查詢與修改工作台](../task_workbench_flow.md)。
+- 本次沒有新增任意命令、多檔修改或使用者專案的瀏覽器功能驗證能力。新版使用方式與重啟注意事項見 [查詢與修改工作台](../../task_workbench_flow.md)。
 
 ## OpenAI／公司 AI 連線增量（2026-09-16）
 
@@ -56,7 +56,7 @@ node tests/browser-smoke.js
 
 未使用使用者 OpenAI key，未呼叫官方付費模型或公司端點；不能宣稱帳號、模型存取、公司閘道格式／TLS／額度已通過。真實 SQL／Oracle／內部 API、一般程式功能測試與真實問題品質未在此次驗收。模型語意審核不是獨立事實驗證；成本未知，token 僅記錄端點有回傳者。
 
-操作見 [AI 連線流程](../ai_connection_flow.md)。
+操作見 [AI 連線流程](../../ai_connection_flow.md)。
 
 ## 雙層授權（2026-09-16）
 
@@ -208,7 +208,7 @@ node --test code_and_document_assistant/tests/project-scope.test.js code_and_doc
 
 ## Select2 建立流程增補（2026-09-13）
 
-已新增固定 Mock 範本的專案建立功能，實際建立子資料夾與 index.html。`node --test code_and_document_assistant/tests/projects.test.js` 通過 1 項綜合測試；原本 acceptance.test.js 與 phase2.test.js 共 26 項重跑全部通過。`node code_and_document_assistant/tests/project-browser-smoke.js` 在已安裝 Chrome 中完成路徑授權、預覽、確認建立、索引、真實 CDN 搜尋／多選／清除、直接開檔與阻斷 CDN 錯誤顯示，exit code 0。第一次沙箱 Chrome 啟動逾時，取得提升執行權限後完成；中途修正了多選搜尋測試需先清空舊搜尋字串的操作。完整紀錄與限制見 [select2_project_flow.md](../select2_project_flow.md)。
+已新增固定 Mock 範本的專案建立功能，實際建立子資料夾與 index.html。`node --test code_and_document_assistant/tests/projects.test.js` 通過 1 項綜合測試；原本 acceptance.test.js 與 phase2.test.js 共 26 項重跑全部通過。`node code_and_document_assistant/tests/project-browser-smoke.js` 在已安裝 Chrome 中完成路徑授權、預覽、確認建立、索引、真實 CDN 搜尋／多選／清除、直接開檔與阻斷 CDN 錯誤顯示，exit code 0。第一次沙箱 Chrome 啟動逾時，取得提升執行權限後完成；中途修正了多選搜尋測試需先清空舊搜尋字串的操作。完整紀錄與限制見 [select2_project_flow.md](../../select2_project_flow.md)。
 
 ## 最新收尾驗收（2026-09-13）
 
@@ -272,7 +272,7 @@ node code_and_document_assistant/tests/browser-smoke.js
 - 產品 B 查詢顯示衝突；引用按鈕可展開來源。
 - @file 清單可選，demo 修改可確認並顯示驗證結果。
 - 填入隔離測試資料夾、勾選寫入／驗證、使用管理碼授權。
-- 選 custom.js、載入編輯器、提出人工修改、确认套用；磁碟內容真的改成 module.exports = 3。
+- 選 custom.js、載入編輯器、提出人工修改、確認套用；磁碟內容真的改成 module.exports = 3。
 - 按静態驗證得到 passed；確認還原後磁碟回復 module.exports = 1。
 - 1440 px 桌面、390 px 手機寬度無水平溢出，未出現未處理的瀏覽器 JS 錯誤。
 - 截圖位於 runtime/desktop-preview.png 與 runtime/mobile-preview.png。
@@ -300,7 +300,7 @@ node code_and_document_assistant/tests/browser-smoke.js
 - `node --check src/ai-client.js`、`node --check src/ai-config.js` 及 PowerShell Parser 檢查 `start_ai.ps1`：通過。
 - 使用 Node.js v20.15.1 對官方 Responses endpoint 發送無認證請求，以及透過 AIClient 使用固定假 key：均收到預期 HTTP 401，驗證本次診斷環境的傳輸可達。
 - 未使用使用者 API key，未驗證 Luna 的付費呼叫；未重啟或關閉使用者的 4317 服務。
-- 使用者原服務的 AI_NETWORK 根因尚待新版安全代碼確認；操作見 [ai_connection_flow.md](../ai_connection_flow.md#連線故障排查2026-09-16-更新)。
+- 使用者原服務的 AI_NETWORK 根因尚待新版安全代碼確認；操作見 [ai_connection_flow.md](../../ai_connection_flow.md#連線故障排查2026-09-16-更新)。
 ## 修改工作台介面增量（2026-09-16）
 
 - 新增「AI 修改程式」，人工入口改名「人工編輯／靜態驗證」。中央工作台顯示修改前後、主機確認、驗證及回報 token；右側保留執行細節。

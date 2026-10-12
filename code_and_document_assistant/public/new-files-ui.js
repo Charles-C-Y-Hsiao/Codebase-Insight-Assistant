@@ -17,7 +17,7 @@ function renderNewFiles(job,target){
         const button=node('button',label,decision==='create'?'primary':'');button.type='button';button.id='new-file-'+decision+'-'+item.id;
         button.onclick=async()=>{
           for(const b of actions.querySelectorAll('button'))b.disabled=true;
-          try{show(await api('/api/jobs/'+job.id+'/new-files/'+item.id,{decision,adminToken:$('admin').value}));await inventory();}
+          try{const result=await api('/api/jobs/'+job.id+'/new-files/'+item.id,{decision,adminToken:$('admin').value});show(result);if(taskIsLive(result))poll(result).catch(fail);await inventory();}
           catch(e){fail(e);for(const b of actions.querySelectorAll('button'))b.disabled=false;}
         };actions.append(button);
       }

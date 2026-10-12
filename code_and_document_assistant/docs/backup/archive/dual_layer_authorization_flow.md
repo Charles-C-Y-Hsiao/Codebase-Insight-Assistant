@@ -66,5 +66,5 @@ C:\Web_Practice\                 ← npm 集中位置；不在此次全域參考
 
 ## 真實 AI 邊界
 
-授權允許本機搜尋不等於 AI 外送同意。real adapter 已實作，`permissions.ai` 現在用於逐來源外送檢查及每輪重驗；全域許可不可繞過更具體子專案的禁止。需要設定 endpoint、模型、認證並實測後使用，見 [AI 連線流程](../ai_connection_flow.md)。本次只使用假 key／假模型驗收。
+授權允許本機搜尋不等於 AI 外送同意。real adapter 已實作，`permissions.ai` 現在用於逐來源外送檢查及每輪重驗；全域許可不可繞過更具體子專案的禁止。需要設定 endpoint、模型、認證並實測後使用，見 [AI 連線流程](../../ai_connection_flow.md)。本次只使用假 key／假模型驗收。
 

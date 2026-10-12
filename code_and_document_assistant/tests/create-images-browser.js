@@ -17,7 +17,7 @@ async function main(){
     const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setViewport({width:1440,height:1000});
     await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'domcontentloaded'});
     await page.click('#open-permission');await page.type('#folder',dir);await page.type('#admin','abcdef');
-    for(const id of ['allow-write','allow-ai','allow-verify'])await page.click('#'+id);
+    for(const id of ['allow-write','allow-ai','allow-verify'])await page.$eval('#'+id,element=>{if(!element.checked)element.click();});
     await page.click('#request-root');await page.waitForFunction(()=>document.getElementById('root-status').textContent.includes('待主機'));await page.click('#approve-root');await page.waitForSelector('#open-granted-project:not([hidden])');await page.click('#open-granted-project');await page.waitForFunction(()=>state.imageReady);
     await page.$eval('#image-limit',e=>{e.value='20';e.dispatchEvent(new Event('change'));});await page.waitForFunction(()=>state.imageLimitMB===20);
     await page.evaluate(data=>{

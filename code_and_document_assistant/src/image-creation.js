@@ -6,6 +6,7 @@ const {imageSize}=require('image-size');
 const IMAGE_ENDPOINT='https://api.openai.com/v1/images';
 const MAX_IMAGE_BYTES=20*1024*1024;
 const IMAGE_MODEL_OPTIONS=['gpt-image-2.5-sunburst','gpt-image-1'];
+const DEFAULT_IMAGE_MODEL='gpt-image-2.5-sunburst';
 function imageModel(config){return config?.provider==='openai'?config.imageGenerationModel||'': '';}
 function imageSlug(prompt){
   const words=String(prompt).match(/[A-Za-z][A-Za-z0-9-]*/g)||[];
@@ -20,7 +21,11 @@ class ImageCreationService{
     this.model=model;this.fetch=fetchImpl;this.saved=saved;this.jobs=new Map();
   }
   status(){return {enabled:!!imageModel(this.model?.config),model:imageModel(this.model?.config)||null,models:IMAGE_MODEL_OPTIONS,provider:this.model?.config?.provider||null};}
-  public(job){const {owner,controller,finished,...visible}=job;return visible;}
+  projectStatus(){
+    let keyReady=false;try{keyReady=this.model?.config?.provider==='openai'&&typeof this.model.imageKey==='function'&&!!this.model.imageKey();}catch{}
+    return {enabled:keyReady,model:DEFAULT_IMAGE_MODEL,models:IMAGE_MODEL_OPTIONS,provider:this.model?.config?.provider||null};
+  }
+  public(job){const {owner,controller,finished,imageProjectDirectory,referenceImages,...visible}=job;return visible;}
   find(owner,project,conversation,id){
     const c=this.saved.conversation(owner,project,conversation);
     const job=this.jobs.get(id)||c.jobs.find(item=>item.id===id&&item.kind==='image');
@@ -33,16 +38,21 @@ class ImageCreationService{
     if(job.status!=='completed'||!job.imageCreation?.fileName)throw new Error('上一版圖片尚未完成');
     return job;
   }
-  start({owner,projectId,conversationId,prompt,imageModel:requestedModel,previous=null}){
+  start({owner,projectId,conversationId,prompt,imageModel:requestedModel,previous=null,allowDefaultModel=false,imageProject=null,series=null,currentRequest=null,memorySnapshot=null,referenceImages=[],response=null}){
     const config=this.model?.config,configuredModel=imageModel(config);
-    if(!configuredModel)throw new Error('IMAGE_UNAVAILABLE：請在官方 OpenAI AI 設定中指定 imageGenerationModel；目前沒有核准的圖片模型');
+    if(!configuredModel&&!allowDefaultModel)throw new Error('IMAGE_UNAVAILABLE：請在官方 OpenAI AI 設定中指定 imageGenerationModel；目前沒有核准的圖片模型');
+    if(allowDefaultModel&&!this.projectStatus().enabled)throw new Error('IMAGE_UNAVAILABLE：請在服務啟動設定中提供官方 OpenAI API key');
     if(requestedModel&&!IMAGE_MODEL_OPTIONS.includes(requestedModel))throw new Error('IMAGE_MODEL_INVALID：圖片模型不在允許清單');
-    const model=requestedModel||configuredModel;
-    if(typeof prompt!=='string'||!prompt.trim()||prompt.length>12000)throw new Error('圖片提示詞需為 1–12000 字');
-    const seriesId=previous?.imageCreation.seriesId||crypto.randomUUID();
+    const model=requestedModel||configuredModel||DEFAULT_IMAGE_MODEL;
+    if(typeof prompt!=='string'||!prompt.trim()||prompt.length>15000)throw new Error('圖片提示詞需為 1–15000 字');
+    const seriesId=series?.id||previous?.imageCreation.seriesId||crypto.randomUUID();
     const version=(previous?.imageCreation.version||0)+1;
     if([...this.jobs.values()].some(j=>j.imageCreation?.seriesId===seriesId&&j.status==='running'))throw new Error('此圖片系列正在產生新版本，請稍候');
-    const slug=previous?.imageCreation.slug||imageSlug(prompt),job={id:crypto.randomUUID(),kind:'image',owner,projectId,conversationId,question:prompt,status:'running',progress:'正在創作圖片',startedAt:Date.now(),finishedAt:null,plan:[],events:[],iterations:[],tools:[],evidence:[],result:null,ai:{provider:'openai',model,requests:1,usage:[],cost:null},archived:false,imageCreation:{seriesId,slug,version,previousJobId:previous?.id||null,model,prompt,createdAt:new Date().toISOString(),fileName:null,mime:'image/png'},controller:new AbortController()};
+    const slug=previous?.imageCreation.slug||imageSlug(prompt),projectInfo=imageProject?{id:imageProject.id,name:imageProject.name,folderName:imageProject.folderName}:null;
+    if(!Array.isArray(referenceImages)||referenceImages.length>5)throw new Error('本次圖片創作最多 5 張參考圖');
+    const references=referenceImages.map(({buffer,...reference})=>reference);
+    const responseRecord=response&&typeof response.answer==='string'?{answer:response.answer.slice(0,12000),source:response.source||'image-generation'}:null;
+    const job={id:crypto.randomUUID(),kind:'image',owner,projectId,conversationId,question:currentRequest||prompt,status:'running',progress:'正在創作圖片',startedAt:Date.now(),finishedAt:null,plan:[],events:[],iterations:[],tools:[],evidence:[],result:null,ai:{provider:'openai',model,requests:1,usage:[],cost:null},archived:false,imageCreation:{seriesId,seriesName:series?.name||null,slug,version,previousJobId:previous?.id||null,draftJobId:memorySnapshot?.draftJobId||null,model,prompt,currentRequest:currentRequest||prompt,projectSummary:memorySnapshot?.projectSummary||'',projectSummaryVersion:memorySnapshot?.projectSummaryVersion||0,seriesSummary:memorySnapshot?.seriesSummary||'',seriesSummaryVersion:memorySnapshot?.seriesSummaryVersion||0,referenceJobIds:Array.isArray(memorySnapshot?.referenceJobIds)?memorySnapshot.referenceJobIds:[],references,createdAt:new Date().toISOString(),fileName:null,mime:'image/png',imageProject:projectInfo,outputFileName:null,response:responseRecord},referenceImages,imageProjectDirectory:imageProject?.directory||null,controller:new AbortController()};
     this.jobs.set(job.id,job);
     return this.public(job);
   }
@@ -50,13 +60,22 @@ class ImageCreationService{
   async run(job,previous){
     try{
       const config=this.model.config;
+      const directory=path.join(this.base,job.projectId,job.conversationId,job.imageCreation.seriesId),seriesSuffix=job.imageCreation.seriesId.split('-').at(-1).slice(-11);
+      while(true){
+        const name=job.imageCreation.slug+'-v'+job.imageCreation.version+'.png';
+        const outputName=job.imageProjectDirectory?`${job.imageCreation.imageProject.folderName}-${job.imageCreation.slug}-${seriesSuffix}-v${job.imageCreation.version}.png`:null;
+        const occupied=await fs.access(path.join(directory,name)).then(()=>true,()=>false)||outputName&&await fs.access(path.join(job.imageProjectDirectory,outputName)).then(()=>true,()=>false);
+        if(!occupied)break;
+        job.imageCreation.version++;
+      }
       let endpoint=IMAGE_ENDPOINT+'/generations',body,headers={Authorization:config.authPrefix+this.model.imageKey()};
-      if(previous){
-        const source=await this.readImage(previous);
-        const form=new FormData();form.set('model',job.imageCreation.model);form.set('prompt',job.question);form.set('image',new Blob([source],{type:'image/png'}),'previous.png');form.set('output_format','png');
+      const sources=[...job.referenceImages];
+      if(previous&&!sources.some(item=>item.generatedJobId===previous.id))sources.unshift({id:'previous-'+previous.id,name:'previous-version.png',mime:'image/png',source:'previous',generatedJobId:previous.id,buffer:await this.readImage(previous)});
+      if(sources.length){
+        const form=new FormData();form.set('model',job.imageCreation.model);form.set('prompt',job.imageCreation.prompt);for(const source of sources)form.append('image[]',new Blob([source.buffer],{type:source.mime}),source.name||'reference.png');form.set('output_format','png');
         body=form;endpoint=IMAGE_ENDPOINT+'/edits';
       }else{
-        headers['Content-Type']='application/json';body=JSON.stringify({model:job.imageCreation.model,prompt:job.question,output_format:'png'});
+        headers['Content-Type']='application/json';body=JSON.stringify({model:job.imageCreation.model,prompt:job.imageCreation.prompt,output_format:'png'});
       }
       const signal=AbortSignal.any([job.controller.signal,AbortSignal.timeout(180000)]);
       const response=await this.fetch(endpoint,{method:'POST',headers,body,signal,redirect:'error'});
@@ -69,15 +88,21 @@ class ImageCreationService{
       const bytes=Buffer.from(encoded,'base64');
       if(!bytes.length||bytes.length>MAX_IMAGE_BYTES||!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw new Error('圖片回應不是有效的 PNG');
       const size=imageSize(bytes);if(!size.width||!size.height||size.width*size.height>40000000)throw new Error('圖片尺寸超過限制');
-      const directory=path.join(this.base,job.projectId,job.conversationId,job.imageCreation.seriesId);
       await fs.mkdir(directory,{recursive:true});
       const name=job.imageCreation.slug+'-v'+job.imageCreation.version+'.png';
       await fs.writeFile(path.join(directory,name),bytes,{flag:'wx',mode:0o600});
       job.imageCreation.fileName=name;job.imageCreation.width=size.width;job.imageCreation.height=size.height;
       await fs.writeFile(path.join(directory,name.slice(0,-4)+'.json'),JSON.stringify(job.imageCreation,null,2),{flag:'wx',mode:0o600});
-      job.status='completed';job.progress='圖片創作完成';job.finishedAt=Date.now();job.result={conclusions:['已產生 '+name],facts:[],inferences:[],unknown:[],mock:false};
+      if(job.imageProjectDirectory){
+        const outputName=`${job.imageCreation.imageProject.folderName}-${job.imageCreation.slug}-${seriesSuffix}-v${job.imageCreation.version}.png`;
+        await fs.writeFile(path.join(job.imageProjectDirectory,outputName),bytes,{flag:'wx',mode:0o600});
+        job.imageCreation.outputFileName=outputName;
+        await fs.writeFile(path.join(job.imageProjectDirectory,outputName.slice(0,-4)+'.json'),JSON.stringify(job.imageCreation,null,2),{flag:'wx',mode:0o600});
+      }
+      job.status='completed';job.progress='圖片創作完成';job.finishedAt=Date.now();job.result={conclusions:['已產生 '+(job.imageCreation.outputFileName||name)],facts:[],inferences:[],unknown:[],mock:false};
     }catch(error){
       job.status='partial';job.progress='圖片創作失敗';job.finishedAt=Date.now();
+      job.imageCreation.error={code:error.code||error.name||'IMAGE_CREATION_FAILED',message:error.message||'圖片產生或保存失敗'};
       job.result={conclusions:[],facts:[],inferences:[],unknown:[job.controller.signal.aborted?'圖片創作已取消':/圖片服務拒絕|圖片回應|圖片尺寸/.test(error.message)?error.message:'圖片產生或保存失敗，請檢查服務設定'],mock:false};
     }finally{await this.saved.record(job);}
   }

@@ -16,8 +16,17 @@ class Engine {
     const startedAt=Date.now();
     if(this.jobs.size>=200)throw new Error('任務容量已滿');
     const proposal=await scope.createProposal(fileId,after,'manual');
-    const job={id:crypto.randomUUID(),owner,question:'檢視使用者提供的程式修改',fileIds:[fileId],status:'awaiting_approval',progress:'等待主機確認修改',events:[],plan:['讀取授權檔案與版本','預覽使用者提供的修改內容','主機確認後核對版本並套用','依驗證授權執行靜態 profile'],evidence:await scope.search('',[fileId]),tools:[],calls:0,controller:new AbortController(),proposal,result:{...this.result('已建立實際檔案修改提案',[],['此修改由使用者提供，未使用 AI 生成']),mock:false}};
-    Object.assign(job,context,{scope,startedAt,allowEdits:true});this.event(job,'已建立人工修改提案，等待確認');this.jobs.set(job.id,job);return this.public(job);
+    const job={id:crypto.randomUUID(),owner,question:'檢視使用者提供的程式修改',fileIds:[fileId],status:'awaiting_approval',progress:'等待主機確認修改',events:[],plan:['讀取授權檔案與版本','預覽使用者提供的修改內容','依白名單預檢候選內容','主機確認後核對版本並套用','依驗證授權執行靜態 profile'],evidence:await scope.search('',[fileId]),tools:[],calls:0,controller:new AbortController(),proposal,result:{...this.result('已建立實際檔案修改提案',[],['此修改由使用者提供，未使用 AI 生成']),mock:false}};
+    Object.assign(job,context,{scope,startedAt,allowEdits:true});job.preflight=await this.preflight(job,proposal);this.event(job,'已建立人工修改提案，預檢'+(job.preflight.status==='passed'?'通過':'未通過')+'，等待確認');this.jobs.set(job.id,job);return this.public(job);
+  }
+  async preflight(j,proposal){
+    const workspace=j.scope.workspace||j.scope;
+    const root=j.scope.root?j.scope.root(proposal.rootId):workspace.roots.find(item=>item.id===proposal.rootId);
+    if(!root)throw new Error('找不到提案所屬的授權範圍');
+    const verification=root.permissions.verify?await workspace.verify(proposal.path,proposal.after,{phase:'preflight'}):{status:'not_run',phase:'preflight',kind:'靜態檢查',message:'尚未授權靜態驗證'};
+    const entry={attempt:(j.preflightAttempts?.length||0)+1,at:new Date().toISOString(),verification};
+    (j.preflightAttempts||=[]).push(entry);j.preflight=verification;
+    return verification;
   }
   start(question,fileIds,owner,scope=this.workspace,context={}) {
     if(this.jobs.size>=200) {for(const [id,j] of this.jobs) if(!['running','awaiting_approval'].includes(j.status)) this.jobs.delete(id);}
@@ -63,7 +72,8 @@ class Engine {
       if(p.intent==='missing') {j.status='completed';j.result=this.result('工具能力不足',[],['尚無此查詢或操作工具；不能產生任意 SQL、Shell 或網址']);return;}
       if(p.intent==='edit') {
         j.proposal=await bounded(j.scope.proposal(j.fileIds),j.controller.signal); j.status='awaiting_approval';
-        this.event(j,'等待確認修改');j.result=this.result('已產生 Mock 修改建議，請檢視差異後套用',[],['規劃為固定範例規則；尚未寫入或驗證']);return;
+        await this.preflight(j,j.proposal);
+        this.event(j,'等待確認修改');j.result=this.result('已產生 Mock 修改建議，請檢視差異後套用',[],['規劃為固定範例規則；尚未寫入；候選內容已依白名單預檢。']);return;
       }
       if(p.intent==='read') {
         j.result=this.result(j.evidence.length?'已取得文件片段，請展開來源查看原文':'沒有符合關鍵字的文件片段',j.evidence.map(e=>({text:'取得 '+e.path+' / '+e.location+' 的原文',evidenceIds:[e.id]})),['Mock 不提供任意程式的真實語意分析；查無資料不代表沒有異常']);j.status='completed';return;
@@ -95,6 +105,7 @@ class Engine {
         j.result.facts=j.result.facts.filter(f=>f.evidenceIds.length&&f.evidenceIds.every(id=>valid.has(id)));
       }
       if(!['awaiting_approval','cancelled'].includes(j.status)) this.event(j,j.status==='needs_input'?'需要補充條件':j.status==='partial'?'部分完成':'完成');
+      this.queueActivitySummary(j);
     }
   }
   result(conclusion,facts=[],unknown=[]) {return {conclusions:[conclusion],facts,inferences:[],unknown,mock:true};}
@@ -119,33 +130,34 @@ class Engine {
     const conflict=new Set(values.map(v=>v.value)).size>1;
     return this.result(conflict?'來源數值有衝突，未設定優先規則，不能自行判定哪個正確':doc&&values.length>1?'已取得的文件與查詢數值一致':'已取得部分查詢資料，尚不能確認文件一致性',facts,[...errors,'全部業務金額為 Mock；查無資料不代表沒有異常','僅以範例對象、季度、TWD、含稅與取消條件進行程式比對']);
   }
-  async completionReport(j){
-    if(this.model.mode!=='real'||!j.ai||(!j.applied&&!j.creations))return;
-    if(j.creations&&!j.creations.some(item=>item.status==='created')){
-      j.result.answer='未建立任何新檔案。請展開詳細資訊查看略過或失敗的項目。';
-      return;
-    }
+  queueActivitySummary(j){
+    if(j.imageProjectChat||this.model.mode!=='real'||!j.ai||!j.result||j.activitySummary||['awaiting_approval','cancelled'].includes(j.status))return;
+    j.activitySummary={status:'queued'};
+  }
+  async activityReport(j){
+    if(this.model.mode!=='real'||!j.ai||!j.result||!['queued','running'].includes(j.activitySummary?.status))return;
+    const startedAt=Date.now();j.activitySummary={status:'running',startedAt};this.event(j,'正在整理工作摘要');
     const conciseVerification=v=>v?{status:v.status,kind:v.kind||null,exitCode:v.exitCode??null,message:String(v.message||'').slice(0,800)}:null;
     const changed=j.applied?{
       kind:'edit',file:path.basename(j.proposal.path),requestedSummary:j.tools.find(t=>t.name==='propose_edit')?.summary,
       applied:true,applicationMessage:j.applied.message,verification:conciseVerification(j.applied.verification)
-    }:{kind:'new_files',files:j.creations.map(i=>({file:i.relativePath,purpose:i.purpose,status:i.status,error:i.error||null,verification:conciseVerification(i.result?.verification),warnings:i.result?.warnings||[]}))};
-    const observed={request:j.question,status:j.status,changed,limitations:(j.result?.unknown||[]).map(value=>String(value).slice(0,800))};
-    const fallback=j.applied?`已套用修改。靜態驗證：${j.applied.verification?.status||'未知'}；${String(j.applied.verification?.message||'未取得驗證結果').split(/\r?\n/)[0].slice(0,240)}。尚未執行瀏覽器功能測試。`:
-      `已處理新增檔案提案：建立 ${j.creations.filter(i=>i.status==='created').length} 份、略過 ${j.creations.filter(i=>i.status==='skipped').length} 份、失敗 ${j.creations.filter(i=>i.status==='failed').length} 份。請展開詳細資訊檢查各檔案驗證結果。`;
-    const log={name:'ai.completion_report',status:'running',mode:'real',attempt:1,startedAt:Date.now(),elapsedMs:0};j.tools.push(log);
+    }:j.creations?{kind:'new_files',files:j.creations.map(i=>({file:i.relativePath,purpose:i.purpose,status:i.status,error:i.error||null,verification:conciseVerification(i.result?.verification),warnings:i.result?.warnings||[]}))}:null;
+    const operations=(j.tools||[]).filter(tool=>!tool.name.startsWith('ai.')).map(tool=>({name:tool.name,status:tool.status,purpose:tool.purpose||null,target:tool.target||tool.path||tool.file||null,result:tool.result?String(tool.result).slice(0,800):null,verification:conciseVerification(tool.verification)})).slice(-30);
+    const observed={request:j.question,status:j.status,answer:String(j.result.answer||'').slice(0,12000),conclusions:(j.result.conclusions||[]).slice(0,8),events:(j.events||[]).map(event=>event.message).slice(-30),plan:(j.plan||[]).slice(0,12),operations,changed,limitations:(j.result.unknown||[]).map(value=>String(value).slice(0,800))};
+    const fallback=`本次工作狀態：${j.status}。${(j.result.conclusions||[]).join('；')||j.progress||'已完成處理'}。${changed?.kind==='edit'?'已完成程式修改與可用驗證紀錄。':changed?.kind==='new_files'?'已完成新檔案建立流程。':'可在執行詳情查看實際事件、操作與驗證紀錄。'}`;
+    const log={name:'ai.activity_summary',status:'running',mode:'real',attempt:1,startedAt,elapsedMs:0};j.tools.push(log);
     try{
       const beforeSend=async()=>{const root=j.scope.root(j.scope.targetProjectId);if(!root.permissions.ai)throw new Error('AI_PERMISSION：目前專案已撤銷 AI 外送授權');};
       const response=await this.model.finalAnswer([
-        {role:'system',content:'你是程式助手。根據已發生的套用與驗證結果，以繁體中文撰寫給使用者的完整 Markdown 完工說明。說明改了什麼、實際驗證結果、未做或失敗的項目與下一步。只能使用所提供的觀測資料，不可聲稱瀏覽器測試通過、不可捏造檔案內容或隱藏失敗。不要輸出內部思考。'},
+        {role:'system',content:'你是程式助手。根據已發生的公開事件、操作與結果，以繁體中文撰寫精簡的 Markdown 工作摘要。說明做了什麼、實際驗證結果、未做或失敗項目與適當下一步。只能使用所提供的觀測資料，不可聲稱未執行的測試通過、不可捏造檔案內容或隱藏失敗。不要輸出內部思考。'},
         {role:'user',content:JSON.stringify(observed)}
-      ],j.controller.signal,beforeSend,attempt=>{log.attempt=attempt;j.ai.requests++;});
-      j.result.answer=response.answer;j.result.origin='ai';if(response.usage)j.ai.usage.push(response.usage);
-      log.status='ok';this.event(j,'已產生完工說明');
+      ],AbortSignal.any([j.controller.signal,AbortSignal.timeout(30000)]),beforeSend,attempt=>{log.attempt=attempt;j.ai.requests++;});
+      j.activitySummary={status:'completed',answer:response.answer,mode:'real',startedAt,finishedAt:Date.now()};if(response.usage)j.ai.usage.push(response.usage);
+      log.status='ok';this.event(j,'已產生工作摘要');
     }catch(e){
-      j.result.answer=fallback;j.result.unknown.push('模型完工說明未取得：'+(e.code||'AI_ERROR')+'；上方為實際結果的固定摘要。');
-      log.status='error';log.mode='error';log.code=e.code||'AI_ERROR';this.event(j,'完工說明未取得，保留實際結果摘要');
-    }finally{log.elapsedMs=Date.now()-log.startedAt;j.finishedAt=Date.now();}
+      j.activitySummary={status:'completed',answer:fallback,mode:'fallback',code:e.code||'AI_ERROR',startedAt,finishedAt:Date.now()};j.result.unknown.push('模型工作摘要未取得：'+(e.code||'AI_ERROR')+'；已保留實際結果的固定摘要。');
+      log.status='error';log.mode='error';log.code=e.code||'AI_ERROR';this.event(j,'工作摘要未取得，保留實際結果摘要');
+    }finally{log.elapsedMs=Date.now()-startedAt;j.finishedAt=Date.now();}
   }
   async decideNewFile(id,owner,itemId,decision){
     const j=this.get(id,owner),item=j.creations?.find(i=>i.status==='pending');
@@ -164,19 +176,20 @@ class Engine {
       const summary=`已建立 ${j.creations.filter(i=>i.status==='created').length} 份、略過 ${j.creations.filter(i=>i.status==='skipped').length} 份、待確認 ${j.creations.filter(i=>i.status==='pending').length} 份`;
       this.event(j,summary);j.result={...this.result(summary,[],j.creations.flatMap(i=>i.error?[i.error]:i.result?[i.relativePath+'：'+i.result.verification.message,...i.result.warnings]:[])),mock:false};
     }
-    if(j.status!=='awaiting_approval')await this.completionReport(j);
+    this.queueActivitySummary(j);
     return this.public(j);
   }
-  async apply(id,owner) {
+  async apply(id,owner,{force=false}={}) {
     const j=this.get(id,owner);
     if(!j.proposal||j.status!=='awaiting_approval'||this.applying) throw new Error('任務不可套用或另有寫入正在進行');
-    this.applying=true;j.status='applying';j.finishedAt=null;this.event(j,'正在套用修改與執行已授權靜態驗證');
-    const log={name:'apply_edit',status:'running',mode:j.proposal.mock?'mock':'real',attempt:1,startedAt:Date.now(),path:j.proposal.path};j.tools.push(log);
+    if(j.preflight?.status==='failed'&&force!==true)throw new Error('候選內容預檢失敗；請明確確認強制套用，或先修改提案');
+    this.applying=true;j.status='applying';j.finishedAt=null;this.event(j,force?'正在強制套用修改與執行已授權靜態驗證':'正在套用修改與執行已授權靜態驗證');
+    const log={name:'apply_edit',status:'running',mode:j.proposal.mock?'mock':'real',attempt:1,startedAt:Date.now(),path:j.proposal.path,force:force===true};j.tools.push(log);
     let failure;
     try {j.applied=await j.scope.apply(j.proposal);j.status=j.applied.verification.status==='failed'?'partial':'completed';this.event(j,'修改與靜態驗證完成');j.result={...this.result(j.applied.message,[],[j.applied.verification.message]),mock:j.proposal.mock};}
     catch(e) {failure=e;log.message=e.message;j.status='partial';j.result={...this.result('未完成套用或驗證',[],[e.message]),mock:!!j.proposal?.mock};}
     finally {j.finishedAt=Date.now();log.elapsedMs=j.finishedAt-log.startedAt;log.status=j.applied?'ok':'error';if(j.applied?.verification){log.verification=j.applied.verification;this.event(j,'靜態驗證：'+j.applied.verification.message);}else this.event(j,'套用未完成，請查看錯誤');this.applying=false;}
-    if(j.proposal.source==='ai'&&j.applied)await this.completionReport(j);
+    this.queueActivitySummary(j);
     if(failure)throw failure;
     return this.public(j);
   }

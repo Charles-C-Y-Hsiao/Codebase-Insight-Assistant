@@ -32,7 +32,7 @@ test('HTTP 帶圖新增流程：草稿隔離、授權、確認、持久化與重
   assert.match((await request('/api/jobs',{question:'建立 HTML',allowEdits:true,imageIds:[image.id]})).data.error,/AI_IMAGE_UNSUPPORTED/);assert.equal(requests.length,0);
   instance.engine.model.config.supportsImages=true;
   const otherSession=await fetch(url+'/api/session'),otherCookie=otherSession.headers.get('set-cookie').split(';')[0];
-  assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:otherCookie}})).status,400);
+  assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:otherCookie}})).status,404);
   const accepted=await request('/api/jobs',{question:'建立 HTML',allowEdits:true,imageIds:[image.id]});assert.equal(accepted.status,202);
   const internal=instance.engine.jobs.get(accepted.data.id);await internal.finished;await instance.saved.queue;
   assert.equal(internal.status,'awaiting_approval');assert.deepEqual(await fs.readdir(dir),[]);assert.equal((await request('/api/image-draft')).data.images.length,0);
@@ -43,11 +43,11 @@ test('HTTP 帶圖新增流程：草稿隔離、授權、確認、持久化與重
   assert.equal((await request(endpoint+first.id,{decision:'create',adminToken:'abcdef'})).status,200);
   assert.match(await fs.readFile(path.join(dir,'index.html'),'utf8'),/Confirm/);
   assert.equal((await request(endpoint+second.id,{decision:'skip',adminToken:'abcdef'})).status,200);await assert.rejects(fs.access(path.join(dir,'skip.js')));
-  const history=(await request('/api/conversations')).data.jobs[0];assert.equal(history.attachments[0].id,image.id);assert.equal(history.creations[0].status,'created');
+  const history=(await request('/api/conversations')).data.jobs[0];assert.equal(history.attachments[0].id,image.id);assert.equal(history.attachments[0].available,true);assert.equal(history.creations[0].status,'created');
   assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:headers.cookie}})).status,200);
   const disk=await fs.readFile(path.join(runtime,'assistant-state','state.json'),'utf8');assert.ok(!disk.includes(png.toString('base64')));assert.ok(!disk.includes('imageInputs'));
   await new Promise(r=>server.close(r));await instance.saved.queue;server=null;await start();
   assert.equal((await request('/api/image-draft')).data.images.length,0);assert.equal((await request('/api/image-settings')).data.maxImageMB,10);
-  assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:headers.cookie}})).status,400);
-  const archived=(await request('/api/conversations')).data.jobs[0];assert.equal(archived.archived,true);assert.equal(archived.creations[0].content,undefined);assert.equal(archived.creations[0].result.verification.status,'passed');
+  assert.equal((await fetch(url+'/attachments/'+image.id,{headers:{cookie:headers.cookie}})).status,404);
+  const archived=(await request('/api/conversations')).data.jobs[0];assert.equal(archived.attachments[0].available,false);assert.equal(archived.archived,true);assert.equal(archived.creations[0].content,undefined);assert.equal(archived.creations[0].result.verification.status,'passed');
 });

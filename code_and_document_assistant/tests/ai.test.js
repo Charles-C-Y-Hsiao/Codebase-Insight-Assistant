@@ -37,6 +37,43 @@ test('Responses 原生工具：讀檔、引用、用量、外送僅授權資料'
   assert.equal(j.iterations[1].next,'本次回答完成');
   assert.equal(j.tools.find(t=>t.name==='read_file').result,j.iterations[0].observation);
 });
+test('Responses incomplete_details 會保存安全的中斷原因',async t=>{
+  const f=await setup(t),client=new AIClient({env:f.env,fetchImpl:async()=>Response.json({status:'incomplete',incomplete_details:{reason:'max_output_tokens'},output:[],usage:{input_tokens:321,output_tokens:4096}})});
+  await assert.rejects(()=>client.turn([{role:'user',content:'test'}],[],new AbortController().signal),error=>{
+    assert.equal(error.code,'AI_FORMAT');assert.match(error.message,/原因：max_output_tokens/);assert.deepEqual(error.incompleteDetails,{reason:'max_output_tokens'});assert.deepEqual(error.usage,{inputTokens:321,outputTokens:4096});return true;
+  });
+});
+test('Agent 將 incomplete usage 保存到任務與失敗請求追蹤點',async t=>{
+  const f=await setup(t),{j}=await run(f,async()=>Response.json({status:'incomplete',incomplete_details:{reason:'max_output_tokens'},output:[],usage:{input_tokens:654,output_tokens:9000}}));
+  const request=j.tools.find(item=>item.name==='ai.request');
+  assert.equal(j.status,'partial');assert.deepEqual(j.ai.usage,[{inputTokens:654,outputTokens:9000}]);assert.deepEqual(request.usage,{inputTokens:654,outputTokens:9000});assert.deepEqual(request.incompleteDetails,{reason:'max_output_tokens'});
+});
+test('圖片創作討論依需求精簡分析，不強制輸出座標與完整 OCR',async t=>{
+  const f=await setup(t,{supportsImages:true}),requests=[];
+  const result={status:'completed',answer:'已整理成生成提示詞。',steps:['分析參考圖'],conclusions:['已建立提示詞'],facts:[],inferences:[],unknown:[],agentUnderstanding:'將參考圖轉成提示詞',discussion:'保留主要構圖與配色',prompt:'白底資訊圖，深藍線條與清楚流程。'};
+  const {j}=await run(f,async(url,o)=>{requests.push(JSON.parse(o.body));return Response.json(responseCall('finish_image_discussion',result));},{context:{skill:{id:'image-planning-chat',name:'圖片創作討論'},attachments:[{name:'圖一',width:1181,height:1331}],imageInputs:[{mime:'image/png',buffer:Buffer.from('image')}]}});
+  const instructions=requests[0].input[0].content;
+  assert.equal(j.status,'completed');assert.match(instructions,/只分析與使用者本次需求/);assert.match(instructions,/不要輸出逐元素座標/);assert.doesNotMatch(instructions,/finish\.answer 必須固定依序使用以下區段/);
+});
+test('圖片歷史篩選只接受候選任務 ID，並保留選擇理由',async t=>{
+  const f=await setup(t);let request;
+  const client=new AIClient({env:f.env,fetchImpl:async(url,options)=>{request=JSON.parse(options.body);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({selectedJobIds:['job-2'],reason:'第二筆包含目前要求的配色決定'})}]}],usage:{input_tokens:20,output_tokens:7}});}});
+  const result=await client.selectImageHistory({currentRequest:'延續配色',projectSummary:'品牌規範',seriesSummary:'目前構圖',candidates:[{id:'job-1',question:'構圖'},{id:'job-2',question:'配色'}]},new AbortController().signal);
+  assert.deepEqual(result.selectedJobIds,['job-2']);assert.match(result.reason,/配色/);assert.match(request.input[0].content,/不得分析或推測圖片內容/);
+  const invalid=new AIClient({env:f.env,fetchImpl:async()=>Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({selectedJobIds:['unknown'],reason:'錯誤 ID'})}]}]})});
+  await assert.rejects(()=>invalid.selectImageHistory({candidates:[{id:'job-1'}]},new AbortController().signal),/AI_FORMAT/);
+});
+test('工作摘要保留原回答，並以第二次已授權 AI 請求整理公開紀錄',async t=>{
+  const f=await setup(t);let round=0,summaryInput;
+  const {j,engine}=await run(f,async(url,o)=>{
+    round++;if(round===1)return Response.json(responseCall('read_file',{fileId:f.f.id}));
+    if(round===2)return Response.json(responseCall('finish',finish));
+    summaryInput=JSON.parse(o.body);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'已讀取 main.js，核對 marker，並提供可追溯的回覆。'}]}],usage:{input_tokens:18,output_tokens:11}});
+  });
+  const answer=j.result.answer;assert.equal(j.activitySummary.status,'queued');await engine.activityReport(j);
+  assert.equal(j.result.answer,answer);assert.equal(j.activitySummary.status,'completed');assert.match(j.activitySummary.answer,/核對 marker/);assert.equal(j.ai.requests,3);
+  assert.equal('tools' in summaryInput,false);assert.match(JSON.parse(summaryInput.input[1].content).answer,/原文包含/);
+});
 test('AI 修改：版本及目標檢查，確認前不寫入，套用後靜態驗證',async t=>{
   const f=await setup(t,{},{verify:true});let round=0;
   const {j,engine}=await run(f,async()=>Response.json(++round===1?responseCall('read_file',{fileId:f.f.id}):round===2?responseCall('propose_edit',{fileId:f.f.id,version:f.f.hash,after:'const marker=2;',summary:'將值改為 2'}):{status:'completed',output:[{type:'message',content:[{type:'output_text',text:'已將 marker 改為 2。\n\n靜態驗證已通過；未做瀏覽器測試。'}]}]}),{edit:true});
@@ -47,7 +84,8 @@ test('AI 修改：版本及目標檢查，確認前不寫入，套用後靜態�
   assert.ok(applied.finishedAt>=applied.startedAt);
   const verification=applied.tools.find(t=>t.name==='apply_edit').verification;
   assert.ok(verification.command.includes('--check'));assert.equal(verification.input,'stdin');assert.equal(verification.exitCode,0);
-  assert.match(applied.result.answer,/已將 marker 改為 2/);assert.equal(applied.ai.requests,3);
+  assert.equal(j.activitySummary.status,'queued');await engine.activityReport(j);
+  assert.match(j.activitySummary.answer,/已將 marker 改為 2/);assert.equal(j.ai.requests,3);
 });
 test('AI 修改未授權驗證：紀錄 not_run，不虛構驗證命令',async t=>{
   const f=await setup(t);let round=0;
@@ -56,30 +94,31 @@ test('AI 修改未授權驗證：紀錄 not_run，不虛構驗證命令',async t
   assert.equal(verification.status,'not_run');assert.equal(verification.command,undefined);
   assert.equal(await fs.readFile(f.f.path,'utf8'),'const marker=2;');
 });
-test('靜態驗證失敗仍產生完工說明，模型補述失敗則保留實際結果',async t=>{
+test('候選預檢失敗會要求 AI 最多修正三輪，最後可明確強制套用',async t=>{
   const f=await setup(t,{},{verify:true});let round=0,reportInput;
   const {j,engine}=await run(f,async(url,o)=>{
     const body=JSON.parse(o.body);round++;
     if(round===1)return Response.json(responseCall('read_file',{fileId:f.f.id}));
-    if(round===2)return Response.json(responseCall('propose_edit',{fileId:f.f.id,version:f.f.hash,after:'const = ;',summary:'故意產生語法錯誤'}));
+    if(round<=4)return Response.json(responseCall('propose_edit',{fileId:f.f.id,version:f.f.hash,after:'const = ;',summary:'故意產生語法錯誤'}));
     reportInput=body;return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'檔案已寫入，但靜態驗證失敗。請修正語法後重試。'}]}]});
   },{edit:true});
-  const applied=await engine.apply(j.id,'test');
-  assert.equal(applied.status,'partial');assert.equal(applied.applied.verification.status,'failed');assert.match(applied.result.answer,/靜態驗證失敗/);
-  assert.equal(round,3);assert.equal('tools' in reportInput,false);assert.equal(JSON.parse(reportInput.input[1].content).changed.verification.status,'failed');
+  assert.equal(j.status,'awaiting_approval');assert.equal(j.preflight.status,'failed');assert.equal(j.preflightAttempts.length,3);await assert.rejects(()=>engine.apply(j.id,'test'),/強制套用/);
+  const applied=await engine.apply(j.id,'test',{force:true});await engine.activityReport(j);
+  assert.equal(applied.status,'partial');assert.equal(applied.applied.verification.status,'failed');assert.match(j.activitySummary.answer,/靜態驗證失敗/);
+  assert.equal(round,5);assert.equal('tools' in reportInput,false);assert.equal(JSON.parse(reportInput.input[1].content).changed.verification.status,'failed');
 
   const next=await setup(t,{},{verify:true});let secondRound=0;
   const failed=await run(next,async()=>Response.json(++secondRound===1?responseCall('read_file',{fileId:next.f.id}):secondRound===2?responseCall('propose_edit',{fileId:next.f.id,version:next.f.hash,after:'const marker=3;',summary:'改為 3'}):{status:'incomplete',output:[]}),{edit:true});
-  const result=await failed.engine.apply(failed.j.id,'test');
-  assert.equal(result.status,'completed');assert.match(result.result.answer,/已套用修改/);assert.match(result.result.unknown.at(-1),/完工說明未取得/);
+  const result=await failed.engine.apply(failed.j.id,'test');await failed.engine.activityReport(failed.j);
+  assert.equal(result.status,'completed');assert.match(failed.j.activitySummary.answer,/已套用修改/);assert.match(failed.j.result.unknown.at(-1),/工作摘要未取得/);
 });
 test('新增檔案逐份確認後才補述一次，略過的檔案不算已建立',async t=>{
   const f=await setup(t,{},{verify:true});let requests=0;
   const {j,engine}=await run(f,async()=>{requests++;return Response.json(requests===1?responseCall('propose_new_files',{files:[{path:'first.js',purpose:'建立第一份',content:'const first=1;'},{path:'second.js',purpose:'建立第二份',content:'const second=2;'}]}):{status:'completed',output:[{type:'message',content:[{type:'output_text',text:'已建立 first.js；second.js 已略過。'}]}]});},{edit:true});
   assert.equal(j.status,'awaiting_approval');assert.equal(requests,1);
   await engine.decideNewFile(j.id,'test',j.creations[0].id,'create');assert.equal(requests,1);
-  const final=await engine.decideNewFile(j.id,'test',j.creations[1].id,'skip');
-  assert.equal(requests,2);assert.match(final.result.answer,/已略過/);
+  const final=await engine.decideNewFile(j.id,'test',j.creations[1].id,'skip');await engine.activityReport(j);
+  assert.equal(requests,2);assert.match(j.activitySummary.answer,/已略過/);
   assert.equal(await fs.readFile(path.join(path.dirname(f.f.path),'first.js'),'utf8'),'const first=1;');
   await assert.rejects(fs.access(path.join(path.dirname(f.f.path),'second.js')));
 });

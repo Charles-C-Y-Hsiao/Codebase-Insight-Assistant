@@ -23,7 +23,7 @@ test('圖片創作需要授權，逐版保存 PNG 與提示詞，重新啟動仍
   t.after(async()=>{if(server)await new Promise(resolve=>server.close(resolve));if(instance)await instance.saved.queue;await fs.rm(base,{recursive:true,force:true});});
   await start();
   const sessionResponse=await fetch(baseUrl+'/api/session'),session=await sessionResponse.json();
-  assert.deepEqual(session.imageGeneration,{enabled:true,model:'gpt-image-1',provider:'openai'});
+  assert.deepEqual(session.imageGeneration,{enabled:true,model:'gpt-image-1',models:['gpt-image-2.5-sunburst','gpt-image-1'],provider:'openai'});
   const headers={cookie:sessionResponse.headers.get('set-cookie').split(';')[0],'x-cda-token':session.csrf,'content-type':'application/json'};
   async function request(endpoint,body){const res=await fetch(baseUrl+endpoint,{method:body===undefined?'GET':'POST',headers,body:body===undefined?undefined:JSON.stringify(body)});return {status:res.status,data:await res.json()};}
   const denied=await request('/api/image-generation',{prompt:'請製作未授權圖片'});

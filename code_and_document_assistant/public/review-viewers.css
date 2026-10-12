@@ -3,9 +3,10 @@
 .diff-counts { display:inline-flex; gap:6px; }
 .diff-count-added { color:#008839; }
 .diff-count-removed { color:#c52020; }
-.diff-view-output { min-width:0; max-height:580px; overflow:auto; scrollbar-width:thin; color:#203047; }
+.diff-view-output { min-width:0; max-height:none; overflow:visible; color:#203047; }
 .diff-view-output .d2h-wrapper { text-align:left; }
 .diff-view-output .d2h-file-wrapper { border-radius:8px; }
+.diff-view-output .d2h-file-diff { scrollbar-width:thin; }
 .diff-view-output .d2h-file-header { background:#f5f7fa; padding:8px; height:auto; }
 .diff-view-output .d2h-file-side-diff { overflow-x:auto; scrollbar-width:thin; }
 .diff-view-output table { margin:0; width:100%; border-collapse:collapse; table-layout:auto; }
@@ -34,4 +35,4 @@
 .pswp__zoom-controls button { width:42px; height:42px; margin:0; font-size:28px; border-radius:50%; background:#dedede; color:#20252a; }
 .pswp__zoom-controls span { min-width:55px; text-align:center; font-size:15px; }
 .pswp__image-caption { position:absolute; left:65px; right:90px; top:24px; color:#fff; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
-@media(max-width:600px) { .diff-view-output { max-height:420px; } .pswp__image-caption { left:16px; top:65px; right:16px; } }
+@media(max-width:600px) { .pswp__image-caption { left:16px; top:65px; right:16px; } }

@@ -8,8 +8,9 @@ class AppState {
   async init() {
     await fs.mkdir(path.dirname(this.file),{recursive:true});
     try { this.data=JSON.parse(await fs.readFile(this.file,'utf8')); }
-    catch(e) { if(e.code!=='ENOENT')throw new Error('無法讀取助手狀態，請檢查 state.json：'+e.message); this.data={projects:[],sessions:[],conversations:[]}; }
-    if(!['projects','sessions','conversations'].every(k=>Array.isArray(this.data[k])))throw new Error('助手狀態格式錯誤');
+    catch(e) { if(e.code!=='ENOENT')throw new Error('無法讀取助手狀態，請檢查 state.json：'+e.message); this.data={projects:[],sessions:[],conversations:[],imageProjects:[]}; }
+    if(!Array.isArray(this.data.imageProjects))this.data.imageProjects=[];
+    if(!['projects','sessions','conversations','imageProjects'].every(k=>Array.isArray(this.data[k])))throw new Error('助手狀態格式錯誤');
     return this;
   }
   save() {
@@ -108,6 +109,7 @@ class AppState {
     if(job.kind==='image'){
       record.kind='image';record.imageCreation=job.imageCreation;
     }
+    if(job.imageProjectChat){record.imageProjectChat=job.imageProjectChat;record.imageProjectDraft=job.imageProjectDraft;record.imageDraftUpdating=job.imageDraftUpdating===true;}
     record.creations=job.creations?.map(({id,relativePath,purpose,status,result,error})=>({id,relativePath,purpose,status,result,error}));
     if(index<0)c.jobs.push(record);else c.jobs[index]=record;
     if(!job.autoMemory&&(c.jobs.length>6||previous&&previous.id!==job.id))this.compact(c);

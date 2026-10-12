@@ -67,5 +67,5 @@ node .\code_and_document_assistant\tests\browser-smoke.js
 4. 只有需要資料查詢時才補 SQL Server、Oracle 或內部 API；它們不是先使用文件／程式功能的前提。
 5. 公司 LAN、存取權限與正式部署待公司環境驗收。
 
-詳細操作與未接通範圍見 [version_history.md](../version_history.md)；原階段指南保留於 [phase_guide.md](phase_guide.md)。不要把離線收尾解讀為全部公司真實整合已完成。
+詳細操作與未接通範圍見 [version_history.md](../../version_history.md)；原階段指南保留於 [phase_guide.md](phase_guide.md)。不要把離線收尾解讀為全部公司真實整合已完成。
 

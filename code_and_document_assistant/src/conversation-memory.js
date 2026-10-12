@@ -75,7 +75,7 @@ class ConversationMemory {
     try{
       let structured=priorUsable?memory.structured||emptyState():emptyState();
       // Batch whole turns; never character-truncate a summary or silently drop an older turn.
-      const inputBudget=(this.model.config?.contextBudgetTokens||32000)-(this.model.config?.maxOutputTokens||4096);let batch=[];
+      const inputBudget=(this.model.config?.contextBudgetTokens||32000)-(this.model.config?.maxOutputTokens||9000);let batch=[];
       const deadline=AbortSignal.timeout(this.model.config.overallTimeoutMs);
       const signal=job?.controller?AbortSignal.any([deadline,job.controller.signal]):deadline;
       const send=async()=>{

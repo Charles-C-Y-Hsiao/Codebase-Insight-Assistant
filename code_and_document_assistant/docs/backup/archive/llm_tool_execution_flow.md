@@ -1,6 +1,6 @@
 # LLM 如何搜尋專案並修改檔案
 
-2026-09-16：真實 AI adapter 與受控搜尋／讀檔／計算／單檔提案循環已實作，以假模型驗收通過。下方未接入描述為先前設計背景；最新設定、外送權限及限制見 [AI 連線流程](../ai_connection_flow.md)。官方帳號與公司端點仍待實際連線驗收。
+2026-09-16：真實 AI adapter 與受控搜尋／讀檔／計算／單檔提案循環已實作，以假模型驗收通過。下方未接入描述為先前設計背景；最新設定、外送權限及限制見 [AI 連線流程](../../ai_connection_flow.md)。官方帳號與公司端點仍待實際連線驗收。
 
 更新日期：2026-09-15。本文區分目前實作與未來接入 LLM 後需要補上的流程。
 
@@ -72,8 +72,8 @@ flowchart TD
 
 ## 相關文件
 
-- [專案載入流程](../project_workspace_flow.md)：專案登錄、索引、查詢及現有人工修改流程。
-- [授權流程](authorization_flow.md)：管理碼、權限與套用檢查。
-- [版本與驗收摘要](../version_history.md)：整體進度與尚缺的連線設定；原階段指南保留於 [phase_guide.md](phase_guide.md)。
-- [使用說明](../README.md)：啟動與日常操作。
+- [專案載入流程](../../project_workspace_flow.md)：專案登錄、索引、查詢及現有人工修改流程。
+- [授權確認流程](authorization-confirmation-flow.md)：管理碼、權限與套用檢查。
+- [版本與驗收摘要](../../version_history.md)：整體進度與尚缺的連線設定；原階段指南保留於 [phase_guide.md](phase_guide.md)。
+- [使用說明](../../README.md)：啟動與日常操作。
 

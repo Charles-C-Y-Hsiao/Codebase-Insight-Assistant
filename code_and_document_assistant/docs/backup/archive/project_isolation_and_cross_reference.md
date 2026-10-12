@@ -2,7 +2,7 @@
 
 2026-09-16 已實作雙層授權：有效的全域唯讀根目錄自動加入搜尋，個別專案獨立授權，唯有目前目標可寫。專案 demo 預設可搜尋，助手與狀態／依賴／備份排除；未搬動舊成果。下方「跨專案必須逐一加入」描述適用於沒有全域涵蓋的來源。詳見 [雙層授權流程](dual_layer_authorization_flow.md)。
 
-側欄更新：專案平面列、分專案新增對話、最近活動排序、快速重新授權與倒數已接入。保存 grantDefaults 僅用於預填，不恢復權限；到期隱藏檔案並保留對話。圖示使用本機 SVG。詳見 [操作流程](../project_workspace_flow.md#新版側欄與快速重新授權)。
+側欄更新：專案平面列、分專案新增對話、最近活動排序、快速重新授權與倒數已接入。保存 grantDefaults 僅用於預填，不恢復權限；到期隱藏檔案並保留對話。圖示使用本機 SVG。詳見 [操作流程](../../project_workspace_flow.md#新版側欄與快速重新授權)。
 
 ## 改版總覽（2026-09-14）
 
@@ -171,7 +171,7 @@ code_and_document_assistant/
 5. 收藏保留歷版，可複製成獨立新專案；不包含密鑰與暫存。
 6. 新測試在隔離區執行；歷史遷移有對照與完整性核對，成功成果不被自動清除。
 
-實測與未完成項目摘要集中於 [../version_history.md](../version_history.md)；完整報告保留於 [test_report.md](test_report.md)，第一階段歷史基準見 [test_report_phase1.md](test_report_phase1.md)。
+實測與未完成項目摘要集中於 [../../version_history.md](../../version_history.md)；完整報告保留於 [test_report.md](test_report.md)，第一階段歷史基準見 [test_report_phase1.md](test_report_phase1.md)。
 
 ## 第二增量實際操作與保存規則
 

@@ -1,0 +1,28 @@
+{
+  "seriesId": "e65af62c-14c3-4b3c-9c5a-150969d5aad1",
+  "seriesName": "Agent框架演進與流程重構",
+  "slug": "agent-langchain-agent-ai-agent-tool",
+  "version": 1,
+  "previousJobId": null,
+  "draftJobId": null,
+  "model": "gpt-image-2.5-sunburst",
+  "prompt": "系列主題為「Agent框架演進與流程重構」，製作專案導入 LangChain 生態系前後的取代／補強差異圖。核心訊息不是 AI 變聰明，而是減少自製 Agent 基礎設施，提升流程的恢復、追蹤與測試能力。畫面規劃以左右對照搭配中央流程圖：左側呈現目前自製流程，包含 ai-agent.js 自行處理模型介面、Tool Schema、Middleware 與結構化輸出；engine.js 自行處理任務流程、狀態轉移與中斷恢復；自行串接執行紀錄與除錯工具；自行維護模型供應商差異；中斷後需自行找回任務並恢復。右側呈現導入後的三個元件：LangChain 統一模型介面、標準化工具、Middleware 與結構化輸出；LangGraph 保存狀態、支援暫停恢復、人工確認節點與明確流程轉移；LangSmith 追蹤模型呼叫、工具、Token、延遲、錯誤與回歸測試。中央流程對照目前的「執行 Agent→產生差異→設定 awaiting_approval→前端確認→另一個 API 找回任務→套用修改」，以及導入後的「讀取與規劃→產生修改提案→預檢→interrupt 暫停→人工核准→備份與套用→套用後驗證→完成」；interrupt 分支包含核准、拒絕回覆 Agent、調整後返回修改提案，並表現 Checkpointer 狀態保存及服務重啟後恢復。底部重點卡片保留降低模型供應商耦合、工具與安全規則標準化、可觀測與可測試；結論為 Agent 流程更可靠、服務重啟後可恢復、確認流程更自然，新增工具時不必持續擴大單一 runAgent()。目前尚未決定或確認參考圖片的實際視覺風格，待補圖後再調整色彩、版式與插畫表現。\n\n參考圖一與目前摘要產生一版圖片",
+  "currentRequest": "參考圖一與目前摘要產生一版圖片",
+  "projectSummary": "",
+  "projectSummaryVersion": 0,
+  "seriesSummary": "系列主題為「Agent框架演進與流程重構」，製作專案導入 LangChain 生態系前後的取代／補強差異圖。核心訊息不是 AI 變聰明，而是減少自製 Agent 基礎設施，提升流程的恢復、追蹤與測試能力。畫面規劃以左右對照搭配中央流程圖：左側呈現目前自製流程，包含 ai-agent.js 自行處理模型介面、Tool Schema、Middleware 與結構化輸出；engine.js 自行處理任務流程、狀態轉移與中斷恢復；自行串接執行紀錄與除錯工具；自行維護模型供應商差異；中斷後需自行找回任務並恢復。右側呈現導入後的三個元件：LangChain 統一模型介面、標準化工具、Middleware 與結構化輸出；LangGraph 保存狀態、支援暫停恢復、人工確認節點與明確流程轉移；LangSmith 追蹤模型呼叫、工具、Token、延遲、錯誤與回歸測試。中央流程對照目前的「執行 Agent→產生差異→設定 awaiting_approval→前端確認→另一個 API 找回任務→套用修改」，以及導入後的「讀取與規劃→產生修改提案→預檢→interrupt 暫停→人工核准→備份與套用→套用後驗證→完成」；interrupt 分支包含核准、拒絕回覆 Agent、調整後返回修改提案，並表現 Checkpointer 狀態保存及服務重啟後恢復。底部重點卡片保留降低模型供應商耦合、工具與安全規則標準化、可觀測與可測試；結論為 Agent 流程更可靠、服務重啟後可恢復、確認流程更自然，新增工具時不必持續擴大單一 runAgent()。目前尚未決定或確認參考圖片的實際視覺風格，待補圖後再調整色彩、版式與插畫表現。",
+  "seriesSummaryVersion": 1,
+  "referenceJobIds": [],
+  "references": [],
+  "createdAt": "2026-10-09T12:12:38.680Z",
+  "fileName": "agent-langchain-agent-ai-agent-tool-v1.png",
+  "mime": "image/png",
+  "imageProject": {
+    "id": "b5159ee4-7fc0-46a5-a48e-57a87fe8938d",
+    "name": "7a87fe8938d",
+    "folderName": "7a87fe8938d"
+  },
+  "outputFileName": "7a87fe8938d-agent-langchain-agent-ai-agent-tool-50969d5aad1-v1.png",
+  "width": 1536,
+  "height": 1024
+}

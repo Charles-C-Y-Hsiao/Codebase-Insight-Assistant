@@ -11,7 +11,7 @@ function loadConfig(env=process.env){
   let supplied={};
   if(env.CDA_AI_CONFIG){try{supplied=JSON.parse(fs.readFileSync(path.resolve(env.CDA_AI_CONFIG),'utf8'));}catch{throw new Error('CONFIG_REQUIRED：無法讀取 AI JSON 設定檔');}}
   if(!validate(supplied))throw new Error('CONFIG_REQUIRED：AI 設定格式不符或含未知欄位；key 必須放環境變數');
-  const config={provider:'openai',protocol:'responses',endpoint:'https://api.openai.com/v1/responses',model:'',imageGenerationModel:'',omitModel:false,keyEnvironmentVariable:'CDA_AI_KEY',authHeader:'Authorization',authPrefix:'Bearer ',toolMode:'native',timeoutMs:30000,overallTimeoutMs:120000,maxRetries:1,maxRounds:8,maxToolCalls:12,maxOutputTokens:4096,...supplied};
+  const config={provider:'openai',protocol:'responses',endpoint:'https://api.openai.com/v1/responses',model:'',imageGenerationModel:'',omitModel:false,keyEnvironmentVariable:'CDA_AI_KEY',authHeader:'Authorization',authPrefix:'Bearer ',toolMode:'native',timeoutMs:30000,overallTimeoutMs:120000,maxRetries:1,maxRounds:8,maxToolCalls:12,maxOutputTokens:9000,...supplied};
   if(env.CDA_AI_MODEL)config.model=env.CDA_AI_MODEL;
   config.memoryBudgetTokens??=8000;config.contextBudgetTokens??=32000;
   if(config.contextBudgetTokens<config.memoryBudgetTokens+config.maxOutputTokens+2000)throw new Error('CONFIG_REQUIRED：上下文預算須預留記憶、輸出與指令空間');

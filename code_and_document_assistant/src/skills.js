@@ -1,4 +1,10 @@
 const catalog={
+  'image-planning-chat':{
+    id:'image-planning-chat',name:'圖片創作討論',action:'討論圖片',
+    description:'只討論圖片主題、構圖、風格、色彩、文字與提示詞，不讀取或修改程式檔案。',
+    tools:['finish_image_discussion'],
+    prompt:'目前是獨立的圖片創作討論。只能協助釐清圖片主題、構圖、元素、風格、色彩、尺寸、文字與生成提示詞。不得讀取、搜尋、建立或修改任何程式與文件，不得聲稱已生成圖片；使用者勾選「創作圖片」並通過主機確認後才會真正生成。必須使用 finish_image_discussion，在同一次回應中提供給使用者看的 answer、agentUnderstanding、discussion 與可直接交給圖片模型的完整 prompt；若仍需追問，也要依目前已知資訊保存候選內容。沒有收到使用者提及的參考圖片時，discussion 必須明確說明無法觀察，不得捏造視覺細節。facts 必須為空陣列。'
+  },
   'clarify-requirements':{
     id:'clarify-requirements',name:'需求釐清',action:'需要釐清',
     description:'針對目前需求一次提出 1–3 個必要問題，整理理解與信心，不修改檔案。',

@@ -1,0 +1,91 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const path=require('node:path');
+const os=require('node:os');
+const {createApp}=require('../server');
+
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5n8AAAAASUVORK5CYII=','base64');
+const responseCall=(name,args)=>({status:'completed',output:[{type:'function_call',call_id:'call-1',name,arguments:JSON.stringify(args)}],usage:{input_tokens:12,output_tokens:8}});
+
+test('圖片專案使用固定根目錄，API key 預設模型與逐次管理碼',async t=>{
+  const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-image-project-'));
+  const runtime=path.join(base,'runtime'),projectRoot=path.join(base,'code-project'),imageProjectRoot=path.join(base,'image-creation');
+  await fs.mkdir(projectRoot);
+  const calls=[],chatRequests=[];
+  const instance=await createApp({runtime,imageProjectRoot,adminToken:'abcdef',aiOptions:{env:{CDA_MODEL_MODE:'real',CDA_AI_MODEL:'gpt-5.6-luna',CDA_AI_KEY:'FAKE'},fetchImpl:async(url,options)=>{
+    if(url.endsWith('/responses')){const body=JSON.parse(options.body);chatRequests.push(body);if(body.tools)return Response.json(responseCall('finish_image_discussion',{status:'completed',answer:'可以先用兩個幾何圖形規劃構圖。',steps:['確認構圖'],conclusions:['已整理圖片構圖方向'],facts:[],inferences:[],unknown:[],agentUnderstanding:'以兩個幾何圖形組成主視覺',discussion:'先確認左右構圖與留白比例。',prompt:'兩個幾何圖形主視覺，左右構圖，保留留白，簡潔風格'}));const system=body.input?.[0]?.content||'';const text=system.includes('圖片專案記憶整理器')?JSON.stringify({projectSummary:'共用幾何風格',seriesSummary:'兩個幾何圖形構圖'}):system.includes('圖片對話歷史篩選器')?'不是 JSON':'幾何主視覺';return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}],usage:{input_tokens:12,output_tokens:8}});}
+    calls.push({url,options});return Response.json({data:[{b64_json:png.toString('base64')}]});
+  }}});
+  const server=instance.app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+  t.after(async()=>{await new Promise(resolve=>server.close(resolve));await instance.saved.queue;await fs.rm(base,{recursive:true,force:true});});
+  const baseUrl='http://127.0.0.1:'+server.address().port;
+  const sessionResponse=await fetch(baseUrl+'/api/session'),session=await sessionResponse.json();
+  assert.deepEqual(session.imageGeneration,{enabled:false,model:null,models:['gpt-image-2.5-sunburst','gpt-image-1'],provider:'openai'});
+  assert.deepEqual(session.imageProjectGeneration,{enabled:true,model:'gpt-image-2.5-sunburst',models:['gpt-image-2.5-sunburst','gpt-image-1'],provider:'openai'});
+  const headers={cookie:sessionResponse.headers.get('set-cookie').split(';')[0],'x-cda-token':session.csrf,'content-type':'application/json'};
+  async function request(endpoint,body,method=body===undefined?'GET':'POST'){const response=await fetch(baseUrl+endpoint,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});return {status:response.status,data:await response.json()};}
+
+  assert.equal((await request('/api/image-projects')).data.projects.length,0);
+  await assert.rejects(fs.access(imageProjectRoot));
+  const id='12345678-1234-4123-8123-abcdef123456';
+  const created=await request('/api/image-projects',{id});
+  assert.equal(created.status,201);assert.equal(created.data.project.folderName,'bcdef123456');
+  const renamed=await request('/api/image-projects/'+id,{name:'主視覺: 秋季 / CON?'},'PATCH');
+  assert.equal(renamed.status,200);assert.equal(renamed.data.project.folderName,'主視覺-秋季-CON-bcdef123456');
+  assert.deepEqual(await fs.readdir(imageProjectRoot),[renamed.data.project.folderName]);
+
+  const grant=(await request('/api/roots/request',{path:projectRoot,ai:true,minutes:60})).data;
+  const root=(await request('/api/roots/'+grant.id+'/approve',{adminToken:'abcdef'})).data.root;
+  headers['x-cda-project']=root.id;
+  const conversation=(await request('/api/conversations')).data.id;headers['x-cda-conversation']=conversation;
+  const chatResponse=await request('/api/image-project-chat',{question:'我想用兩個圖形安排構圖',imageProjectId:id});
+  assert.equal(chatResponse.status,202);await instance.engine.get(chatResponse.data.id,headers.cookie.slice('cda_session='.length)).finished;
+  let chat;for(let attempt=0;attempt<20;attempt++){chat=(await request('/api/jobs/'+chatResponse.data.id)).data;if(chat.imageProjectDraft?.status!=='pending')break;await new Promise(resolve=>setTimeout(resolve,10));}assert.equal(chat.status,'completed');assert.equal(chat.imageProjectChat.projectId,id);assert.equal(chat.imageProjectDraft.status,'completed');assert.match(chat.imageProjectDraft.prompt,/兩個幾何圖形/);
+  assert.equal(chatRequests.length,1,'圖片討論回應與候選提示詞應由同一次模型呼叫產生');
+  const projectsAfterChat=(await request('/api/image-projects')).data.projects,series=projectsAfterChat[0].series[0];
+  assert.equal(chat.imageProjectChat.seriesId,series.id);
+  const draftUpload=await fetch(baseUrl+'/api/image-draft',{method:'POST',headers:{...headers,'content-type':'image/png','x-cda-image-name':encodeURIComponent('rejected-reference.png')},body:png});assert.equal(draftUpload.status,201);
+  assert.equal((await request('/api/image-draft')).data.images.length,1);
+  const rejectedAttempt=await request('/api/image-project-attempt',{operation:'creation',outcome:'rejected',reason:'管理碼錯誤',imageCount:1,imageProjectId:id,seriesId:series.id});assert.equal(rejectedAttempt.status,200);assert.equal(rejectedAttempt.data.cleared,1);assert.equal((await request('/api/image-draft')).data.images.length,0);
+  const audit=await fs.readFile(path.join(runtime,'audit.jsonl'),'utf8');assert.match(audit,/"action":"image-project-attempt"/);assert.match(audit,/"outcome":"rejected"/);assert.match(audit,/管理碼錯誤/);
+  const summaryCandidate=await request('/api/image-projects/'+id+'/series/'+series.id+'/summary-candidate',{});
+  assert.equal(summaryCandidate.status,200);assert.equal(summaryCandidate.data.candidate.projectSummary,'共用幾何風格');assert.deepEqual(summaryCandidate.data.candidate.sourceJobIds,[chat.id]);
+  const appliedSummary=await request('/api/image-projects/'+id+'/series/'+series.id+'/apply-summary',{projectSummary:summaryCandidate.data.candidate.projectSummary,seriesSummary:summaryCandidate.data.candidate.seriesSummary,applyProject:true,applySeries:true,sourceJobIds:summaryCandidate.data.candidate.sourceJobIds});
+  assert.equal(appliedSummary.data.project.memory.version,1);assert.equal(appliedSummary.data.project.series[0].memory.version,1);
+  const followupResponse=await request('/api/image-project-chat',{question:'只保留和目前需求相關的構圖歷史',imageProjectId:id,seriesId:series.id});
+  assert.equal(followupResponse.status,202);await instance.engine.get(followupResponse.data.id,headers.cookie.slice('cda_session='.length)).finished;
+  let followup;for(let attempt=0;attempt<20;attempt++){followup=(await request('/api/jobs/'+followupResponse.data.id)).data;if(followup.imageProjectDraft?.status!=='pending')break;await new Promise(resolve=>setTimeout(resolve,10));}
+  assert.equal(followup.status,'completed');assert.equal(followup.imageProjectChat.historySelection.status,'fallback');assert.equal(followup.imageProjectChat.historySelection.attempts,1);assert.equal(followup.imageProjectChat.historySelection.warning,'歷史內容篩選失敗，已改用當前對話窗中的內容');assert.equal(followup.tools.find(tool=>tool.name==='ai.image_history_selection').status,'error');assert.equal(followup.ai.requests,2,'歷史篩選與圖片分析應分別計入一次模型請求');assert.equal(followup.ai.usage.length,2);
+  assert(chatRequests.length>=1);assert.deepEqual(chatRequests[0].tools.map(tool=>tool.name),['finish_image_discussion']);
+  const chatInput=JSON.parse(chatRequests[0].input.find(item=>item.role==='user').content);assert.deepEqual(chatInput.files,[]);
+  const oldFlow=await request('/api/image-generation',{prompt:'舊流程仍受專案 AI 授權限制'});
+  assert.equal(oldFlow.status,400);assert.match(oldFlow.data.error,/IMAGE_UNAVAILABLE/);
+  const missingCode=await request('/api/image-project-generation',{prompt:'新的圖片專案流程',imageProjectId:id,imageModel:'gpt-image-2.5-sunburst'});
+  assert.equal(missingCode.status,403);assert.match(missingCode.data.error,/每次創作圖片/);
+  const wrongCode=await request('/api/image-project-generation',{prompt:'新的圖片專案流程',imageProjectId:id,adminToken:'000000'});
+  assert.equal(wrongCode.status,403);assert.equal(calls.length,0);
+  const firstResponse=await request('/api/image-project-generation',{prompt:'共用幾何風格\n\n兩個幾何圖形構圖\n\n新的圖片專案流程',currentRequest:'新的圖片專案流程',imageProjectId:id,seriesId:series.id,draftJobId:chat.id,adminToken:'abcdef'});
+  assert.equal(firstResponse.status,202,firstResponse.data.error);assert.equal(firstResponse.data.imageCreation.model,'gpt-image-2.5-sunburst');
+  await instance.creations.jobs.get(firstResponse.data.id).finished;
+  const first=(await request('/api/jobs/'+firstResponse.data.id)).data;
+  assert.equal(first.status,'completed');assert.equal(first.imageCreation.imageProject.id,id);assert.equal(first.imageCreation.draftJobId,chat.id);assert.match(first.imageCreation.outputFileName,/^主視覺-秋季-CON-bcdef123456-/);
+  const files=await fs.readdir(path.join(imageProjectRoot,renamed.data.project.folderName));
+  assert.equal(files.length,2);assert(files.includes(first.imageCreation.outputFileName));
+
+  const secondMissing=await request('/api/image-project-generation',{prompt:'第二版',imageProjectId:id,previousJobId:first.id});
+  assert.equal(secondMissing.status,403);assert.equal(calls.length,1);
+  const nextConversation=(await request('/api/conversations',{})).data.id;headers['x-cda-conversation']=nextConversation;
+  const secondResponse=await request('/api/image-project-generation',{prompt:'第二版',currentRequest:'只調整圖形細節',imageProjectId:id,seriesId:series.id,previousJobId:first.id,draftJobId:chat.id,adminToken:'abcdef',imageModel:'gpt-image-1'});
+  assert.equal(secondResponse.status,202);await instance.creations.jobs.get(secondResponse.data.id).finished;
+  assert.equal(calls.length,2);assert.match(calls[1].url,/\/images\/edits$/);assert.equal(secondResponse.data.imageCreation.previousJobId,first.id);assert.equal(secondResponse.data.imageCreation.draftJobId,chat.id);
+  headers['x-cda-conversation']=conversation;
+  const destinationId='22345678-1234-4123-8123-abcdef654321',destination=(await request('/api/image-projects',{id:destinationId,name:'延伸專案'})).data.project;
+  const imported=await request('/api/image-projects/'+id+'/series/'+series.id+'/import',{destinationProjectId:destinationId,sourceJobId:first.id,applyProjectSummary:true,applySeriesSummary:true,adminToken:'abcdef'});
+  assert.equal(imported.status,201);assert.equal(imported.data.project.series.length,1);assert.equal(imported.data.job.imageCreation.importedFrom.jobId,first.id);assert.equal(imported.data.job.imageCreation.referenceSelected,true);
+  assert.equal((await fs.readdir(path.join(imageProjectRoot,destination.folderName))).length,2);
+  const deleted=await request('/api/image-projects/'+id+'/series/'+series.id,{adminToken:'abcdef'},'DELETE');
+  assert.equal(deleted.status,200);assert.equal(deleted.data.counts.images,2);assert.equal(deleted.data.project.series.length,0);
+  assert.deepEqual(await fs.readdir(path.join(imageProjectRoot,renamed.data.project.folderName)),[]);
+  assert.equal((await fs.readdir(path.join(imageProjectRoot,destination.folderName))).length,2,'來源刪除不得影響目的專案副本');
+});

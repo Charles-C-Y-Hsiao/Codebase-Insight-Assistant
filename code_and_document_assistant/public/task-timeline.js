@@ -12,7 +12,13 @@ function taskDetails(key,title,open=false){
   toggle.setAttribute('aria-hidden','true');
   summary.prepend(toggle);
   detail.addEventListener('toggle',()=>{toggle.className='task-toggle-icon fi fi-br-angle-small-'+(detail.open?'down':'right');});
-  summary.addEventListener('click',()=>state.detailOpen.set(key,!detail.open));
+  summary.addEventListener('click',()=>{
+    const next=!detail.open;
+    state.detailOpen.set(key,next);
+    // The native details toggle event can be coalesced when a card contains
+    // another details element; sync the icon after the browser applies open.
+    queueMicrotask(()=>{toggle.className='task-toggle-icon fi fi-br-angle-small-'+(detail.open?'down':'right');});
+  });
   detail.append(summary);return detail;
 }
 function taskIcon(kind){
@@ -95,7 +101,10 @@ function renderAgentIterations(job,panel){
 }
 function renderTaskTimeline(job,article){
   const panel=taskDetails(job.id+':timeline','執行紀錄 · '+(job.archived?'歷史':job.status),!job.archived&&['running','awaiting_approval','applying'].includes(job.status));
-  panel.classList.add('task-timeline');panel.id='timeline-'+job.id;
+  panel.classList.add('task-timeline');panel.classList.toggle('is-live',!job.archived&&['running','awaiting_approval','applying'].includes(job.status));panel.id='timeline-'+job.id;
+  const latest=job.iterations?.at(-1),tools=(job.tools||[]).filter(tool=>!String(tool.name||'').startsWith('ai.')),conclusion=job.result?.conclusions?.[0]||job.progress||'尚待整理';
+  const inline=latest?`第 ${latest.index||job.iterations.length} 輪 · ${latest.purpose||latest.decision?.tool||'規劃處理'} · ${latest.target||latest.action?.tool||'等待執行'}`:`工具／修改：${tools.slice(-3).map(tool=>tool.name).join('、')||'尚無紀錄'} · 結論：${conclusion}`;
+  panel.firstChild.append(node('span',inline,'timeline-summary-inline'));
   renderAgentIterations(job,panel);
   const rows=timelineRows(job);
   for(const row of rows){

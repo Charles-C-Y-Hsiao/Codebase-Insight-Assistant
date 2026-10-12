@@ -1,0 +1,88 @@
+
+
+
+
+-- 使用grill me每次詢問我1~3個問題，直到你有95%把握
+
+
+目前結果：這台電腦尚未偵測到可用的 Windows Sandbox。
+- WindowsSandbox.exe：找不到。
+- Containers-DisposableClientVM：需要以系統管理員權限查詢，現有終端被拒絕。
+- 作業系統版本與虛擬化狀態同樣被權限限制，無法在目前權限下確認。
+請用「以系統管理員身分執行」PowerShell 後輸入：
+  Get-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM
+
+若顯示 Disabled，可用下列指令啟用，之後依提示重開機：
+  Enable-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM -All
+'''
+
+PS C:\WINDOWS\system32> Get-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM
+FeatureName      : Containers-DisposableClientVM
+DisplayName      : Windows 沙箱
+Description      : 啟用執行 Windows 沙箱案例所需的相依性。
+RestartRequired  : Possible
+State            : Enabled
+CustomProperties :
+'''
+
+
+1. authorization-confirmation-flow.md
+2. dual-layer-project-authorization-flow.md
+3. project-isolation-and-reference-design.md
+4. agent-loop-tool-execution-flow.md
+5. diff-and-image-preview-flow.md
+6. project-phase-and-acceptance-guide.md
+7. phase-1-validation-report.md
+8. offline-evaluation-report.md
+9. implementation-validation-history.md
+
+
+
+
+- id="ai-edit-label" 幫我垂直置中
+- id="history" 中元素是固定的? 將article中的<h>改為span，每個<h>與對應下方內容都使用label包起來，並且將label的使用flex，並給id，且讓article使用flex控制內容
+
+
+按鈕外框
+└── 右側按鈕群組
+    ├── Cancel
+       └── Confirm
+
+
+Mermaid 圖
+
+圖片討論
+→ 取得上下文
+→ 分析圖片
+→ 形成創作草稿
+
+摘要更新
+→ 找出未整理對話
+→ 產生候選摘要
+→ 使用者確認後保存
+
+圖片創作
+→ 選擇草稿或上一版
+→ 確認完整提示詞
+→ 生成圖片並保存版本
+
+
+從這筆紀錄看確實是「本輪附件草稿圖」與「最新系列圖片」
+
+
+目前圖片任務會強制產生：
+- 圖片摘要
+- 元素清單
+- 座標與尺寸
+- 相對位置
+- 樹狀結構
+- OCR 文字辨識
+- 不確定事項
+- answer
+- steps
+- conclusions
+- agentUnderstanding
+- discussion
+- 完整 prompt
+
+採用 maxOutputTokens: 9000＋精簡圖片提詞任務輸出格式＋保存 incomplete response 的 usage

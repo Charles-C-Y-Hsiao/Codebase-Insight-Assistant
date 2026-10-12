@@ -13,5 +13,5 @@
   "maxRetries": 1,
   "maxRounds": 8,
   "maxToolCalls": 12,
-  "maxOutputTokens": 4096
+  "maxOutputTokens": 9000
 }

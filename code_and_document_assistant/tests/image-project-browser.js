@@ -1,0 +1,96 @@
+const fs=require('node:fs/promises');
+const os=require('node:os');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+const {createApp}=require('../server');
+
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5n8AAAAASUVORK5CYII=','base64');
+const responseCall=(name,args)=>({status:'completed',output:[{type:'function_call',call_id:'call-1',name,arguments:JSON.stringify(args)}],usage:{input_tokens:12,output_tokens:8}});
+
+async function main(){
+  const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-image-project-browser-'));
+  let server,browser,instance,calls=0,chatCalls=0;
+  try{
+    instance=await createApp({runtime:path.join(base,'runtime'),imageProjectRoot:path.join(base,'image-creation'),adminToken:'abcdef',aiOptions:{env:{CDA_MODEL_MODE:'real',CDA_AI_MODEL:'gpt-5.6-luna',CDA_AI_KEY:'FAKE'},fetchImpl:async(url,options)=>{if(url.endsWith('/responses')){chatCalls++;const body=JSON.parse(options.body);if(body.tools)return Response.json(responseCall('finish_image_discussion',{status:'completed',answer:'可以用方形與圓形建立左右構圖。',steps:['整理構圖'],conclusions:['已整理圖片方向'],facts:[],inferences:[],unknown:[],agentUnderstanding:'以方形與圓形建立藍綠色左右構圖主視覺',discussion:'保留簡潔留白與幾何層次。',prompt:'藍綠色產品主視覺，方形與圓形左右構圖，簡潔留白，幾何層次，無文字'}));const system=body.input?.[0]?.content||'',text=system.includes('圖片專案記憶整理器')?JSON.stringify({projectSummary:'藍綠色品牌風格',seriesSummary:'方形與圓形左右構圖'}):system.includes('圖片對話歷史篩選器')?JSON.stringify({selectedJobIds:[],reason:'目前需求不需要舊對話'}):'幾何構圖';return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}],usage:{input_tokens:5,output_tokens:3}});}calls++;return Response.json({data:[{b64_json:png.toString('base64')}]});}}});
+    server=instance.app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+    browser=await require('puppeteer').launch({executablePath:process.env.CDA_BROWSER||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,userDataDir:path.join(base,'chrome-profile'),args:['--no-sandbox','--disable-dev-shm-usage']});
+    const page=await browser.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));await page.setViewport({width:1320,height:900});
+    await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>state.conversation&&state.imageProjectGeneration.enabled);
+    assert.equal(await page.$eval('#image-discussion-references-title',element=>element.hidden&&getComputedStyle(element).display==='none'),true,'圖片對話參考圖標題應隱藏以節省空間');
+    assert.deepEqual(await page.evaluate(()=>({project:document.getElementById('project-heading-main').getAttribute('aria-current'),image:document.getElementById('image-project-section-toggle').getAttribute('aria-current')})),{project:'false',image:'false'},'尚未明確選擇工作區時兩個區塊都不標示');
+    assert.equal(await page.$eval('#image-create-mode-label',element=>element.hidden),true);
+    assert.deepEqual(await page.$eval('.project-heading',element=>[...element.children].map(child=>child.id)),['project-heading-main','project-panel','image-project-section-toggle','image-project-panel']);
+    assert.deepEqual(await page.$eval('#image-project-section-toggle',element=>({tag:element.tagName,children:[...element.children].map(child=>child.id)})),{tag:'DIV',children:['image-project-toggle','image-project-add']});
+    await page.click('#image-project-toggle');assert.match(await page.$eval('#image-project-toggle-icon',element=>element.className),/angle-small-down/);await page.mouse.move(1000,500);assert.equal(await page.$eval('#image-project-section-toggle',element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)');await page.hover('#image-project-toggle');assert.notEqual(await page.$eval('#image-project-section-toggle',element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)');assert.equal(await page.$eval('#project-heading-main',element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)');await page.mouse.move(1000,500);
+    await page.hover('#project-item-demo');assert.notEqual(await page.$eval('#project-item-demo',element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)');assert.equal(await page.$eval('#image-project-section-toggle',element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)');await page.mouse.move(1000,500);
+    await page.click('#image-project-add');await page.waitForFunction(()=>state.imageProjects.length===1&&state.imageProjectId&&state.imageWorkspaceActive);
+    assert.deepEqual(await page.evaluate(()=>({project:document.getElementById('project-heading-main').getAttribute('aria-current'),image:document.getElementById('image-project-section-toggle').getAttribute('aria-current')})),{project:'false',image:'true'},'圖片專案選定時只標示圖片創作區塊');
+    assert.equal(await page.$eval('#project-row-demo',element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)','圖片專案選定時一般專案不應保留選定底色');
+    assert.deepEqual(await page.$eval('#composer-context',element=>({hidden:element.hidden,memoryHidden:document.getElementById('image-project-memory').hidden})),{hidden:false,memoryHidden:false});
+    assert.match(await page.$eval('#image-project-status',element=>element.textContent),/已建立/);
+    assert.match(await page.$eval('.image-project-choice span',element=>element.textContent),/^[0-9a-f]{11}$/);
+    await page.click('.image-project-rename');await page.type('.image-project-rename-input','品牌 主視覺');await page.click('.image-project-rename-form button');await page.waitForFunction(()=>state.imageProjects[0].folderName.startsWith('品牌-主視覺-'));
+    assert.match(await page.$eval('.image-project-choice span',element=>element.textContent),/^品牌-主視覺-[0-9a-f]{11}$/);
+    await page.evaluate(async encoded=>{const bytes=Uint8Array.from(atob(encoded),character=>character.charCodeAt(0)),response=await fetch('/api/image-draft',{method:'POST',headers:{'Content-Type':'image/png','X-CDA-Token':state.csrf,'X-CDA-Project':state.project,'X-CDA-Conversation':state.conversation,'X-CDA-Image-Name':encodeURIComponent('layout-reference.png')},body:bytes});if(!response.ok)throw new Error((await response.json()).error);await loadImageDraft();},png.toString('base64'));
+    await page.type('#question','我想用方形和圓形安排構圖');await page.click('#send');await page.waitForFunction(()=>[...state.taskJobs.values()].some(job=>job.imageProjectChat&&job.imageProjectDraft?.status==='completed'));
+    assert.equal(await page.evaluate(()=>state.draftImages.length),0,'圖片對話送出後應清空整個附件草稿區');assert.equal(await page.$$eval('#image-draft .attachment-preview',items=>items.length),0);
+    assert(chatCalls>=1);assert.doesNotMatch(await page.$eval('#notice',element=>element.textContent),/AI_PERMISSION/);
+    assert.match(await page.$eval('.image-project-draft',element=>element.textContent),/Agent 理解/);assert.equal(await page.$eval('#image-draft-create',element=>element.disabled),false);
+    await page.click('#image-draft-create');await page.waitForSelector('#image-create-dialog[open]');assert.equal(await page.$$eval('#image-create-draft-select option',items=>items.length),1);assert.match(await page.$eval('#image-create-full-prompt',element=>element.value),/藍綠色產品主視覺/);
+    if(await page.evaluate(()=>!!window.jQuery?.fn?.select2)){
+      for(const id of ['image-create-model-picker','image-create-draft-label']){await page.click('#'+id+' .select2-selection');await page.waitForSelector('#'+id+' .select2-dropdown');const geometry=await page.evaluate(id=>{const selection=document.querySelector('#'+id+' .select2-selection').getBoundingClientRect(),dropdown=document.querySelector('#'+id+' .select2-dropdown').getBoundingClientRect();return {selectionLeft:selection.left,dropdownLeft:dropdown.left,selectionWidth:selection.width,dropdownWidth:dropdown.width,selectionHeight:selection.height};},id);assert.equal(geometry.selectionHeight,30,id+' 選取框高度應為 30px');assert.ok(Math.abs(geometry.selectionLeft-geometry.dropdownLeft)<1,id+' 選單需和控制項左側對齊');assert.ok(Math.abs(geometry.selectionWidth-geometry.dropdownWidth)<1,id+' 選單需和控制項同寬');await page.keyboard.press('Escape');}
+    }
+    await page.click('#image-create-back');
+    await page.waitForFunction(()=>state.imageSeriesId&&document.querySelectorAll('.image-series-row').length===1);
+    await page.click('#image-project-memory-summary');await page.waitForSelector('#image-project-memory-content:not([hidden])');
+    const firstSeriesId=await page.evaluate(()=>state.imageSeriesId);
+    const seriesMenu='#image-series-menu-'+firstSeriesId;
+    assert.equal(await page.$eval(seriesMenu,element=>element.getAttributeNames().indexOf('id')<element.getAttributeNames().indexOf('type')),true,'系列操作按鈕的 id 應建立在 type 前方');
+    assert.equal(await page.$eval(seriesMenu,element=>element.dataset.tooltip),'系列操作：重新命名或永久刪除');
+    assert.deepEqual(await page.$eval(seriesMenu,element=>({height:element.getBoundingClientRect().height,className:element.querySelector('i').className,fontSize:getComputedStyle(element.querySelector('i')).fontSize})),{height:32,className:'fi fi-rc-settings-sliders',fontSize:'20px'},'系列操作按鈕應維持 32px 高，並以 font-size 控制設定滑桿圖示大小');
+    await page.click(seriesMenu);await page.waitForSelector('#image-series-actions-dialog[open]');
+    assert.equal(await page.$eval('#image-series-actions-delete',element=>getComputedStyle(element).display!=='none'&&!element.hidden),true,'系列操作視窗應明確顯示永久刪除');
+    await page.click('#image-series-actions-delete');await page.waitForSelector('#image-series-delete-dialog[open]');
+    assert.match(await page.$eval('#image-series-delete-message',element=>element.textContent),/永久刪除/,'永久刪除應進入管理碼確認視窗');
+    await page.click('#image-series-delete-cancel');await page.waitForFunction(()=>!document.getElementById('image-series-delete-dialog').open);
+    await page.click(seriesMenu);await page.waitForSelector('#image-series-actions-dialog[open]');
+    await page.$eval('#image-series-actions-name',element=>element.value='第一系列');await page.click('#image-series-actions-save');await page.waitForFunction(id=>!document.getElementById('image-series-actions-dialog').open&&state.imageProjects[0].series.find(series=>series.id===id)?.name==='第一系列',{},firstSeriesId);
+    assert.equal(await page.$eval('#image-series-select option[value="'+firstSeriesId+'"]',element=>element.textContent),'第一系列','自製視窗重新命名後應同步切換選單');
+    await page.click('#image-series-new');await page.waitForFunction(id=>state.imageProjects[0].series.length===2&&state.imageSeriesId!==id,{},firstSeriesId);
+    assert.equal(await page.$eval('#image-series-select',element=>element.value),await page.evaluate(()=>state.imageSeriesId),'新增系列後切換選單應同步');
+    assert.equal(await page.$$eval('#image-series-select option',items=>items.length),3,'切換選單應列出兩個既有系列');
+    assert.equal(await page.$eval('.image-project-draft',element=>element.closest('article').hidden),true,'切換系列後應隱藏其他系列的對話');
+    await page.type('#question','第二系列使用暖色幾何構圖');await page.click('#send');
+    await page.waitForFunction(()=>[...state.taskJobs.values()].some(job=>job.imageProjectChat?.seriesId===state.imageSeriesId&&job.imageProjectDraft?.status==='completed'));
+    await page.select('#image-series-select',firstSeriesId);
+    assert.equal(await page.evaluate(()=>state.imageSeriesId),firstSeriesId,'可在摘要列旁切回既有系列');
+    assert.equal(await page.$eval('.image-project-draft',element=>element.closest('article').hidden),false,'切回原系列後應顯示原對話');
+    const historyBottomTarget=await page.evaluate(()=>{let target=null;const original=Element.prototype.scrollIntoView;Element.prototype.scrollIntoView=function(){target=this.id;};try{document.getElementById('scroll-history-bottom').click();return {target,lastVisible:[...document.querySelectorAll('#history > article:not([hidden])')].at(-1)?.id};}finally{Element.prototype.scrollIntoView=original;}});
+    assert.equal(historyBottomTarget.target,historyBottomTarget.lastVisible,'跳到底部應定位目前系列最後一則可見對話');
+    assert.equal(await page.evaluate(()=>sessionStorage.getItem('cda.imageSeries.'+state.imageProjectId)),firstSeriesId,'切換系列後應保存選擇');
+    await page.waitForFunction(()=>!document.getElementById('image-summary-update').disabled);await page.click('#image-summary-update');await page.waitForSelector('#image-summary-dialog[open]');await page.waitForFunction(()=>document.getElementById('image-summary-loading').hidden&&document.getElementById('image-summary-project').readOnly);
+    assert.equal(await page.$eval('#image-summary-project',element=>element.readOnly),true);await page.click('#image-summary-modify');await page.type('#image-summary-series','，保留留白');await page.click('#image-summary-apply');await page.waitForFunction(()=>!document.getElementById('image-summary-dialog').open&&state.imageProjects[0].memory.version===1);
+    await page.click('#image-create-mode');
+    const hidden=await page.evaluate(()=>['auto-memory-label','ai-edit-label','conversation-memory','skill-panel','scope-banner'].map(id=>document.getElementById(id).hidden));
+    assert.deepEqual(hidden,[true,false,true,true,true]);
+    assert.equal(await page.$eval('#ai-edit-label',element=>element.textContent.trim()),'允許內容送往目前設定的 AI');
+    await page.type('#question','藍綠色產品主視覺');await page.click('#send');await page.waitForSelector('#image-create-dialog[open]');
+    assert.match(await page.$eval('#image-create-project-summary',element=>element.textContent),/藍綠色品牌風格/);assert.match(await page.$eval('#image-create-series-summary',element=>element.textContent),/保留留白/);
+    assert.equal(await page.$eval('#image-create-admin-label',element=>element.hidden),false);assert.equal(await page.$eval('#image-create-admin',element=>element.value),'');
+    await page.click('#image-create-confirm');assert.match(await page.$eval('#image-create-error',element=>element.textContent),/6 碼/);assert.equal(calls,0);
+    await page.type('#image-create-admin','000000');await page.click('#image-create-confirm');await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('每次創作圖片'));assert.equal(calls,0);
+    await page.click('#send');await page.waitForSelector('#image-create-dialog[open]');assert.equal(await page.$eval('#image-create-admin',element=>element.value),'');await page.type('#image-create-admin','abcdef');await page.click('#image-create-confirm');
+    await page.waitForSelector('.image-task-result img');assert.equal(calls,1);await page.waitForFunction(()=>document.querySelector('.image-task-result img')?.naturalWidth===1);await page.waitForFunction(()=>!document.getElementById('image-discussion-references').hidden);
+    assert.match(await page.$eval('#image-use-latest-text',element=>element.textContent),/^圖一 · 最新圖片創作圖/);assert.equal(await page.$eval('#image-use-latest',element=>element.checked),true);
+    const imageId=await page.$eval('.image-task-actions button[id^="image-edit-"]',button=>button.id);await page.click('#'+imageId);
+    await page.evaluate(async encoded=>{const bytes=Uint8Array.from(atob(encoded),character=>character.charCodeAt(0));for(const name of ['current-logo.png','current-layout.png']){const response=await fetch('/api/image-draft',{method:'POST',headers:{'Content-Type':'image/png','X-CDA-Token':state.csrf,'X-CDA-Project':state.project,'X-CDA-Conversation':state.conversation,'X-CDA-Image-Name':encodeURIComponent(name)},body:bytes});if(!response.ok)throw new Error((await response.json()).error);}await loadImageDraft();},png.toString('base64'));
+    await page.type('#question','依照目前系列摘要與參考圖調整人物');await page.click('#send');await page.waitForSelector('#image-create-dialog[open]');assert.equal(await page.$eval('#image-create-admin',element=>element.value),'','每次創作都要重新輸入管理碼');assert.match(await page.$eval('#image-create-full-prompt',element=>element.value),/目前系列摘要（若與上一版衝突，以此為準）/);assert.match(await page.$eval('#image-create-full-prompt',element=>element.value),/目前圖片討論候選提示詞/);assert.match(await page.$eval('#image-create-full-prompt',element=>element.value),/方形與圓形左右構圖/);assert.match(await page.$eval('#image-create-previous-label',element=>element.textContent),/^圖一/);assert.deepEqual(await page.$$eval('#image-create-reference-list input:checked',items=>items.map(input=>input.closest('label').querySelector('.image-create-material-index').textContent)),['圖二 · 附件草稿圖','圖三 · 附件草稿圖','圖四 · 附件草稿圖'],'產圖視窗應沿用圖一作為創作基礎，並列出草稿與本輪附件');const priorImages=await page.evaluate(()=>[...state.taskJobs.values()].filter(job=>job.kind==='image'&&job.status==='completed').length);await page.type('#image-create-admin','abcdef');await page.click('#image-create-confirm');await page.waitForFunction(count=>[...state.taskJobs.values()].filter(job=>job.kind==='image'&&job.status==='completed').length>count,{},priorImages);assert.equal(await page.evaluate(()=>state.draftImages.length),0,'直接圖片創作送出後應清空附件草稿區');const latestReferences=await page.evaluate(()=>[...state.taskJobs.values()].filter(job=>job.kind==='image'&&job.status==='completed').at(-1).imageCreation.references);assert.equal(latestReferences.length,3,'直接創作使用的附件應保存於圖片任務供重啟後追溯');assert(latestReferences.every(reference=>reference.persistedFileName||reference.generatedJobId));
+    await page.click('#image-create-mode');await page.$eval('#question',element=>element.value='');await page.click('#project-item-demo-choice');
+    assert.deepEqual(await page.evaluate(()=>({project:document.getElementById('project-heading-main').getAttribute('aria-current'),image:document.getElementById('image-project-section-toggle').getAttribute('aria-current')})),{project:'true',image:'false'},'一般專案選定時只標示專案區塊');
+    await page.mouse.move(1000,500);assert.equal(await page.$eval('#project-row-demo',element=>element.classList.contains('project-current')),true,'切回一般專案時應恢復選定狀態');assert.notEqual(await page.$eval('#project-row-demo',element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)','一般專案選定時應恢復選定底色');
+    const restored=await page.evaluate(()=>['auto-memory-label','ai-edit-label','conversation-memory','skill-panel','scope-banner'].map(id=>document.getElementById(id).hidden));
+    assert.deepEqual(restored,[false,false,false,false,false]);assert.deepEqual(errors,[]);
+    console.log('PASS: image project creation, dedicated mode, per-generation admin code and restored chat UI');
+  }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));if(instance)await instance.saved.queue;await fs.rm(base,{recursive:true,force:true});}
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

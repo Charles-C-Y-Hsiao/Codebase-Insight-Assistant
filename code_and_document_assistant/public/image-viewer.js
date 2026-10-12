@@ -5,7 +5,7 @@ function taskPreviewImages(job){
   const items=[],seen=new Set();
   const add=item=>{if(!seen.has(item.src)){seen.add(item.src);items.push(item);}};
   for(const member of jobs){
-    for(const image of member.attachments||[])add({src:'/attachments/'+encodeURIComponent(image.id),width:image.width,height:image.height,alt:image.name});
+    for(const image of member.attachments||[])if(image.available!==false)add({src:'/attachments/'+encodeURIComponent(image.id),width:image.width,height:image.height,alt:image.name});
     const image=member.imageCreation;
     if(member.status==='completed'&&image?.fileName)add({src:'/generated-images/'+encodeURIComponent(member.id),width:image.width,height:image.height,alt:image.slug+' · 第 '+image.version+' 版'});
   }
@@ -23,7 +23,11 @@ function bindImagePreview(img,getImages){
         const loaded=new Image();loaded.src=item.src;await loaded.decode();return {...item,width:loaded.naturalWidth,height:loaded.naturalHeight};
       }));
       if(!data.length)return;if(activeImageViewer)activeImageViewer.close();
-      const pswp=new PhotoSwipe({dataSource:data,index,bgOpacity:0.9,showHideAnimationType:'fade',wheelToZoom:true,loop:false,zoom:false,closeTitle:'關閉',arrowPrevTitle:'上一張',arrowNextTitle:'下一張',errorMsg:'圖片無法載入',padding:{top:72,bottom:86,left:60,right:60}});
+      // A modal dialog is in the browser's top layer, so a viewer appended to
+      // document.body would render underneath it. Keep previews opened from a
+      // dialog inside that dialog's top-layer subtree.
+      const host=img.closest('dialog')||document.body;
+      const pswp=new PhotoSwipe({dataSource:data,index,appendToEl:host,bgOpacity:0.9,showHideAnimationType:'fade',wheelToZoom:true,loop:false,zoom:false,closeTitle:'關閉',arrowPrevTitle:'上一張',arrowNextTitle:'下一張',errorMsg:'圖片無法載入',padding:{top:72,bottom:86,left:60,right:60}});
       activeImageViewer=pswp;
       pswp.on('uiRegister',()=>{
         pswp.ui.registerElement({name:'zoom-controls',appendTo:'root',onInit:(element)=>{

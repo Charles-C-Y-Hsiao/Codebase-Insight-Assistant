@@ -17,7 +17,7 @@ async function main(){
     page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setViewport({width:1280,height:900});
     stage='goto';await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof state!=='undefined'&&state.csrf&&document.querySelector('#project-list .project-item'));
     stage='loaded';
-    await page.click('#open-permission');await page.type('#folder',dir);await page.type('#admin','abcdef');await page.click('#allow-ai');
+    await page.click('#open-permission');await page.type('#folder',dir);await page.type('#admin','abcdef');await page.$eval('#allow-ai',element=>{if(!element.checked)element.click();});
     await page.click('#request-root');await page.waitForFunction(()=>document.getElementById('root-status').textContent.includes('待主機'));await page.click('#approve-root');await page.waitForSelector('#open-granted-project:not([hidden])');await page.click('#open-granted-project');await page.waitForFunction(()=>state.project!=='demo'&&state.imageReady);
     stage='authorized';
     await page.type('#question','建立登入功能');await page.waitForSelector('#start-skill-clarify-requirements');

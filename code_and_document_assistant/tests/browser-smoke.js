@@ -2,7 +2,7 @@ const {createApp}=require('../server.js');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const assert=require('node:assert/strict');
-const {click}=require('./browser-controls');
+const {click,checked}=require('./browser-controls');
 async function main(){
   const parent=require('node:os').tmpdir();
   const root=await fs.mkdtemp(path.join(parent,'browser-test-'));
@@ -51,7 +51,7 @@ async function main(){
     await page.waitForSelector('#mentions button');assert.ok((await page.$$('#mentions button')).length>0);
     const creationParent=path.join(root,'new-project-parent'),external=path.join(creationParent,'new-collapsible-tool');await fs.mkdir(creationParent);await assert.rejects(fs.access(external));
     await page.click('#open-permission');await page.waitForSelector('#permission-dialog[open]');
-    await page.type('#folder',external);await page.click('#create-folder');await page.click('#allow-write');await page.click('#allow-verify');await page.type('#admin',adminToken);await page.click('#request-root');
+    await page.type('#folder',external);await page.click('#create-folder');await checked(page,'#allow-write');await checked(page,'#allow-verify');await page.type('#admin',adminToken);await page.click('#request-root');
     await page.waitForFunction(()=>document.getElementById('root-status').textContent.includes('待主機'));
     await page.click('#approve-root');await page.waitForFunction(()=>document.querySelectorAll('#active-project option').length===2);
     await page.waitForFunction(()=>document.getElementById('root-status').textContent.includes('已建立空資料夾並'));

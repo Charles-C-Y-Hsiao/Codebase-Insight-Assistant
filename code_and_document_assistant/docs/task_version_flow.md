@@ -1,87 +1,171 @@
-# id="task-*" Edit Flow：需求編輯、版本保存與任務延續
+# 任務版本與任務延續
 
-目前已支援文字任務的 Edit／View 入口、同一卡片更新、需求版本保存、短確認延續與送出後清空輸入框。編輯會以 `editJobId` 與 `sourceVersion` 建立下一個需求版本，舊版本與執行結果保留在同一任務的 `versions` 中；資料保存於 `runtime/assistant-state/state.json`。圖片創作維持獨立的逐版圖片系列流程。
+本文件說明文字任務的 Edit、View、需求版本保存、短確認延續與重新送出。相對路徑皆以 `C:\Web_Practice\ReAct\code_and_document_assistant` 為專案根目錄；完整工作台流程見 [task_workbench_flow.md](task_workbench_flow.md)。
 
-執行中、套用中或待確認提案的文字任務不可編輯，須先完成或取消；這項限制由介面與服務端共同檢查。沒有 revision 欄位的舊保存資料會以 v1 相容處理，不代表所有新任務都固定從 v1 開始。編輯文字任務不會自動重新帶回原圖片附件；若仍需參考圖片，送出前請重新附上。修改前端或服務程式後，需重新啟動服務並重新整理頁面才會載入新版本。
+## 版本總覽
 
-## 任務卡片入口
+目的：保留舊需求與執行結果，同時讓使用者建立新的可執行版本。
 
-- 每張 `id="task-*"` 卡片都有 `id="task-question-view-*"` 的 View 按鈕；在它左側放置 `id="task-question-edit-*"` 的 Edit 按鈕。
-- 操作列順序為 `Edit → View`。
-- `Edit` 將目前版本的完整需求載入 `id="question"`，並記錄正在編輯的任務與版本。
-- `View` 保留完整需求查看功能，並提供版本清單入口。
-- 版本清單依實際 revision 顯示 `v1`、`v2` 等版本，標示目前版本；每個版本都可載入 `id="question"` 再次編輯。
+流程：一個對話 → 多個任務 → 一個任務包含 v1、v2、v3 等需求版本。
 
-## 編輯與重新送出
+Interface：顯示 Edit、View、版本清單與目前版本。（程式：`#task-question-edit-*`、`#task-question-view-*`）
 
-```text
-點擊 Edit
-↓
-將選定版本的完整需求載入 id="question"
-↓
-使用者修改文字後送出
-↓
-在同一任務內建立下一個需求版本
-↓
-清空 id="question"，執行修改後的需求
-↓
-任務卡片顯示最新需求與本次執行結果
-```
+Interaction：載入、修改、重新送出或延續版本。（程式：`editTask()`、`/api/jobs`）
 
-- 畫面上覆蓋原本需求，不另增加一張可見任務卡片。
-- 內部保存每次需求版本與各自的執行結果，不直接刪除舊資料。
-- 從舊版本重新送出時，建立下一個版本，不覆寫被選取的歷史版本。
-- 最新版本的工具紀錄、驗證結果與完成說明顯示於主要區塊；舊版本資料放在版本清單中查看。
-- 新版本執行中或失敗時，不將舊版本的完成狀態、工具紀錄或驗證結果冒充為新版本結果。
-- 編輯需求與重新執行不會自動還原先前已寫入的專案檔案；修改時仍須讀取目前檔案並產生新的提案。
+Harness：禁止重播舊提案，檢查來源版本、檔案版本與目前授權。（程式：`resolveRequest()`、`sourceVersion`、`revision`）
 
-## 版本保存內容
+Validation：確認版本存在、來源正確且沒有被篡改。
 
-- 每個版本保存完整需求、建立時間、來源版本與執行狀態。
-- 執行資料包括工具紀錄、驗證結果、完成說明，以及實際修改檔案與可取得的檔案版本號。
-- 任務需求的 `v1／v2／v3` 與檔案備份的 `MMDDhhmm_序號` 是不同概念；只有實際套用修改才產生對應的檔案修改版本。
-- 歷史紀錄供查看與重新編輯；不因載入舊版本而重播套用、恢復過期提案或擴大授權。
+Operations：處理服務重啟、過期提案與執行狀態。
 
-## 短確認訊息的任務延續
-```text
-使用者送出「好修改／確認／開始修改／執行／繼續／可以／套用」等短確認
-↓
-在目前專案、目前對話的最近 5 筆文字任務中尋找可延續的需求
-↓
-若最新任務是 needs_input，優先延續；若只有一筆符合條件的需求，也可直接延續
-↓
-找到明確需求後，以 continuationOf 與來源版本綁定，帶入原需求與來源檔案
-```
+History：保存舊版本與各版本執行結果。
 
-- 可延續任務的狀態為 `needs_input`、`partial` 或 `failed`，且原始需求至少 8 個字；圖片任務與其他短確認不會列入候選。
-- 找到多個候選或沒有明確候選時，停止猜測並請使用者選擇任務。
-- 若延續的是修改需求，會依 `allowEdits`、確認文字與目前授權決定是否建立修改提案；缺少寫入或 AI 授權時仍走既有授權流程。
-- 延續會保存 `continuationOf`、來源版本與來源檔案；模型仍須重新讀取目前檔案，不會直接重播舊提案或套用結果。
-- 確認訊息不會授予新的專案寫入權限或 AI 外送權限。
-- 套用前會顯示檔案與預計修改內容，例如：
+Test Data：測試 v1、v2、v3 的建立與查看。
 
-  ```text
-  即將修改：index.html
-  - 將 h1#dialog-title 改為 span#dialog-title
-  - 標題與 close-button 放在同一行
-  - 調整關閉按鈕 hover，使視覺範圍接近圖示比例
-  ```
+保存結果：`runtime/assistant-state/state.json` 的 `conversations[].jobs[].versions[]`。
 
-## question 輸入框行為
+## 動作：查看任務版本
 
-- 成功送出並建立執行後立即清空文字；送出失敗、尚未建立執行時保留草稿以供重試。
-- 模型執行中維持空白，不重新填回前一次需求。
-- 等待使用者確認時維持空白。
-- 只有點擊 Edit 或從版本清單載入時，才填入選定版本的完整需求。
-- 取消編輯後清空文字，並解除編輯中的任務與版本關聯。
-- 背景輪詢不得覆蓋使用者後續新輸入的草稿。
+目的：查看目前版本與歷史需求，不改變執行狀態。
 
-## 驗收情境
+流程：開啟任務 → 點擊 View → 展開版本清單 → 選擇版本。
 
-- `dialog-title` 任務因未開啟編輯而停在 `needs_input`，接著輸入「好修改」：應延續標題與關閉按鈕需求，不改為執行舊的藍色配色需求。
-- 上一筆沒有回應，但前幾筆存在唯一明確需求：應找回該需求並顯示預計修改項目。
-- 最近 5 筆存在多個可能需求：應要求選擇延續對象。
-- 點擊 Edit、修改後送出：同一張卡片顯示新版本，View 可查看舊需求與舊結果。
-- 從 v1 載入再送出：建立下一個版本，v1 內容保持可查看。
-- 送出、等待模型、等待確認及取消編輯：輸入框符合上述清空規則；執行進度更新不回填舊需求。
+Interface：顯示目前版本、舊版本、狀態與結果。（程式：`#task-question-versions-*`、`renderTask()`）
 
+Interaction：查看版本或選擇版本進一步編輯。（程式：`editTask(job, version)`）
+
+Harness：歷史版本只能查看，不會重播舊提案或恢復授權。
+
+Validation：確認版本 revision 與來源關係。
+
+Operations：處理歷史任務載入與目前對話切換。
+
+History：保存完整需求、結果、工具與驗證紀錄。
+
+Test Data：測試 v1、v2、v3 的顯示與選取。
+
+保存結果：歷史版本保存在 `runtime/assistant-state/state.json`。
+
+## 動作：編輯需求
+
+目的：修改需求內容並建立新的任務版本，不覆寫舊版本。
+
+流程：點擊 Edit → 載入選定版本 → 修改文字 → 送出 → 建立下一個 revision。
+
+Interface：將需求載入輸入框並顯示編輯狀態。（程式：`#question`、`state.editingTask`）
+
+Interaction：修改、取消或重新送出。（程式：`editTask()`、`endTaskEdit()`、`submit()`）
+
+Harness：執行中、套用中或待確認時禁止編輯，不覆寫舊版本。（程式：`resolveRequest()`）
+
+Validation：確認 `editJobId`、`sourceVersion` 與來源任務。
+
+Operations：處理送出失敗、背景輪詢與草稿保留。
+
+History：保存來源版本、新 revision 與新版本結果。
+
+Test Data：測試從 v1 編輯成 v2。
+
+保存結果：`revision`、`sourceVersion` 與 `versions[]` 保存於 `runtime/assistant-state/state.json`。
+
+## 動作：重新送出需求
+
+目的：讓編輯後的需求重新執行，但保留原版本與原結果。
+
+流程：載入舊版本 → 修改需求 → 送出 → 重新讀取目前檔案 → 建立新提案或新結果。
+
+Interface：顯示最新版本與本次執行結果。（程式：`show()`、`#task-*`）
+
+Interaction：使用者重新送出並查看新結果。（程式：`submit()`、`/api/jobs`）
+
+Harness：不直接套用舊提案，必須重新檢查檔案與授權。
+
+Validation：檢查目前檔案版本與來源版本。
+
+Operations：處理模型、工具、逾時與取消限制。
+
+History：保存每一版的工具、驗證、回答與完成狀態。
+
+Test Data：測試舊檔案已被外部修改的情況。
+
+保存結果：需求版本保存於 `runtime/assistant-state/state.json`；檔案備份另存於 `runtime/backups`。
+
+## 動作：短確認訊息延續任務
+
+目的：讓「好修改」、「確認」、「繼續」等短訊息延續明確任務。
+
+流程：收到短確認 → 搜尋目前專案與對話 → 判斷候選 → 延續或要求使用者選擇。
+
+Interface：顯示候選任務與選擇介面。（程式：`chooseContinuation()`）
+
+Interaction：使用者選擇延續對象或補充完整需求。（程式：`continuationJobId`）
+
+Harness：短確認不能授予新權限、不重播舊提案，且必須重新檢查目前檔案。（程式：`resolveRequest()`）
+
+Validation：確認任務狀態、版本與候選唯一性。
+
+Operations：處理 `needs_input`、`partial`、`failed` 與取消。
+
+History：保存 `continuationOf`、來源版本與來源檔案。
+
+Test Data：測試單一候選、多個候選與無候選。
+
+保存結果：延續關係保存於 `runtime/assistant-state/state.json`。
+
+## 動作：處理輸入框狀態
+
+目的：讓輸入框反映目前編輯狀態，不覆蓋使用者的新草稿。
+
+流程：Edit 或載入版本時填入需求 → 成功送出後清空 → 執行中保持空白 → 失敗時保留草稿。
+
+Interface：Edit 或載入版本時填入需求，成功送出後清空，執行中不覆蓋新草稿。（程式：`#question`、`questionBaseline`）
+
+Interaction：使用者可以修改、取消或重新輸入，送出失敗時保留草稿。（程式：`submit()`、`endTaskEdit()`）
+
+Harness：輸入框內容不能直接改變已保存版本，重新送出前必須建立新的任務版本。（程式：`resolveRequest()`、`revision`）
+
+Validation：確認編輯中的任務與來源版本。
+
+Operations：處理背景輪詢與送出失敗。
+
+History：保存已送出的需求版本，不保存未送出的草稿。
+
+Test Data：測試送出、取消、失敗與背景更新。
+
+保存結果：已送出的需求進入 `runtime/assistant-state/state.json`；未送出的內容只留在目前頁面。
+
+## 動作：區分需求版本與檔案備份版本
+
+目的：避免把使用者需求版本與實際檔案備份混為一談。
+
+流程：保存 v1、v2、v3 需求版本；套用修改時另產生 `MMDDhhmm_序號` 備份版本。
+
+Interface：分別顯示需求版本與檔案差異。（程式：版本清單、`#execution-update-preview`）
+
+Interaction：使用者選擇需求版本或查看備份。
+
+Harness：需求版本不能直接重播寫入，檔案還原必須重新檢查目前內容。
+
+Validation：確認需求版本與檔案版本。
+
+Operations：處理備份、還原與孤立紀錄。
+
+History：保存任務 revision 與套用事件。
+
+Test Data：測試多次修改與還原。
+
+保存結果：`runtime/assistant-state/state.json` 保存需求版本；`runtime/backups` 保存檔案內容；`runtime/audit.jsonl` 保存操作事件。
+
+## 驗收與限制
+
+Interface：顯示版本、狀態、Diff 與草稿狀態；Interaction：驗證 Edit、View、短確認、重新送出與取消；Harness：驗證版本不可重播、授權不可擴大、目前檔案必須重新檢查。
+
+Validation：Edit 後產生新 revision、舊版本可查看、版本未被覆寫、檔案外部修改時拒絕套用。
+
+Operations：服務重啟後可查看歷史，但不恢復執行中的提案或過期授權。
+
+History：保留 revision、來源版本、任務結果、工具紀錄與驗證結果。
+
+Test Data：`needs_input` 短確認、多個候選任務、v1 重新送出、草稿保留與清空。
+
+保存結果：文字任務與需求版本進入 `runtime/assistant-state/state.json`；實際檔案備份與稽核資料進入 `runtime/backups` 與 `runtime/audit.jsonl`。

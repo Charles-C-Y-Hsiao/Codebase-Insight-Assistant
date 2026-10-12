@@ -4,7 +4,7 @@
 
 對話內執行紀錄已完成：需求下方可查看事件、工具狀態、耗時與 token；右側詳情跟隨選取任務，修改工作台置於該任務內。新版保存時間與驗證摘要，但不恢復可直接執行的歷史提案。
 
-最新增量支援 AI 提出最多 20 份新檔、逐份確認建立或略過；問題欄可貼入最多 5 張圖片，單張預設 10MB、可設定至 20MB，重載保留但服務重啟清除。修改工作台使用 flex／gap，時間線每項上下 margin 減少 5px。48 項後端測試及三套離線瀏覽器回歸通過；未呼叫付費 API。既有多檔修改、原子交易、刪檔與任意命令仍未開放。操作見 [查詢與修改工作台](../task_workbench_flow.md)，驗證摘要見 [version_history.md](../version_history.md)，完整報告見 [test_report.md](test_report.md)。以下 2026-09-16 內容為前版階段基準，其中「任意新檔」已由上述受限、逐份確認流程補足。
+最新增量支援 AI 提出最多 20 份新檔、逐份確認建立或略過；問題欄可貼入最多 5 張圖片，單張預設 10MB、可設定至 20MB，重載保留但服務重啟清除。修改工作台使用 flex／gap，時間線每項上下 margin 減少 5px。48 項後端測試及三套離線瀏覽器回歸通過；未呼叫付費 API。既有多檔修改、原子交易、刪檔與任意命令仍未開放。操作見 [查詢與修改工作台](../../task_workbench_flow.md)，驗證摘要見 [version_history.md](../../version_history.md)，完整報告見 [test_report.md](test_report.md)。以下 2026-09-16 內容為前版階段基準，其中「任意新檔」已由上述受限、逐份確認流程補足。
 
 ## 對話記憶與技能增量（2026-09-20）
 
@@ -92,9 +92,9 @@ Python 使用主機已找到的內建 runtime；其他電腦需設定 `CDA_PYTHO
 ### 3.3 詳細檔案
 
 - [evaluation_report.md](evaluation_report.md)：方法、前後比較、時間、限制、未完成項目。
-- [evaluation/results-2026-09-13.json](../../evaluation/results-2026-09-13.json)：本次逐題結果快照。
-- [version_history.md](../version_history.md)：回歸、文件解析及權限操作摘要；完整報告見 [test_report.md](test_report.md)。
-- [README.md](../README.md)：實作範圍、依賴、限制及操作方式。
+- [evaluation/results-2026-09-13.json](../../../evaluation/results-2026-09-13.json)：本次逐題結果快照。
+- [version_history.md](../../version_history.md)：回歸、文件解析及權限操作摘要；完整報告見 [test_report.md](test_report.md)。
+- [README.md](../../README.md)：實作範圍、依賴、限制及操作方式。
 
 ## 4. 手動驗收與實際檔案操作
 
@@ -164,7 +164,7 @@ Python 使用主機已找到的內建 runtime；其他電腦需設定 `CDA_PYTHO
 7. 保留程式控制的狀態、取消、有限重試、去重、整體時間與呼叫上限。核對對象、日期、單位、篩選條件，數值由程式計算。重要結論引用實際證據 ID 與位置；加入模型語意核對但不把它當正確性保證。分別顯示事實、推論、未確認與衝突。
 8. 模型與連線缺設定時，繼續能獨立完成的文件解析、索引及測試；列出缺少的具體欄位。每個來源明確標 mock/real/error，不能默默回退 Mock 並宣稱真實串接成功。
 
-交付：可執行程式、範例設定、更新 README、第二階段驗收測試與版本驗證摘要。完整報告保留於 `docs/archive/`，逐項記錄實際執行命令、結果、未執行與阻塞原因。保留第一階段回歸測試；完成後依 phase_guide.md 第二階段驗收表核對。
+交付：可執行程式、範例設定、更新 README、第二階段驗收測試與版本驗證摘要。完整報告保留於 `docs/backup/archive/`，逐項記錄實際執行命令、結果、未執行與阻塞原因。保留第一階段回歸測試；完成後依 phase_guide.md 第二階段驗收表核對。
 
 本次補充設定及授權範圍：
 [在此填入非機密設定、資料夾範圍、SQL/API 範例及核准驗證 profile；不要貼入 key]
@@ -175,7 +175,7 @@ Python 使用主機已找到的內建 runtime；其他電腦需設定 `CDA_PYTHO
 ```text
 請接續 code_and_document_assistant 第三階段的真實問題評估。離線合成評估與搜尋改善已完成，先讀 evaluation_report.md，再以代表性真實問題評估搜尋、修改與驗證品質。
 
-路徑 C:\Web_Practice\ReAct\code_and_document_assistant；npm 仍使用 C:\Web_Practice。先讀 README.md、phase_guide.md、version_history.md 與 docs/archive/ 中的完整報告，再區分已實測的真實連線與仍缺設定的功能。不要假設前一階段所有整合都完成。
+路徑 C:\Web_Practice\ReAct\code_and_document_assistant；npm 仍使用 C:\Web_Practice。先讀 README.md、phase_guide.md、version_history.md 與 docs/backup/archive/ 中的完整報告，再區分已實測的真實連線與仍缺設定的功能。不要假設前一階段所有整合都完成。
 
 1. 依我提供的代表性問題建立可重跑評估集：文件查詢、跨來源比對、@file 程式理解、JS/Python/HTML 修改、功能驗證、條件歧義、查無資料、資料衝突、錯誤、逾時、取消與提示注入。
 2. 每題記錄核准資料範圍、預期答案或判定規則、正確證據位置、可用工具、預期檔案差異及驗證方法。保留一組未用於調整的案例，避免只對範例調整。
@@ -204,7 +204,7 @@ Python 使用主機已找到的內建 runtime；其他電腦需設定 `CDA_PYTHO
 
 新增「建立新專案 · Select2 模擬需求」入口：核准既有父資料夾 → 選新專案名稱 → 預覽固定範本全文 → 主機確認建立子資料夾與 index.html → 自動索引與靜態檢查 → 瀏覽器功能預覽。
 
-詳細操作與本次生成檔案見 [select2_project_flow.md](../select2_project_flow.md)。專案載入、授權、索引與 `@file` 見 [project_workspace_flow.md](../project_workspace_flow.md)。已實測 1 項包含多個權限／寫入情境的後端測試、Chrome 完整建立流程及真實 CDN 互動；26 項原有回歸仍通過。需要重啟原本服務才會出現新入口。
+詳細操作與本次生成檔案見 [select2_project_flow.md](../../select2_project_flow.md)。專案載入、授權、索引與 `@file` 見 [project_workspace_flow.md](../../project_workspace_flow.md)。已實測 1 項包含多個權限／寫入情境的後端測試、Chrome 完整建立流程及真實 CDN 互動；26 項原有回歸仍通過。需要重啟原本服務才會出現新入口。
 
 目前只產生 Select2 產品選單固定 Mock 範本，並非任意自然語言專案生成。沒有新增模型、SQL 或 API 連線；jQuery 與 Select2 是瀏覽器實際從 CDN 載入。一般程式的功能驗證仍依第 5 節補充設定；這次只對固定範本提供隔離預覽與已知互動測試。
 

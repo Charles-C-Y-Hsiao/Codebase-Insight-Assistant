@@ -21,7 +21,7 @@ async function main(){
     await page.waitForSelector('#files input');
     console.log('Assistant loaded');
     await page.click('#open-permission');
-    await page.type('#folder',parent);await page.click('#allow-write');await page.click('#allow-verify');await page.type('#admin',adminToken);
+    await page.type('#folder',parent);await page.$eval('#allow-write',element=>{if(!element.checked)element.click();});await page.$eval('#allow-verify',element=>{if(!element.checked)element.click();});await page.type('#admin',adminToken);
     await page.click('#request-root');await page.waitForFunction(()=>document.querySelector('#root-status').textContent.includes('待主機'));
     assert.deepEqual(await fs.readdir(parent),[],'授權請求不可寫入');
     await page.click('#approve-root');await page.waitForFunction(()=>document.querySelector('#root-status').textContent.includes('已依請求授權'));
@@ -33,6 +33,8 @@ async function main(){
     await page.click('#demo-panel > summary');
     await page.evaluate(()=>document.querySelector('#project-builder').open=true);
     await page.waitForFunction(()=>document.querySelectorAll('#project-root option').length===1);
+    assert.deepEqual(await page.$eval('#project-builder-content',element=>({display:getComputedStyle(element).display,direction:getComputedStyle(element).flexDirection,gap:getComputedStyle(element).gap,children:element.children.length})),{display:'flex',direction:'column',gap:'3px',children:8});
+    assert.deepEqual(await page.$eval('#project-root',element=>({height:getComputedStyle(element).height,paddingTop:getComputedStyle(element).paddingTop,paddingBottom:getComputedStyle(element).paddingBottom})),{height:'30px',paddingTop:'3px',paddingBottom:'3px'});
     await page.click('#project-propose');await page.waitForSelector('#project-apply');
     console.log('Proposal previewed');
     const project=path.join(parent,'select2_product_picker'),file=path.join(project,'index.html');

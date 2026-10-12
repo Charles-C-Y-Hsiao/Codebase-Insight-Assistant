@@ -1,0 +1,43 @@
+{
+  "seriesId": "53a68b57-a147-4443-a801-31038ef15a4f",
+  "seriesName": "新圖片系列",
+  "slug": "pros-cons-quick-decision-guide",
+  "version": 1,
+  "previousJobId": null,
+  "draftJobId": null,
+  "model": "gpt-image-2.5-sunburst",
+  "prompt": "品牌／視覺定位：友善、清楚、教育型的手繪技術資訊圖表風格。版面比例：直式 1181×1331，白色或暖白背景，留有寬裕邊界；內容採左右對稱雙欄，中間以細直線分隔，搭配均勻間距與清楚的閱讀層級。色彩：深鈷藍、靛藍用於標題、框線、箭頭與區塊標籤；黑色或深灰用於內文與線稿；綠色表示優點／核取，紅色或低飽和紅表示缺點／提醒，橘色僅作品牌或少量重點色。插畫與排版：細微不規則的深藍或海軍藍線條、簡潔黑色手繪圖示、圓角手繪框、扁平 2D、無寫實感；標題可採手寫標記風格，內文與表格需清楚易讀。共用結構可包含頂部品牌標誌、置中主標題與副標題、雙欄主體、流程圖、Pros／Cons 區塊、中段比較表、使用時機清單、Quick Decision Guide，以及底部最佳實務／提醒區。禁止：寫實攝影、3D 物件、立體渲染、光澤漸層、深色背景、霓虹未來風、過度裝飾、雜亂或失衡構圖、過多色彩、密集且難讀的段落、透視不一致、裁切內容、扭曲或不可辨識文字。細小英文、表格與精確文字不宜完全依賴圖片生成模型，可後製排版。\n\n參考圖一，我要將下方流程(#### 2. 摘要更新)變為一張圖片，我希望重複有的位置可以在差不多的位置上，\n\n#### 2. 摘要更新\n```mermaid\nflowchart LR\n  A[圖片專案／系列]\n  B[查看目前記憶]\n  C[按下更新摘要]\n  D[AI 外送授權與系列範圍檢查]\n  E[找出未整理對話]\n  F[產生候選摘要<br/>專案摘要＋系列摘要]\n  G[顯示摘要差異]\n  H{使用者決定}\n  I[Apply<br/>套用]\n  J[Modify<br/>修改後套用]\n  K[Cancel<br/>保留原摘要]\n  L[(保存摘要版本<br/>state.json)]\n  M[更新 image-project-memory]\n\n  A --> B --> C --> D --> E --> F --> G --> H\n  H --> I --> L --> M\n  H --> J --> L\n  H --> K --> M\n  M -.->|⊕ 回到圖片創作| N[選擇創作草稿]\n\n  classDef common fill:#e8eef5,stroke:#64748b,color:#172033\n  classDef memory fill:#fef3c7,stroke:#d97706,color:#172033\n  classDef decision fill:#ede9fe,stroke:#7c3aed,color:#172033\n  classDef storage fill:#f1f5f9,stroke:#64748b,color:#172033\n  classDef output fill:#dcfce7,stroke:#16a34a,color:#172033\n\n  class A,B,C,D common\n  class E,F,G memory\n  class H,I,J,K decision\n  class L storage\n  class M,N output\n```\n(參考重複使用的位置)\n### 所有流程\n```mermaid\nflowchart TB\n  U[使用者]\n  A[圖片專案／系列]\n  B[輸入需求與參考圖片]\n  C{選擇操作}\n\n  subgraph Interface[介面層 Interface]\n    I1[圖片討論任務卡]\n    I2[image-project-memory<br/>摘要、草稿與版本]\n    I3[產圖確認視窗]\n    I4[圖片創作任務卡]\n  end\n\n  subgraph Interaction[互動層 Interaction]\n    X1[圖片討論]\n    X2[更新摘要]\n    X3[圖片創作與多輪修改]\n  end\n\n  subgraph Harness[Harness 層]\n    H0[AI 外送授權與模型能力檢查]\n    H1[取得上下文<br/>最近 6 筆討論＋專案／系列摘要]\n    H2[分析圖片與回覆]\n    H3[形成創作草稿]\n    H4[找出未整理對話]\n    H5[產生專案／系列摘要候選]\n    H6[組合完整提示詞]\n    H7[Image Generation Tool<br/>生成或編輯圖片]\n  end\n\n  subgraph Save[保存與回讀]\n    P1[(state.json<br/>對話、草稿、摘要、版本關係)]\n    P2[(圖片檔與討論附件)]\n    P3[(圖片 JSON<br/>提示詞、摘要版本、參考圖、previousJobId)]\n    P4[API 回讀目前專案與 seriesId]\n  end\n\n  U --> A --> B --> C\n  C -->|圖片討論| X1 --> H0 --> H1 --> H2 --> H3\n  H3 --> P1\n  H3 --> P2\n  P1 --> P4 --> I1\n  P2 --> P4\n\n  I2 -->|按更新摘要| X2 --> H0 --> H4 --> H5\n  H5 --> I2\n  I2 -->|使用者 Apply| P1\n\n  C -->|圖片創作| X3\n  I1 -->|使用最新草稿| X3\n  I2 -->|選擇草稿或上一版| X3\n  X3 --> I3 -->|確認完整提示詞| H0 --> H6 --> H7\n  H7 --> P1\n  H7 --> P2\n  H7 --> P3\n  P1 --> P4 --> I2\n  P3 --> P4 --> I4\n\n  I4 -.->|⊕ 提出下一輪修改| X3\n  I2 -.->|⊕ 回到圖片討論| B\n\n  classDef common fill:#e8eef5,stroke:#64748b,color:#172033\n  classDef interface fill:#dcfce7,stroke:#16a34a,color:#172033\n  classDef interaction fill:#ede9fe,stroke:#7c3aed,color:#172033\n  classDef harness fill:#fee2e2,stroke:#dc2626,color:#172033\n  classDef storage fill:#f1f5f9,stroke:#64748b,color:#172033\n\n  class A,B,C common\n  class I1,I2,I3,I4 interface\n  class X1,X2,X3 interaction\n  class H0,H1,H2,H3,H4,H5,H6,H7 harness\n  class P1,P2,P3,P4 storage\n```",
+  "currentRequest": "參考圖一，我要將下方流程(#### 2. 摘要更新)變為一張圖片，我希望重複有的位置可以在差不多的位置上，\n\n#### 2. 摘要更新\n```mermaid\nflowchart LR\n  A[圖片專案／系列]\n  B[查看目前記憶]\n  C[按下更新摘要]\n  D[AI 外送授權與系列範圍檢查]\n  E[找出未整理對話]\n  F[產生候選摘要<br/>專案摘要＋系列摘要]\n  G[顯示摘要差異]\n  H{使用者決定}\n  I[Apply<br/>套用]\n  J[Modify<br/>修改後套用]\n  K[Cancel<br/>保留原摘要]\n  L[(保存摘要版本<br/>state.json)]\n  M[更新 image-project-memory]\n\n  A --> B --> C --> D --> E --> F --> G --> H\n  H --> I --> L --> M\n  H --> J --> L\n  H --> K --> M\n  M -.->|⊕ 回到圖片創作| N[選擇創作草稿]\n\n  classDef common fill:#e8eef5,stroke:#64748b,color:#172033\n  classDef memory fill:#fef3c7,stroke:#d97706,color:#172033\n  classDef decision fill:#ede9fe,stroke:#7c3aed,color:#172033\n  classDef storage fill:#f1f5f9,stroke:#64748b,color:#172033\n  classDef output fill:#dcfce7,stroke:#16a34a,color:#172033\n\n  class A,B,C,D common\n  class E,F,G memory\n  class H,I,J,K decision\n  class L storage\n  class M,N output\n```\n(參考重複使用的位置)\n### 所有流程\n```mermaid\nflowchart TB\n  U[使用者]\n  A[圖片專案／系列]\n  B[輸入需求與參考圖片]\n  C{選擇操作}\n\n  subgraph Interface[介面層 Interface]\n    I1[圖片討論任務卡]\n    I2[image-project-memory<br/>摘要、草稿與版本]\n    I3[產圖確認視窗]\n    I4[圖片創作任務卡]\n  end\n\n  subgraph Interaction[互動層 Interaction]\n    X1[圖片討論]\n    X2[更新摘要]\n    X3[圖片創作與多輪修改]\n  end\n\n  subgraph Harness[Harness 層]\n    H0[AI 外送授權與模型能力檢查]\n    H1[取得上下文<br/>最近 6 筆討論＋專案／系列摘要]\n    H2[分析圖片與回覆]\n    H3[形成創作草稿]\n    H4[找出未整理對話]\n    H5[產生專案／系列摘要候選]\n    H6[組合完整提示詞]\n    H7[Image Generation Tool<br/>生成或編輯圖片]\n  end\n\n  subgraph Save[保存與回讀]\n    P1[(state.json<br/>對話、草稿、摘要、版本關係)]\n    P2[(圖片檔與討論附件)]\n    P3[(圖片 JSON<br/>提示詞、摘要版本、參考圖、previousJobId)]\n    P4[API 回讀目前專案與 seriesId]\n  end\n\n  U --> A --> B --> C\n  C -->|圖片討論| X1 --> H0 --> H1 --> H2 --> H3\n  H3 --> P1\n  H3 --> P2\n  P1 --> P4 --> I1\n  P2 --> P4\n\n  I2 -->|按更新摘要| X2 --> H0 --> H4 --> H5\n  H5 --> I2\n  I2 -->|使用者 Apply| P1\n\n  C -->|圖片創作| X3\n  I1 -->|使用最新草稿| X3\n  I2 -->|選擇草稿或上一版| X3\n  X3 --> I3 -->|確認完整提示詞| H0 --> H6 --> H7\n  H7 --> P1\n  H7 --> P2\n  H7 --> P3\n  P1 --> P4 --> I2\n  P3 --> P4 --> I4\n\n  I4 -.->|⊕ 提出下一輪修改| X3\n  I2 -.->|⊕ 回到圖片討論| B\n\n  classDef common fill:#e8eef5,stroke:#64748b,color:#172033\n  classDef interface fill:#dcfce7,stroke:#16a34a,color:#172033\n  classDef interaction fill:#ede9fe,stroke:#7c3aed,color:#172033\n  classDef harness fill:#fee2e2,stroke:#dc2626,color:#172033\n  classDef storage fill:#f1f5f9,stroke:#64748b,color:#172033\n\n  class A,B,C common\n  class I1,I2,I3,I4 interface\n  class X1,X2,X3 interaction\n  class H0,H1,H2,H3,H4,H5,H6,H7 harness\n  class P1,P2,P3,P4 storage\n```",
+  "projectSummary": "品牌／視覺定位：友善、清楚、教育型的手繪技術資訊圖表風格。版面比例：直式 1181×1331，白色或暖白背景，留有寬裕邊界；內容採左右對稱雙欄，中間以細直線分隔，搭配均勻間距與清楚的閱讀層級。色彩：深鈷藍、靛藍用於標題、框線、箭頭與區塊標籤；黑色或深灰用於內文與線稿；綠色表示優點／核取，紅色或低飽和紅表示缺點／提醒，橘色僅作品牌或少量重點色。插畫與排版：細微不規則的深藍或海軍藍線條、簡潔黑色手繪圖示、圓角手繪框、扁平 2D、無寫實感；標題可採手寫標記風格，內文與表格需清楚易讀。共用結構可包含頂部品牌標誌、置中主標題與副標題、雙欄主體、流程圖、Pros／Cons 區塊、中段比較表、使用時機清單、Quick Decision Guide，以及底部最佳實務／提醒區。禁止：寫實攝影、3D 物件、立體渲染、光澤漸層、深色背景、霓虹未來風、過度裝飾、雜亂或失衡構圖、過多色彩、密集且難讀的段落、透視不一致、裁切內容、扭曲或不可辨識文字。細小英文、表格與精確文字不宜完全依賴圖片生成模型，可後製排版。",
+  "projectSummaryVersion": 1,
+  "seriesSummary": "",
+  "seriesSummaryVersion": 0,
+  "referenceJobIds": [],
+  "references": [
+    {
+      "id": "edeb357b-7095-40aa-9cfb-0939db7df5cc",
+      "name": "pros-cons-quick-decision-guide-v4.png",
+      "mime": "image/png",
+      "size": 1836324,
+      "width": 1181,
+      "height": 1332,
+      "persistedFileName": "53a68b57-a147-4443-a801-31038ef15a4f-attachment-edeb357b-7095-40aa-9cfb-0939db7df5cc.png",
+      "source": "pasted"
+    }
+  ],
+  "createdAt": "2026-10-11T22:47:06.645Z",
+  "fileName": "pros-cons-quick-decision-guide-v1.png",
+  "mime": "image/png",
+  "imageProject": {
+    "id": "c04c011c-74d1-48d9-8c3f-ecf2c0652d61",
+    "name": "cf2c0652d61",
+    "folderName": "cf2c0652d61"
+  },
+  "outputFileName": "cf2c0652d61-pros-cons-quick-decision-guide-1038ef15a4f-v1.png",
+  "response": {
+    "answer": "已依據本次新增要求與目前圖片系列記憶開始創作。",
+    "source": "image-discussion"
+  },
+  "width": 1181,
+  "height": 1331
+}

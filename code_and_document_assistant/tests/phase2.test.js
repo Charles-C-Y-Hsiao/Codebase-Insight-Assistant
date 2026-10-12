@@ -73,7 +73,7 @@ test('要求 real 資料工具時不回傳 Mock 金額',async()=>{
   const script="require('./src/tools.js').execute('sqlserver.orders',{product:'A',period:'2026 Q1'}).then(()=>process.exit(2)).catch(e=>{if(e.code!=='CONFIG_REQUIRED')process.exit(3);console.log(e.code);})";
   const result=await run(process.execPath,['-e',script],{cwd:path.resolve(__dirname,'..'),env:{...process.env,CDA_DATA_MODE:'real'},windowsHide:true,timeout:5000});assert.match(result.stdout,/CONFIG_REQUIRED/);
 });
-test('HTTP 真實提案、套用與還原需主機管理碼與正確版本',async t=>{
+test('HTTP 真實提案在首次確認後，可於授權期限內套用與還原',async t=>{
   const runtime=await fs.mkdtemp(path.join(root,'http-'));const {app,workspace}=await createApp({runtime,adminToken:'local-test-admin'});const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));
   const origin='http://127.0.0.1:'+server.address().port;const session=await fetch(origin+'/api/session');const headers={cookie:session.headers.get('set-cookie').split(';')[0],'x-cda-token':(await session.json()).csrf,'content-type':'application/json'};
   const post=(url,body)=>fetch(origin+url,{method:'POST',headers,body:JSON.stringify(body)});
@@ -82,7 +82,6 @@ test('HTTP 真實提案、套用與還原需主機管理碼與正確版本',asyn
   headers['x-cda-project']=f.rootId;
   assert.equal((await post('/api/proposals',body)).status,403);
   const response=await post('/api/proposals',{...body,adminToken:'local-test-admin'});assert.equal(response.status,202);const job=await response.json();
-  assert.equal((await post('/api/jobs/'+job.id+'/apply',{})).status,403);
-  const applied=await post('/api/jobs/'+job.id+'/apply',{adminToken:'local-test-admin'});assert.equal(applied.status,200);assert.equal((await applied.json()).result.mock,false);
-  assert.equal((await post('/api/jobs/'+job.id+'/restore',{adminToken:'local-test-admin'})).status,200);assert.equal(await fs.readFile(f.path,'utf8'),'module.exports=1;');
+  const applied=await post('/api/jobs/'+job.id+'/apply',{});assert.equal(applied.status,200);assert.equal((await applied.json()).result.mock,false);
+  assert.equal((await post('/api/jobs/'+job.id+'/restore',{})).status,200);assert.equal(await fs.readFile(f.path,'utf8'),'module.exports=1;');
 });

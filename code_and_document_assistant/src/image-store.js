@@ -7,6 +7,7 @@ class ImageStore{
   setLimit(owner,value){if(!Number.isInteger(value)||value<1||value>20)throw new Error('單張圖片上限須為 1–20 MB');this.settings.set(owner,value);return value;}
   list(owner,project,conversation){return [...this.items.values()].filter(i=>i.owner===owner&&i.project===project&&i.conversation===conversation&&!i.jobId).map(i=>this.meta(i));}
   meta(i){return {id:i.id,name:i.name,mime:i.mime,size:i.buffer.length,width:i.width,height:i.height};}
+  has(owner,id){const item=this.items.get(id);return !!item&&item.owner===owner;}
   get(owner,id){const item=this.items.get(id);if(!item||item.owner!==owner)throw new Error('圖片不存在或已隨服務重啟清除');return item;}
   add(owner,project,conversation,mime,buffer,name='貼入的圖片'){
     if(!Buffer.isBuffer(buffer)||!buffer.length||buffer.length>this.limit(owner)*MB)throw new Error('圖片超過目前單張 '+this.limit(owner)+' MB 上限或內容為空');
@@ -24,6 +25,6 @@ class ImageStore{
     return ids.map(id=>{const i=this.get(owner,id);if(i.project!==project||i.conversation!==conversation||i.jobId)throw new Error('圖片不屬於目前對話草稿');if(i.buffer.length>this.limit(owner)*MB)throw new Error('草稿圖片超過目前設定上限，請移除或調高上限');return i;});
   }
   remove(owner,project,conversation,id){const i=this.get(owner,id);if(i.project!==project||i.conversation!==conversation||i.jobId)throw new Error('只能移除目前草稿的圖片');this.items.delete(id);this.bytes-=i.buffer.length;}
-  clearConversation(owner,project,conversation){for(const [id,i] of this.items)if(i.owner===owner&&i.project===project&&i.conversation===conversation){this.bytes-=i.buffer.length;this.items.delete(id);}}
+  clearConversation(owner,project,conversation){let cleared=0;for(const [id,i] of this.items)if(i.owner===owner&&i.project===project&&i.conversation===conversation){this.bytes-=i.buffer.length;this.items.delete(id);cleared++;}return cleared;}
 }
 module.exports={ImageStore};

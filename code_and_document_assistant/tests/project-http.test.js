@@ -46,9 +46,11 @@ test('HTTP 專案隔離、參考唯讀、對話持久化、重啟不恢復修改
   assert.equal((await request('/api/jobs/'+q.id,undefined,b.id)).status,400);
   assert.equal((await request('/api/conversations',undefined,b.id,[],ca)).status,400);
   assert.equal((await request('/api/conversations',undefined,b.id,[],cb)).body.jobs.length,0);
-  const p=(await request('/api/proposals',{fileId:af.id,version:af.hash,after:'const edited=1;',adminToken:'abcdef'},a.id,[],ca)).body;
+  const proposalResult=await request('/api/proposals',{fileId:af.id,version:af.hash,after:'const edited=1;'},a.id,[],ca);
+  assert.equal(proposalResult.status,202,'同一工作階段在授權有效期內不需再次提供管理碼');
+  const p=proposalResult.body;
   assert.equal((await request('/api/jobs/'+p.id+'/apply',{adminToken:'abcdef'},b.id)).status,400);
-  assert.equal((await request('/api/jobs/'+p.id+'/apply',{adminToken:'abcdef'},a.id,[],ca)).status,200);
+  assert.equal((await request('/api/jobs/'+p.id+'/apply',{},a.id,[],ca)).status,200,'確認在後續請求中仍可用');
   assert.equal(await fs.readFile(bf.path,'utf8'),'const marker = "b";');
   const newChat=(await request('/api/conversations',{},a.id)).body.id;
   assert.notEqual(newChat,ca);

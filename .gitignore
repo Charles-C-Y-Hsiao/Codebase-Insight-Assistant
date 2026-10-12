@@ -1,0 +1,11 @@
+# Removed legacy root application files
+/README.md
+/cli-agent.js
+/public/app.js
+/public/index.html
+/public/style.css
+/server.js
+/tool-agent.js
+/tools/calc.js
+/tools/index.js
+/tools/time.js

@@ -36,14 +36,15 @@ function foldDiffRows(output,prefs,onChange){
     }
   });
 }
-function createDiffViewer(job){
-  const comparison=node('details');comparison.id='diff-details-'+job.id;comparison.open=job.status==='awaiting_approval';
+function createDiffViewer(job,prefix=''){
+  const comparison=node('details');comparison.id=prefix+'diff-details-'+job.id;comparison.open=job.status==='awaiting_approval';
   const prefs=diffPreferences.get(job.id)||{mode:'line-by-line',all:false,blocks:new Set()};diffPreferences.set(job.id,prefs);
   const summary=node('summary'),icon=node('i',undefined,'fi fi-br-angle-small-'+(comparison.open?'down':'right'));icon.id='diff-details-toggle-'+job.id;icon.setAttribute('aria-hidden','true');summary.append(icon,node('span','展開／收合修改前後內容'));comparison.append(summary);
   const toolbar=node('div',undefined,'diff-view-toolbar'),mode=node('select');mode.setAttribute('aria-label','差異比較方式');mode.id='diff-mode-'+job.id;
   for(const [value,label] of [['line-by-line','逐行差異'],['side-by-side','左右並排']]){const option=node('option',label);option.value=value;mode.append(option);}mode.value=prefs.mode;
   const expand=node('button',prefs.all?'收合未修改內容':'展開全部未修改內容');expand.type='button';
-  const output=node('div',undefined,'diff-view-output');output.id='diff-output-'+job.id;output.setAttribute('aria-live','polite');
+  const output=node('div',undefined,'diff-view-output');output.id=prefix+'diff-output-'+job.id;output.setAttribute('aria-live','polite');
+  toolbar.id=prefix+'diff-view-toolbar-'+job.id;
   const counts=node('span',undefined,'diff-counts');toolbar.append(mode,expand,counts);
   for(const [label,content] of [['複製修改前',job.proposal.before],['複製修改後',job.proposal.after]]){const copy=node('button',label);copy.type='button';copy.onclick=async()=>{try{await navigator.clipboard.writeText(content);copy.textContent='已複製';setTimeout(()=>copy.textContent=label,1200);}catch{copy.textContent='複製失敗';}};toolbar.append(copy);}
   comparison.append(toolbar,output);let renderVersion=0,drawn=false;

@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const {spawn} = require('node:child_process');
 const parsers = require('./parsers.js');
 const {excluded,within}=require('./path-policy.js');
+const {VerificationRules}=require('./verification-rules.js');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const editable = new Map([
   ['discount.js', ['return amount - rate;', 'return amount * (1 - rate);']],
@@ -12,9 +13,10 @@ const editable = new Map([
 ]);
 const codeExtensions=new Set(['.js','.cjs','.mjs','.py','.html','.css','.json']);
 class Workspace {
-  constructor(base,limits) { this.base=base; this.limits=limits; this.roots=[]; this.files=[]; this.issues=[]; this.updatedAt=null; this.indexing=false; this.proposals=new Map(); this.writing=false; }
+  constructor(base,limits) { this.base=base; this.limits=limits; this.rules=new VerificationRules(base); this.roots=[]; this.files=[]; this.issues=[]; this.updatedAt=null; this.indexing=false; this.proposals=new Map(); this.writing=false; }
   async init(examples, extraExamples=[]) {
     await fs.mkdir(this.base,{recursive:true});
+    await this.rules.init();
     this.demo=path.join(this.base,'demo');
     await fs.mkdir(this.demo,{recursive:true});
     for (const source of [examples,...extraExamples]) {
@@ -205,7 +207,7 @@ class Workspace {
   }
   async listVersions() {
     const auditPath=path.join(this.base,'audit.jsonl'),records=[];
-    try { for(const line of (await fs.readFile(auditPath,'utf8')).split(/\r?\n/)){if(!line.trim())continue;let item;try{item=JSON.parse(line);}catch{continue;}if(item.action==='apply'&&item.versionId)records.push({id:item.versionId,versionId:item.versionId,time:item.time,path:item.path||null,backup:item.backup,backupExists:false});} }
+    try { for(const line of (await fs.readFile(auditPath,'utf8')).split(/\r?\n/)){if(!line.trim())continue;let item;try{item=JSON.parse(line);}catch{continue;}if(item.action==='apply'&&(item.versionId||item.backup)){const versionId=item.versionId||`legacy-${path.basename(item.backup)}`;records.push({id:versionId,versionId,time:item.time,path:item.path||null,backup:item.backup,backupExists:false,legacy:!item.versionId});} } }
     catch(e){if(e.code!=='ENOENT')throw e;}
     const seen=new Set();for(const item of records){seen.add(item.backup);try{await fs.access(item.backup);item.backupExists=true;}catch{}}
     const dir=path.join(this.base,'backups');try { for(const name of await fs.readdir(dir)){const full=path.join(dir,name);if(seen.has(full))continue;const m=name.match(/-(\d{8}_\d{2})\.txt$/);if(m)records.push({id:'orphan-'+m[1]+'-'+name,versionId:m[1],time:null,path:null,backup:full,backupExists:true,orphan:true});} } catch(e){if(e.code!=='ENOENT')throw e;}
@@ -214,24 +216,59 @@ class Workspace {
   async removeVersions(ids) {
     const wanted=new Set(Array.isArray(ids)?ids.filter(x=>typeof x==='string'):[]);if(!wanted.size)throw new Error('請至少選取一個版本');
     const auditPath=path.join(this.base,'audit.jsonl'),kept=[],removed=[];
-    try { for(const line of (await fs.readFile(auditPath,'utf8')).split(/\r?\n/)){if(!line.trim())continue;let item;try{item=JSON.parse(line);}catch{kept.push(line);continue;}if(item.action==='apply'&&wanted.has(item.versionId)){if(item.backup&&path.dirname(path.resolve(item.backup))===path.resolve(path.join(this.base,'backups')))await fs.unlink(item.backup).catch(()=>{});removed.push(item.versionId);continue;}kept.push(line);}await fs.writeFile(auditPath,kept.join('\n')+'\n',{encoding:'utf8'}); }
+    try { for(const line of (await fs.readFile(auditPath,'utf8')).split(/\r?\n/)){if(!line.trim())continue;let item;try{item=JSON.parse(line);}catch{kept.push(line);continue;}const versionId=item.versionId||(item.backup?`legacy-${path.basename(item.backup)}`:null);if(item.action==='apply'&&versionId&&wanted.has(versionId)){if(item.backup&&path.dirname(path.resolve(item.backup))===path.resolve(path.join(this.base,'backups')))await fs.unlink(item.backup).catch(()=>{});removed.push(versionId);continue;}kept.push(line);}await fs.writeFile(auditPath,kept.join('\n')+'\n',{encoding:'utf8'}); }
     catch(e){if(e.code!=='ENOENT')throw e;}
     const files=await fs.readdir(path.join(this.base,'backups')).catch(()=>[]);for(const id of wanted)for(const name of files)if(name.endsWith(`-${id}.txt`)){await fs.unlink(path.join(this.base,'backups',name)).catch(()=>{});removed.push(id);}
     return {removed:[...new Set(removed)],message:`已清除 ${new Set(removed).size} 個版本記錄與備份檔`};
   }
-  async verify(full,content) {
-    if(/\.(js|cjs|mjs)$/.test(full)) return new Promise(resolve=>{
+  verificationRules(){return this.rules.list();}
+  async setVerificationRule(id,enabled){const rule=await this.rules.set(id,enabled);await this.audit('verification-rule',{ruleId:id,enabled});return rule;}
+  verificationProfile(full){
+    if(/\.(js|cjs|mjs)$/.test(full))return 'node-syntax';
+    if(full.endsWith('.py'))return 'python-compile';
+    if(full.endsWith('.json'))return 'json-parse';
+    if(full.endsWith('.css'))return 'css-basic';
+    if(full.endsWith('.html'))return 'html-static';
+    return null;
+  }
+  async verify(full,content,{phase='after_apply'}={}) {
+    const profile=this.verificationProfile(full);
+    if(!profile)return {status:'not_run',phase,message:'未提供此格式驗證 profile'};
+    if(!this.rules.has(profile))return {status:'not_run',phase,profile,message:'此驗證規則目前已停用'};
+    if(profile==='node-syntax') return new Promise(resolve=>{
       const child=spawn(process.execPath,['--check','--input-type='+ (full.endsWith('.mjs')?'module':'commonjs')],{shell:false,windowsHide:true,timeout:3000,env:{SystemRoot:process.env.SystemRoot||'',PATH:path.dirname(process.execPath)}});
       let output=''; child.stderr.on('data',d=>{output=(output+d).slice(0,2000);});
       child.stdin.on('error',()=>{});child.stdin.end(content);
       child.on('error',()=>resolve({status:'failed',kind:'語法檢查',message:'無法啟動 Node 驗證器'}));
-      child.on('close',code=>resolve({status:code===0?'passed':'failed',kind:'Node.js 語法檢查',profile:'node-syntax',command:[process.execPath,'--check','--input-type='+(full.endsWith('.mjs')?'module':'commonjs')],input:'stdin',output,exitCode:code,message:code===0?'node --check 通過；未執行使用者程式或功能測試':output}));
+      child.on('close',code=>resolve({status:code===0?'passed':'failed',phase,kind:'Node.js 語法檢查',profile:'node-syntax',command:[process.execPath,'--check','--input-type='+(full.endsWith('.mjs')?'module':'commonjs')],input:'stdin',output,exitCode:code,message:code===0?'node --check 通過；未執行使用者程式或功能測試':output}));
     });
-    if(full.endsWith('.py')) {try {const result=await parsers.worker('verify-python',Buffer.from(content),{timeoutMs:3000});return {...result,kind:'Python 靜態語法',profile:'python-compile',exitCode:0};}catch(e){return {status:parsers.pythonPath()?'failed':'not_run',kind:'Python 靜態語法',profile:'python-compile',message:e.message};}}
-    if(full.endsWith('.json')) {try{JSON.parse(content);return {status:'passed',profile:'json-parse',message:'JSON 語法有效'};}catch{return {status:'failed',profile:'json-parse',message:'JSON 語法錯誤'};}}
-    if(full.endsWith('.css'))return {status:'not_run',profile:'css',message:'尚無已核准 CSS 驗證器'};
-    if(full.endsWith('.html')){try{return {...await parsers.worker('verify-html',Buffer.from(content),{timeoutMs:3000}),kind:'HTML 基本結構',profile:'html-static'};}catch(e){return {status:'not_run',kind:'HTML 基本結構',message:e.message};}}
-    return {status:'not_run',message:'未提供此格式驗證 profile'};
+    if(profile==='python-compile') {try {const result=await parsers.worker('verify-python',Buffer.from(content),{timeoutMs:3000});return {...result,phase,kind:'Python 靜態語法',profile,exitCode:0};}catch(e){return {status:parsers.pythonPath()?'failed':'not_run',phase,kind:'Python 靜態語法',profile,message:e.message};}}
+    if(profile==='json-parse') {try{JSON.parse(content);return {status:'passed',phase,profile,message:'JSON 語法有效'};}catch{return {status:'failed',phase,profile,message:'JSON 語法錯誤'};}}
+    if(profile==='css-basic')return verifyCss(content,phase);
+    if(profile==='html-static'){try{return {...await parsers.worker('verify-html',Buffer.from(content),{timeoutMs:3000}),phase,kind:'HTML 基本結構',profile};}catch(e){return {status:'not_run',phase,kind:'HTML 基本結構',profile,message:e.message};}}
+    return {status:'not_run',phase,profile,message:'未提供此格式驗證 profile'};
   }
+}
+function verifyCss(content,phase){
+  let depth=0,comment=false,string=null,escaped=false;
+  for(let index=0;index<content.length;index++){
+    const char=content[index],next=content[index+1];
+    if(comment){if(char==='*'&&next==='/'){comment=false;index++;}continue;}
+    if(string){if(escaped){escaped=false;continue;}if(char==='\\'){escaped=true;continue;}if(char===string)string=null;continue;}
+    if(char==='/'&&next==='*'){comment=true;index++;continue;}
+    if(char==='"'||char==="'"){string=char;continue;}
+    if(char==='{')depth++;
+    if(char==='}'&&--depth<0)return {status:'failed',phase,kind:'CSS 基本語法',profile:'css-basic',message:'CSS 括號結構錯誤：出現多餘的 }'};
+  }
+  if(comment)return {status:'failed',phase,kind:'CSS 基本語法',profile:'css-basic',message:'CSS 註解未關閉'};
+  if(string)return {status:'failed',phase,kind:'CSS 基本語法',profile:'css-basic',message:'CSS 字串引號未關閉'};
+  if(depth)return {status:'failed',phase,kind:'CSS 基本語法',profile:'css-basic',message:'CSS 括號結構錯誤：缺少 }'};
+  const normalized=content.replace(/\/\*[\s\S]*?\*\//g,'').replace(/(["'])(?:\\.|(?!\1)[^\\])*\1/g,'""');
+  for(const match of normalized.matchAll(/\{([^{}]*)\}/g))for(const declaration of match[1].split(';')){
+    const value=declaration.trim();if(!value||value.startsWith('@'))continue;
+    const colon=value.indexOf(':');
+    if(colon<1||!value.slice(colon+1).trim())return {status:'failed',phase,kind:'CSS 基本語法',profile:'css-basic',message:'CSS 宣告結構錯誤：每個宣告需要「屬性: 值」'};
+  }
+  return {status:'passed',phase,kind:'CSS 基本語法',profile:'css-basic',message:'CSS 基本括號、註解與字串結構通過；未執行正式 CSS linter'};
 }
 module.exports={Workspace,hash};

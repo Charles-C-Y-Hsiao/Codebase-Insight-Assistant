@@ -2,6 +2,164 @@
 
 本文件是專案入口，提供啟動方式、功能總覽、限制與詳細文件索引。實際流程以各專題文件為準。
 
+本文件中的相對路徑皆以 `C:\Web_Practice\ReAct\code_and_document_assistant` 為專案根目錄；例如助手狀態檔完整相對路徑為 `runtime/assistant-state/state.json`。
+
+## 總枝頭與閱讀地圖
+
+本節是閱讀導航，不取代後續各專題文件。閱讀時先從總枝頭選定一個大分支，再進入中分支與小分支，避免同時載入整個專案的內容。
+
+```text
+總枝頭
+└─ README.md
+   ├─ 大分支一：架構與 Agent Loop
+   │  └─ agent_loop_capabilities.md
+   │
+   ├─ 大分支二：介面層
+   │  ├─ task_workbench_flow.md
+   │  ├─ task_version_flow.md
+   │  └─ backup/archive/diff_and_image_preview_flow.md
+   │
+   ├─ 大分支三：互動層
+   │  ├─ task_workbench_flow.md
+   │  ├─ task_version_flow.md
+   │  ├─ project_workspace_flow.md
+   │  ├─ select2_project_flow.md
+   │  └─ image_project_memory_flow.md
+   │
+   ├─ 大分支四：Harness 層
+   │  └─ Agent Loop / Memory / Authorization / Verification / AI Connection
+   │     ├─ Agent Loop：agent_loop_capabilities.md
+   │     ├─ Memory：一般對話由 task_workbench_flow.md、src/conversation-memory.js 與 runtime/assistant-state/state.json 承載；圖片專案由 image_project_memory_flow.md 規劃
+   │     ├─ Authorization：backup/archive/authorization-confirmation-flow.md、project_workspace_flow.md
+   │     ├─ Verification：目前沒有獨立 MD 文件；主要由 agent_loop_capabilities.md、environment_validation_and_deployment.md 與 src/verification-rules.js 承載
+   │     └─ AI Connection：ai_connection_flow.md
+   │
+   ├─ 大分支五：部署與驗證
+   │  ├─ environment_validation_and_deployment.md
+   │  └─ test_index.md
+   │
+   └─ 大分支六：歷史與封存
+      ├─ version_history.md
+      └─ backup/archive/*
+```
+
+### 每個分支的固定紀錄方式
+
+後續新增或整理文件時，先回答以下五個問題，再決定內容應放在哪個分支：
+
+```text
+這個分支要解決什麼？
+目前有哪些能力？
+資料保存在哪裡？
+目前有哪些限制？
+下一個決策是什麼？
+```
+
+之後可以使用以下提示開始整理：
+
+```text
+請先依 README.md 的建議，判斷這項資訊應該加入哪個分支與哪份文件。
+```
+
+### 對話記憶的資料流
+
+對話記憶目前可沿著以下路徑閱讀：
+
+```text
+README.md ➜ Harness 層 ➜ Agent Loop ➜ 對話記憶 ➜ conversation-memory.js ➜ runtime/assistant-state/state.json
+```
+
+其中：
+
+- `conversation-memory.js` 負責整理、篩選、壓縮與驗證記憶上下文。
+- `runtime/assistant-state/state.json` 保存專案、對話、任務與記憶資料。
+- `task_workbench_flow.md` 說明使用者如何在介面中啟用與查看記憶。
+- 目前沒有獨立的 `memory.md`；若記憶規則持續增加，後續可再建立專門的 Memory 文件。
+
+### 兩個整理維度
+
+文件同時使用兩個維度分類，並以「動作」作為每個流程的共同紀錄單位，避免把「系統層級」和「功能主題」混成同一件事。
+
+例如「提出修改提案」可以整理為：
+
+```text
+動作：提出修改提案
+├─ 目的：把使用者需求轉成可檢查的修改差異，但尚未寫入檔案。
+├─ 流程：讀取目前檔案 → 產生 Diff → 顯示提案 → 等待確認。
+├─ Interface：顯示修改前後內容與摘要（程式：`#execution-update-preview`、`#task-*`）。
+├─ Interaction：使用者檢查、確認、取消或重新編輯（程式：`submit()`、`/api/jobs`）。
+├─ Harness：只能提出修改，禁止未確認直接寫入（程式：`propose_edit`、`awaiting_approval`）。
+├─ Validation：檢查檔案類型、內容版本、提案格式與修改範圍。
+├─ Operations：確認修改授權、主機管理碼與服務狀態。
+├─ History：保存需求、提案、工具紀錄與任務結果。
+├─ Test Data：使用測試專案與測試檔案驗證差異流程。
+└─ 保存結果：`runtime/assistant-state/state.json` 保存任務；套用後才建立 `runtime/backups` 與 `runtime/audit.jsonl`。
+```
+
+這個格式先說明實際動作，再分別記錄使用者看見什麼、可以做什麼、系統允許 Agent 做什麼，以及跨層支援、程式對應與資料保存位置。
+
+第一維：系統層級
+
+```text
+介面層／互動層／Harness 層
+```
+
+第二維：功能分支
+
+```text
+Agent Loop／記憶／授權／版本／部署／文件解析
+```
+
+三層系統各自的功能分支目前整理為：
+
+```text
+Interface
+└─ Sidebar / Task Card / Timeline / Diff Preview / Image Preview
+
+Interaction
+└─ Query / Edit / Confirmation / Conversation / Version
+
+Harness
+└─ Agent Loop / Memory / Authorization / Verification / AI Connection
+```
+
+系統三層：
+
+```text
+系統三層
+├─ Interface
+├─ Interaction
+└─ Harness
+```
+這三層的功能分支是平行分類，不代表彼此完全分離。例如「提出修改提案」這個動作，同時包含：Interface 顯示 Diff、Interaction 讓使用者檢查與確認、Harness 禁止未確認直接寫入。這些對照用來判斷一項改動會影響哪一層。
+
+### 跨層支援主題
+
+以下是跨越 Interface、Interaction 與 Harness 的文件分類，不是第四個系統層：
+```text
+跨層支援主題
+├─ Validation
+├─ Operations
+├─ History
+└─ Test Data
+```
+
+這些主題的閱讀角度如下：
+
+- `Validation`：驗證結果如何顯示、何時觸發，以及系統允許哪些驗證器。
+- `Operations`：服務如何啟動、連線、部署、授權與排錯。
+- `History`：版本、測試、評估與過去變更如何保存與追蹤。
+- `Test Data`：提供 Interface、Interaction 與 Harness 驗證使用的範例資料。
+
+
+## 6. 動作五：處理輸入框狀態
+
+Interface：Edit 或載入版本時填入需求。成功送出後清空。執行中不覆蓋使用者的新草稿。
+
+Interaction：使用者可以修改、取消或重新輸入。 送出失敗時保留草稿。
+
+Harness：輸入框內容不能直接改變已保存版本。 重新送出前必須建立新的任務版本。
+
 ## Diff2Html 單欄行號預覽
 
 已建立獨立的 Diff2Html 格式預覽頁，不會影響正式任務的程式差異比較。啟動原本服務後，開啟 `http://127.0.0.1:4317/diff-preview.html`。
@@ -14,19 +172,21 @@
 
 - [AI 連線流程](ai_connection_flow.md)：啟動 AI、公司端點、模型、API key、外送授權、圖片能力、錯誤排查與驗收。
 - [環境驗證與部署](environment_validation_and_deployment.md)：公司環境的離線測試、端點驗證、功能驗收、排錯與部署順序。
+- [測試索引](test_index.md)：Node 自動測試、瀏覽器驗收、目前數量、檔案用途與執行順序。
 - [查詢與修改工作台](task_workbench_flow.md)：查詢、記憶、技能、AI 修改、人工編輯、驗證、任務時間線與保存限制。
 - [任務編輯流程](task_version_flow.md)：任務 Edit／View、需求版本、短確認與重新送出。
 - [專案載入流程](project_workspace_flow.md)：專案切換、索引、側欄、檔案選取與重新授權。
-- [雙層授權流程](archive/dual_layer_authorization_flow.md)：全域唯讀參考、個別專案寫入與權限邊界（封存流程說明）。
-- [差異與圖片預覽](archive/diff_and_image_preview_flow.md)：程式差異比較、圖片預覽與逐版檢視（封存流程說明）。
-- [LLM 工具執行流程](archive/llm_tool_execution_flow.md)：模型如何選擇受控工具、取得證據與回報結果（歷史流程說明）。
+- [圖片專案記憶與連續創作](image_project_memory_flow.md)：圖片討論摘要、確認條件、提示詞預覽與逐版創作記憶。
+- [雙層授權流程](backup/archive/dual_layer_authorization_flow.md)：全域唯讀參考、個別專案寫入與權限邊界（封存流程說明）。
+- [差異與圖片預覽](backup/archive/diff_and_image_preview_flow.md)：程式差異比較、圖片預覽與逐版檢視（封存流程說明）。
+- [LLM 工具執行流程](backup/archive/llm_tool_execution_flow.md)：模型如何選擇受控工具、取得證據與回報結果（歷史流程說明）。
 - [Select2 專案流程](select2_project_flow.md)：固定 Mock 範例的建立、索引與預覽。
 
 2026-09-16 AI 增量：已實作官方 OpenAI／公司 OpenAI 相容連線與受控搜尋、讀檔、單檔提案。以假端點測試通過；實際帳號與公司端點待連線驗收。啟動方式見 [AI 連線流程](ai_connection_flow.md)，PowerShell 執行 `./start_ai.ps1`。
 
 圖片創作已提供確認窗、對話時間線預覽與逐版修改保存；需在服務端明確設定核准的官方 OpenAI 圖片模型，且目前尚未以真實 API 帳號驗收。設定與保存位置見 [AI 連線流程](ai_connection_flow.md#圖片能力與創作流程)。
 
-已支援全域唯讀參考＋個別專案寫入：頂部＋選授權類型，先授權 `C:\Web_Practice\ReAct` 為全域唯讀，再授權並開啟欲修改的子專案；demo 預設可搜尋。操作及排除規則見封存的 [雙層授權流程](archive/dual_layer_authorization_flow.md)。AI 外送需另勾許可。
+已支援全域唯讀參考＋個別專案寫入：頂部＋選授權類型，先授權 `C:\Web_Practice\ReAct` 為全域唯讀，再授權並開啟欲修改的子專案；demo 預設可搜尋。操作及排除規則見封存的 [雙層授權流程](backup/archive/dual_layer_authorization_flow.md)。AI 外送需另勾許可。
 
 新版側欄：頂部＋新增專案，專案旁＋快速續期，⋯查看路徑、倒數與管理操作。展開專案建立新對話，歷史依最近活動排序。重啟後可使用保存的權限設定重新授權。詳見 [專案載入流程](project_workspace_flow.md#新版側欄與快速重新授權)。
 
@@ -38,11 +198,11 @@
 
 快速啟動：雙擊 [code_and_document_assistant_auto_ip.bat](../code_and_document_assistant_auto_ip.bat)，會啟動 4317 埠服務，等待網頁就緒後開啟 Chrome（找不到時使用預設瀏覽器）。此 BAT 使用區網模式 `0.0.0.0`，終端顯示區網網址；本機瀏覽器開啟 `http://127.0.0.1:4317/`，供管理碼授權及修改確認。無登入保護，僅限可信任網路；不修改防火牆，請勿分享管理碼。若埠已占用會停止並提示，請先確認舊服務；停止服務按 Ctrl+C。BAT 不安裝 npm 套件。下方手動啟動方式仍預設僅本機。
 
-管理碼的產生、前端輸入、後端驗證與授權流程，見封存的 [authorization_flow.md](archive/authorization_flow.md)。
+管理碼的產生、前端輸入、後端驗證與授權流程，見封存的 [authorization-confirmation-flow.md](backup/archive/authorization-confirmation-flow.md)。
 
-LLM 如何評估任務、搜尋專案並提出修改，以及目前 Mock 與 real 工具循環的差異，見 [LLM 工具執行流程](archive/llm_tool_execution_flow.md)；同頁也說明 PowerShell 的 `Get-Content` 與 `src/` 的意思。
+LLM 如何評估任務、搜尋專案並提出修改，以及目前 Mock 與 real 工具循環的差異，見 [LLM 工具執行流程](backup/archive/llm_tool_execution_flow.md)；同頁也說明 PowerShell 的 `Get-Content` 與 `src/` 的意思。
 
-2026-09-13 已完成不需額外資料的第三階段離線收尾：修正短代號誤配與檔名搜尋，26 項回歸與瀏覽器操作通過；11 題合成檢索評估由 7/11 提升至 11/11。這不代表公司真實問題的準確率。版本摘要見 [version_history.md](version_history.md)，完整評估報告保留於 [archive/evaluation_report.md](archive/evaluation_report.md)。
+2026-09-13 已完成不需額外資料的第三階段離線收尾：修正短代號誤配與檔名搜尋，26 項回歸與瀏覽器操作通過；11 題合成檢索評估由 7/11 提升至 11/11。這不代表公司真實問題的準確率。版本摘要見 [version_history.md](version_history.md)，完整評估報告保留於 [backup/archive/evaluation_report.md](backup/archive/evaluation_report.md)。
 
 ```powershell
 Set-Location C:\Web_Practice\ReAct
@@ -51,7 +211,7 @@ node .\code_and_document_assistant\server.js
 
 開啟 `http://127.0.0.1:4317`。終端會顯示每次啟動產生的 6 碼十六進位本機資料夾授權管理碼；此碼供授權／真實檔案操作，勿分享。停止使用 Ctrl+C。
 
-區網使用時，在啟動前設定 `$env:CDA_HOST = '0.0.0.0'`，其他電腦連 `http://主機IP:4317`。預設僅 loopback，未修改防火牆或實測公司 LAN。服務無登入，讀取授權是整個服務共用；真實資料夾授权、修改確認、驗證與還原則要求 loopback 與管理碼。瀏覽器 session 隔離不能取代公司登入及資料權限。
+區網使用時，在啟動前設定 `$env:CDA_HOST = '0.0.0.0'`，其他電腦連 `http://主機IP:4317`。預設僅 loopback，未修改防火牆或實測公司 LAN。服務無登入，讀取授權是整個服務共用；真實資料夾授權、修改確認、驗證與還原則要求 loopback 與管理碼。瀏覽器 session 隔離不能取代公司登入及資料權限。
 
 ## 依賴與 npm 位置
 
@@ -76,7 +236,7 @@ node .\code_and_document_assistant\server.js
 
 可用 `CDA_PROJECTS_CONFIG` 指向含 `projects: [{name, path}]` 的 JSON。範例見 `config/projects.example.json`；只登錄、不讀取資料夾，也不自動授予權限。前端授權的專案則自動保存登錄。已登錄父子路徑重疊時先撤銷不需要的父範圍。
 
-狀態保存在 `runtime/assistant-state/state.json`；含工作階段與歷史來源片段，不含管理碼，請勿分享或提交 Git。瀏覽器身分 cookie 有效 30 天並於載入續期；清除 cookie 或改用另一網址／瀏覽器不會自動恢復原對話。每對話上限 100 個任務，需另建對話後繼續，舊紀錄保留。更多規格與限制見 [封存的專案隔離設計](archive/project_isolation_and_cross_reference.md)。整案還原、成果收藏仍待下一增量，目前只有單檔備份／還原。
+狀態保存在 `runtime/assistant-state/state.json`；含工作階段與歷史來源片段，不含管理碼，請勿分享或提交 Git。瀏覽器身分 cookie 有效 30 天並於載入續期；清除 cookie 或改用另一網址／瀏覽器不會自動恢復原對話。每對話上限 100 個任務，需另建對話後繼續，舊紀錄保留。更多規格與限制見 [封存的專案隔離設計](backup/archive/project_isolation_and_cross_reference.md)。整案還原、成果收藏仍待下一增量，目前只有單檔備份／還原。
 
 ### 側欄展開與收合
 
@@ -96,7 +256,7 @@ node .\code_and_document_assistant\server.js
 1. 對工作區授權「允許修改」，需要驗證時另勾「允許靜態驗證」。
 2. 選取目標專案的一份 JS / CJS / MJS / Python / HTML / CSS / JSON 檔，按中央「人工編輯／靜態驗證」顯示編輯器。切換回「查詢文件」不會清除候選修改。
 3. 按「載入選取檔案」，在候選內容欄編輯，輸入主機管理碼並按「產生差異提案」。這是人工提供修改，尚非 AI 自動修改。
-4. 新差異產生後右側自動展開，檢視再按「主機確認套用實際修改」。提案有效 15 分鐘；套用前檢查内容版本與授權版本，使用暫存檔替換並保留備份。
+4. 新差異產生後右側自動展開，檢視再按「主機確認套用實際修改」。提案有效 15 分鐘；套用前檢查內容版本與授權版本，使用暫存檔替換並保留備份。
 5. 如要復原，按「確認還原這次修改」。只有現況仍等於該次套用結果才會還原；若又被編輯會拒絕覆蓋。
 6. 「僅靜態驗證」檢查的是磁碟上目前已索引的版本，不是尚未套用的編輯器內容。
 
@@ -187,7 +347,7 @@ runtime/demo 為展示副本；runtime/backups 保存修改前內容；runtime/a
 
 索引的時間預算與程序逾時無法保證作業系統層的共用磁碟 metadata I/O 立即取消；解析器不是完整惡意文件隔離環境。正式共用磁碟、大文件、權限分級及負載仍待公司環境驗收。
 
-交接與下一階段提示詞已整理進 [version_history.md](version_history.md)。完整評估與歷史報告保留於 [archive/evaluation_report.md](archive/evaluation_report.md)、[archive/test_report.md](archive/test_report.md) 與 [archive/phase_guide.md](archive/phase_guide.md)。
+交接與下一階段提示詞已整理進 [version_history.md](version_history.md)。完整評估與歷史報告保留於 [backup/archive/evaluation_report.md](backup/archive/evaluation_report.md)、[backup/archive/test_report.md](backup/archive/test_report.md) 與 [backup/archive/phase_guide.md](backup/archive/phase_guide.md)。
 新版介面使用方式見 [查詢與修改工作台](task_workbench_flow.md)：每次需求下方顯示可收合的執行紀錄、模型、token 與耗時，右側詳情跟隨選取任務；AI 修改在該任務內查看差異、套用及驗證結果，人工編輯有獨立入口。
 
 新增檔案會在該任務工作台逐份詢問。問題欄可直接貼入 PNG／JPEG／WebP，每次最多 5 張，單張預設 10MB，可由網頁設定 1–20MB。圖片僅在提交後依 AI 授權外送；圖片及大小設定重新整理仍保留，停止／重啟服務後清除。歷史保留附件名稱等摘要，不保存圖片內容。圖片格式依官方 API 規格實作，能力設定見 [AI 連線流程](ai_connection_flow.md#圖片能力與創作流程)。

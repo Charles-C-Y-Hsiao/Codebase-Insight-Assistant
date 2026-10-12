@@ -3,7 +3,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const os=require('node:os');
 const assert=require('node:assert/strict');
-const {click}=require('./browser-controls');
+const {click,checked}=require('./browser-controls');
 const {createApp}=require('../server.js');
 async function main(){
   const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-ai-browser-'));let server,browser,instance;
@@ -30,7 +30,8 @@ async function main(){
     assert.match(await page.$eval('#mode-label',e=>e.textContent),/待連線驗證/);
     await page.click('#open-permission');await page.type('#admin','abcdef');await page.click('#ai-test');await page.waitForFunction(()=>document.getElementById('ai-test-status').textContent.includes('成功'));
     assert.equal(calls.length,1);assert.match(await page.$eval('#mode-label',e=>e.textContent),/連線已驗證/);
-    await page.type('#folder',folder);await page.click('#allow-write');await page.click('#allow-verify');await page.click('#allow-ai');await page.click('#request-root');await page.waitForFunction(()=>document.getElementById('root-status').textContent.includes('待主機'));await page.click('#approve-root');await page.waitForSelector('#open-granted-project:not([hidden])');await page.click('#open-granted-project');await page.waitForFunction(()=>document.getElementById('files').textContent.includes('main.js'));
+    await page.type('#folder',folder);await checked(page,'#allow-write');await checked(page,'#allow-verify');await checked(page,'#allow-ai');await page.click('#request-root');await page.waitForFunction(()=>document.getElementById('root-status').textContent.includes('待主機'));await page.click('#approve-root');await page.waitForSelector('#open-granted-project:not([hidden])');await page.click('#open-granted-project');await page.waitForFunction(()=>document.getElementById('files').textContent.includes('main.js'));
+    await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.getElementById('files').textContent.includes('main.js'));assert.equal(await page.$eval('#admin',e=>e.value),'','重新整理不保留管理碼');
     await page.click('#mode-ai-edit');assert.equal(await page.$eval('#ai-allow-edits',e=>e.checked),true);await page.type('#question','請將 marker 改成 2');await page.click('#send');await page.waitForFunction(()=>document.getElementById('progress').textContent.includes('awaiting_approval'));
     assert.equal(await fs.readFile(target,'utf8'),'const marker=1;');assert.match(await page.$eval('#history',e=>e.textContent),/修改任務摘要/);
     const diffId=await page.$eval('#history article .task-diff',e=>e.id);
@@ -41,8 +42,9 @@ async function main(){
     await click(page,'.task-timeline > summary');
     await page.evaluate(()=>show(state.taskJobs.get(state.selectedTask)));
     assert.equal(await page.$eval('.task-timeline',e=>e.open),false,'更新不能覆蓋手動收合');
-    await click(page,'#'+diffId+' button[id^="apply-edit-"]');await page.waitForFunction(id=>document.getElementById(id).textContent.includes('passed'),{},diffId);
+    await page.click('#task-update-floating-action');await page.waitForFunction(id=>document.getElementById(id).textContent.includes('passed'),{},diffId);
     assert.equal(await fs.readFile(target,'utf8'),'const marker=2;');assert.equal(calls.length,4);assert.deepEqual(errors,[]);
+    await page.waitForFunction(async id=>{const job=await api('/api/jobs/'+id);if(job.activitySummary?.status!=='completed')return false;show(job);return true;},{},diffId.slice(5));
     assert.match(await page.$eval('#history .task-rich-answer',e=>e.textContent),/靜態驗證通過/);
     assert.match(await page.$eval('#history article',e=>e.textContent),/已套用/);
     assert.match(await page.$eval('#'+diffId,e=>e.textContent),/未執行瀏覽器功能測試/);
