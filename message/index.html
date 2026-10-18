@@ -34,21 +34,29 @@
       align-items: center;
       justify-content: center;
       font-family: Arial, sans-serif;
-      background-color: #f0fdf4;
+      background-color: #eff6ff;
+    }
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
     }
 
     #modal {
       position: relative;
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
       width: min(420px, calc(100% - 40px));
       padding: 16px;
       box-sizing: border-box;
-      border: 1px solid #86efac;
+      border: 1px solid #93c5fd;
       border-radius: 10px;
-      background-color: #f7fff9;
-      box-shadow: 0 12px 30px rgba(22, 101, 52, 0.18);
+      background-color: #f8fbff;
+      box-shadow: 0 12px 30px rgba(30, 64, 175, 0.18);
     }
 
     .dialog-header {
@@ -59,7 +67,7 @@
     }
 
     #dialog-title {
-      color: #15803d;
+      color: #1d4ed8;
       font-size: 19px;
       font-weight: bold;
       line-height: 1.2;
@@ -81,7 +89,7 @@
       width: 24px;
       height: 24px;
       padding: 0;
-      color: #16a34a;
+      color: #2563eb;
       border: 0;
       border-radius: 50%;
       background-color: transparent;
@@ -100,7 +108,35 @@
 
     .close-button:hover,
     .close-button:focus-visible {
-      background-color: #dcfce7;
+      background-color: #dbeafe;
+      transform: scale(1.05);
+    }
+
+    .input-label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #1e3a8a;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    #dialog-input {
+      width: 100%;
+      min-height: 88px;
+      box-sizing: border-box;
+      padding: 10px;
+      resize: vertical;
+      color: #172554;
+      border: 1px solid #93c5fd;
+      border-radius: 6px;
+      background-color: #fff;
+      font: inherit;
+    }
+
+    #dialog-input:focus {
+      outline: 2px solid #bfdbfe;
+      border-color: #2563eb;
     }
 
     #button-frame {
@@ -111,7 +147,7 @@
     }
 
     #button-icon {
-      color: #22c55e;
+      color: #3b82f6;
       font-size: 16px;
     }
 
@@ -121,42 +157,91 @@
 
     .button-frame button {
       padding: 6px 12px;
-      border: 1px solid #86efac;
+      border: 1px solid #93c5fd;
       border-radius: 6px;
       font-size: 16px;
       cursor: pointer;
     }
 
     .cancel {
-      color: #15803d;
-      background-color: #f0fdf4;
+      color: #1d4ed8;
+      background-color: #eff6ff;
     }
 
     .confirm {
       color: #fff;
-      border-color: #16a34a !important;
-      background-color: #16a34a;
+      border-color: #2563eb !important;
+      background-color: #2563eb;
     }
 
     .button-frame button:hover {
       opacity: 0.85;
     }
+
+    #modal-output {
+      display: none;
+      width: min(420px, calc(100% - 40px));
+      box-sizing: border-box;
+      padding: 12px 16px;
+      color: #1e3a8a;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      background-color: #dbeafe;
+      overflow-wrap: anywhere;
+    }
+
+    #modal-output.is-visible {
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <section id="modal" class="modal" role="dialog" aria-labelledby="dialog-title" aria-modal="true">
-    <div class="dialog-header">
-      <span id="dialog-title" class="dialog-title">確認操作</span>
-      <button id="close-button" type="button" class="close-button" aria-label="關閉">
-        <i class="fi fi-br-circle-xmark" aria-hidden="true"></i>
-      </button>
-    </div>
+  <main class="page">
+    <section id="modal" class="modal" role="dialog" aria-labelledby="dialog-title" aria-modal="true">
+      <div class="dialog-header">
+        <span id="dialog-title" class="dialog-title">確認操作</span>
+        <button id="close-button" type="button" class="close-button" aria-label="關閉">
+          <i class="fi fi-br-circle-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
 
-    <div id="button-frame" class="button-frame">
-      <i id="button-icon" class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-      <button type="button" class="cancel">Cancel</button>
-      <button type="button" class="confirm">Confirm</button>
-    </div>
-  </section>
+      <label class="input-label" for="dialog-input">
+        請輸入內容
+        <textarea id="dialog-input" placeholder="在此輸入文字"></textarea>
+      </label>
+
+      <div id="button-frame" class="button-frame">
+        <i id="button-icon" class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+        <button type="button" class="cancel">Cancel</button>
+        <button type="button" class="confirm">Confirm</button>
+      </div>
+    </section>
+
+    <output id="modal-output" aria-live="polite"></output>
+  </main>
+
+  <script>
+    const input = document.querySelector('#dialog-input');
+    const output = document.querySelector('#modal-output');
+    const confirmButton = document.querySelector('.confirm');
+    const cancelButton = document.querySelector('.cancel');
+    const closeButton = document.querySelector('#close-button');
+
+    function showInputContent() {
+      const value = input.value.trim();
+      output.textContent = value || '尚未輸入內容。';
+      output.classList.add('is-visible');
+    }
+
+    function clearInput() {
+      input.value = '';
+      output.textContent = '';
+      output.classList.remove('is-visible');
+    }
+
+    confirmButton.addEventListener('click', showInputContent);
+    cancelButton.addEventListener('click', clearInput);
+    closeButton.addEventListener('click', clearInput);
+  </script>
 </body>
 </html>

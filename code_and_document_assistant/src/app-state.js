@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const {formatState}=require('./conversation-memory.js');
 
 // Backend-owned state; no model instructions or executable data are loaded here.
 class AppState {
@@ -89,14 +90,68 @@ class AppState {
   async deleteConversation(owner,projectId,id) {
     const index=this.data.conversations.findIndex(c=>c.id===id&&c.owner===owner&&c.projectId===projectId);
     if(index<0)throw new Error('對話不屬於此專案或工作階段');
-    this.data.conversations.splice(index,1);
-    await this.save();
+    const [conversation]=this.data.conversations.splice(index,1);
+    try{await this.save();}catch(error){this.data.conversations.splice(index,0,conversation);throw error;}
+  }
+  async deleteTask(owner,projectId,conversationId,taskId) {
+    const c=this.conversation(owner,projectId,conversationId),index=c.jobs.findIndex(j=>j.id===taskId||(j.taskId||j.id)===taskId);
+    if(index<0)throw new Error('找不到要刪除的任務');
+    const before=structuredClone({jobs:c.jobs,memory:c.memory,updatedAt:c.updatedAt}),removed=c.jobs[index];
+    const ids=new Set([removed.id,removed.taskId,...(removed.versions||[]).map(v=>v.id)].filter(Boolean));
+    try {
+      c.jobs.splice(index,1);
+      const memory=this.ensureMemory(c),removedItems=memory.confirmed.filter(item=>ids.has(item.sourceJobId)),removedConfirmed=new Set(removedItems.map(item=>item.id)),removedById=new Map(removedItems.map(item=>[item.id,item]));
+      memory.confirmed=memory.confirmed.filter(item=>!ids.has(item.sourceJobId));
+      const expand=(id,seen=new Set())=>{if(!removedConfirmed.has(id))return [id];if(seen.has(id))return [];seen.add(id);return (removedById.get(id)?.replaces||[]).flatMap(next=>expand(next,new Set(seen)));};
+      for(const item of memory.confirmed)if(item.replaces)item.replaces=[...new Set(item.replaces.flatMap(id=>expand(id)))];
+      const replaced=new Set(memory.confirmed.flatMap(item=>item.replaces||[]));
+      const previouslyReplaced=new Set(removedItems.flatMap(item=>(item.replaces||[]).flatMap(id=>expand(id))));
+      for(const item of memory.confirmed)if(item.status==='superseded'&&!replaced.has(item.id)&&previouslyReplaced.has(item.id))item.status='active';
+      const needles=[...ids,...[removed,...(removed.versions||[])].map(j=>j.question).filter(text=>typeof text==='string'&&text.trim())];
+      const containsRemoved=value=>needles.some(needle=>JSON.stringify(value??'').includes(needle));
+      const scrubSelection=selection=>{
+        if(!selection)return selection;
+        const keep=list=>Array.isArray(list)?list.filter(item=>item&&typeof item.id==='string'&&!ids.has(item.id)&&!containsRemoved(item)):[];
+        const input=selection.candidateInput,context=selection.mainContext;
+        if(input){input.candidates=keep(input.candidates);delete input.fixed;delete input.projectSummary;delete input.seriesSummary;}
+        if(context){context.recent=keep(context.recent);context.retrieved=keep(context.retrieved);delete context.summary;delete context.memory;delete context.confirmed;delete context.projectSummary;delete context.seriesSummary;delete context.notice;}
+        selection.preExcluded=keep(selection.preExcluded);
+        const allowed=new Set([...(input?.candidates||[]),...selection.preExcluded].map(item=>item.id));
+        selection.candidateJobIds=(selection.candidateJobIds||[]).filter(id=>allowed.has(id));
+        selection.selectedJobIds=(selection.selectedJobIds||[]).filter(id=>allowed.has(id));
+        selection.decisions=(selection.decisions||[]).filter(item=>allowed.has(item.id)).map(item=>({...item,reason:'因刪除任務，無法確認來源的理由已移除'}));
+        delete selection.reason;delete selection.incompleteDetails;
+        selection.redacted=true;selection.warning='此歷史快照因刪除任務已刪改；來源不明的段落及篩選理由已移除，保留內容不代表當時完整送入資料。';
+        return selection;
+      };
+      for(const job of c.jobs)for(const version of [job,...(job.versions||[])]){
+        if(version.historySelection)scrubSelection(version.historySelection);
+        if(version.imageProjectChat?.historySelection)scrubSelection(version.imageProjectChat.historySelection);
+        for(const tool of version.tools||[])if(['ai.history_selection','ai.image_history_selection'].includes(tool.name)){delete tool.selectedJobIds;delete tool.reason;tool.warning='因刪除任務，歷史篩選資料已刪改';}
+        if(ids.has(version.continuationOf)){delete version.continuationOf;delete version.continuationVersion;}
+      }
+      const fields=['goals','decisions','constraints','completed','pending'];
+      const survivingIds=new Set(c.jobs.flatMap(job=>[job.id,...(job.versions||[]).map(version=>version.id)]));
+      const cleanStructured=value=>value&&typeof value==='object'?Object.fromEntries(fields.map(field=>[field,(Array.isArray(value[field])?value[field]:[]).filter(item=>item&&Array.isArray(item.sourceJobIds)&&item.sourceJobIds.length&&item.sourceJobIds.every(id=>typeof id==='string'&&survivingIds.has(id)&&!ids.has(id))&&!containsRemoved(item.text))])):null;
+      memory.structured=cleanStructured(memory.structured);
+      memory.summary=memory.structured?formatState(memory.structured):'';
+      memory.sources=memory.sources.filter(source=>!ids.has(source.id));memory.sourceJobCount=memory.sources.length;
+      memory.updates=memory.updates.map(update=>{const structured=cleanStructured(update.structured);return {...update,structured,summary:structured?formatState(structured):'',sourceJobIds:(update.sourceJobIds||[]).filter(id=>!ids.has(id)),redacted:true};});
+      memory.lastUpdate={status:'redacted',reason:'刪除任務後已移除受影響或來源不明的摘要項目；來源 ID 可能漏標，待下次整理'};memory.confirmedFingerprint=null;memory.rebuildAfterDeletion=true;
+      this.compact(c);c.updatedAt=new Date().toISOString();await this.save();return {removed,ids:[...ids],invalidatedIds:c.jobs.flatMap(job=>[job,...(job.versions||[])]).filter(job=>job.historySelection?.redacted||job.imageProjectChat?.historySelection?.redacted).map(job=>job.id)};
+    }catch(error){c.jobs=before.jobs;c.memory=before.memory;c.updatedAt=before.updatedAt;throw error;}
+  }
+  restoreConversation(owner,projectId,id) {
+    if(typeof id!=='string'||!id||id==='.'||id==='..'||/[\\/\x00-\x1f]/.test(id))throw new Error('圖片任務的原對話 ID 不合法');
+    const existing=this.data.conversations.find(c=>c.id===id&&c.owner===owner&&c.projectId===projectId);if(existing)return existing;
+    if(this.data.conversations.some(c=>c.id===id)||this.data.conversations.length>=500)throw new Error('無法還原此對話 ID');
+    const conversation={id,owner,projectId,createdAt:new Date().toISOString(),jobs:[],memory:{version:1,confirmed:[],summary:'',compressedAt:null,sourceJobCount:0}};this.data.conversations.unshift(conversation);this.ensureMemory(conversation);return conversation;
   }
   async record(job) {
     const c=this.conversation(job.owner,job.projectId,job.conversationId);
     if(c.jobs.some(j=>j.versions?.some(v=>v.id===job.id)))return;
     // Persist readable history, never live capabilities/proposals that can be replayed.
-    const record={id:job.id,projectId:job.projectId,conversationId:job.conversationId,referenceProjectIds:job.referenceProjectIds,question:job.question,status:job.status,progress:job.progress,plan:job.plan,events:job.events,iterations:job.iterations,tools:job.tools,evidence:job.evidence,result:job.result,ai:job.ai,skill:job.skill,contextUsage:job.contextUsage,archived:true};
+    const record={id:job.id,projectId:job.projectId,conversationId:job.conversationId,referenceProjectIds:job.referenceProjectIds,question:job.question,status:job.status,progress:job.progress,plan:job.plan,events:job.events,iterations:job.iterations,tools:job.tools,evidence:job.evidence,result:job.result,ai:job.ai,skill:job.skill,contextUsage:job.contextUsage,historySelection:job.historySelection,archived:true};
     const index=c.jobs.findIndex(j=>j.id===job.id||(job.taskId&&(j.taskId||j.id)===job.taskId));
     Object.assign(record,{taskId:job.taskId||job.id,revision:job.revision||1,sourceVersion:job.sourceVersion,continuationOf:job.continuationOf,continuationVersion:job.continuationVersion,confirmation:job.confirmation});
     const previous=index>=0?c.jobs[index]:null;

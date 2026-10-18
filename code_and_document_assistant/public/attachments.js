@@ -19,14 +19,15 @@ function renderDraftImages(){
   $('image-draft').replaceChildren(...state.draftImages.map(i=>{const figure=attachmentPreview(i,()=>{
     const epoch=state.epoch;
     queueImageAction(async()=>{if(epoch!==state.epoch)return;await api('/api/image-draft/'+i.id,{},undefined,'DELETE');await loadImageDraft();});
-  });const use=node('label',undefined,'attachment-use'),check=node('input'),included=i.selected!==false,label=included?imageReferenceName(selectedIndex++)+' · 附件草稿圖':'未送出 · 附件草稿圖';check.type='checkbox';check.checked=included;check.setAttribute('aria-label','本次討論使用圖片：'+i.name);check.onchange=()=>{i.selected=check.checked;renderDraftImages();};use.append(check,node('span',label));figure.append(use);return figure;}));
+  });const use=node('label',undefined,'attachment-use'),check=node('input'),included=!state.imageTextOnlyMode&&i.selected===true,label=included?imageReferenceName(selectedIndex++)+' · 附件草稿圖':'未送出 · 附件草稿圖';check.type='checkbox';check.disabled=state.imageTextOnlyMode;check.checked=included;check.setAttribute('aria-label','本次討論使用圖片：'+i.name);check.title=state.imageTextOnlyMode?'目前圖片 API 尚無解析圖片能力，圖片不會送出。':'';check.onchange=()=>{i.selected=check.checked;renderDraftImages();};use.append(check,node('span',label));figure.append(use);return figure;}));
   $('image-count').textContent=state.draftImages.length+' / 5 張';
 }
 async function loadImageDraft(){
   const [draft,settings]=await Promise.all([api('/api/image-draft'),api('/api/image-settings')]);
-  state.draftImages=draft.images.map(image=>({...image,selected:image.selected!==false}));state.imageLimitMB=settings.maxImageMB;state.imagesSupported=settings.supportsImages;state.imageReady=true;
+  state.draftImages=draft.images.map(image=>({...image,selected:!settings.textOnlyMode&&image.selected!==false}));state.imageLimitMB=settings.maxImageMB;state.imagesSupported=settings.supportsImages;state.imageTextOnlyMode=settings.textOnlyMode===true;state.imageReady=true;
   $('image-limit').value=state.imageLimitMB;
-  $('image-support').textContent=settings.supportsImages?'目前模型已啟用圖片輸入':'目前模型／端點未啟用圖片輸入；送出前須設定支援的模型';
+  $('image-support').textContent=settings.textOnlyMode?'文字模式：貼入圖片僅供本機預覽，不送入 LLM 或生圖 API；生圖仍可使用文字提示詞。':settings.supportsImages?'目前模型已啟用圖片輸入':'目前模型／端點未啟用圖片輸入；送出前須設定支援的模型';
+  if(typeof syncImageCreationModeUI==='function')syncImageCreationModeUI();
   renderDraftImages();
 }
 function queueImageAction(action){
@@ -40,7 +41,7 @@ function initAttachments(){
   };
   $('question').addEventListener('paste',event=>{
     const files=[...(event.clipboardData?.items||[])].filter(i=>i.kind==='file').map(i=>i.getAsFile()).filter(Boolean);
-    if(!files.length)return;event.preventDefault();
+    if(!files.length)return;event.preventDefault();if(state.imageTextOnlyMode)showImageTextOnlyNotice();
     const epoch=state.epoch;
     queueImageAction(async()=>{
       if(epoch!==state.epoch)return;

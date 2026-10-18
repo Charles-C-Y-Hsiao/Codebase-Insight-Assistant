@@ -62,12 +62,14 @@ test('scope-banner 整合到 composer-actions，位於操作按鈕之間',()=>{
   assert.match(css,/#scope-banner #add-reference,[\s\S]*?#scope-banner #reference-chips button\s*\{[\s\S]*?height:25px[\s\S]*?min-height:25px[\s\S]*?padding:0 10px/);
 });
 
-test('專案列高度39px、操作按鈕有專屬ID且滑入才顯示',()=>{
+test('專案列高度30px、操作按鈕有專屬ID且滑入才顯示',()=>{
   const sidebar=fs.readFileSync(path.join(__dirname,'../public/sidebar.js'),'utf8');
   const sidebarCss=fs.readFileSync(path.join(__dirname,'../public/sidebar.css'),'utf8');
   assert.match(sidebar,/group\.id='project-item-'\+p\.id/);
-  for(const suffix of ['-choice','-new-conversation','-renew','-actions'])assert.match(sidebar,new RegExp("group\\.id\\+'"+suffix.replace('-', '\\-')+"'"));
-  assert.match(sidebarCss,/\.project-row\s*\{[\s\S]*?min-height:39px[\s\S]*?height:39px/);
+  for(const suffix of ['-choice','-new-conversation','-actions'])assert.match(sidebar,new RegExp("group\\.id\\+'"+suffix.replace('-', '\\-')+"'"));
+  assert.doesNotMatch(sidebar,/group\.id\+'-renew'/);
+  assert.match(sidebar,/iconButton\('br-plus-small','建立 '\+p\.name\+' 的新對話'\)/);
+  assert.match(sidebarCss,/\.project-row\s*\{[\s\S]*?min-height:30px[\s\S]*?height:30px/);
   assert.match(sidebarCss,/\.project-row:hover \.conversation-new[\s\S]*?opacity:1/);
 });
 

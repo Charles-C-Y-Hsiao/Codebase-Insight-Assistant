@@ -56,7 +56,10 @@ test('HTTP 勾選才產生摘要請求，取消勾選後回到原流程',async t
   const {base}=await setup(t);const {createApp}=require('../server');let summaryCalls=0;const inputs=[];
   const instance=await createApp({runtime:path.join(base,'http'),aiOptions:{env:{CDA_MODEL_MODE:'real',CDA_AI_MODEL:'test-model',CDA_AI_KEY:'FAKE_NOT_REAL'},fetchImpl:async(url,o)=>{
     const body=JSON.parse(o.body);inputs.push(body);
-    if(!body.tools){summaryCalls++;const payload=JSON.parse(body.input[1].content);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({...emptyState(),goals:[{text:'需求摘要',sourceJobIds:[payload.turns[0].id]}]})}]}],usage:{input_tokens:50,output_tokens:20}});}
+    const system=body.input?.[0]?.content||'';
+    if(system.includes('一般專案對話歷史篩選器')){const payload=JSON.parse(body.input[1].content);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({selectedJobIds:[],reason:'舊任務與本次需求無關',reasons:Object.fromEntries(payload.candidates.map(item=>[item.id,'本次不需要']))})}]}],usage:{input_tokens:10,output_tokens:5}});}
+    if(system.includes('對話記憶整理器')){summaryCalls++;const payload=JSON.parse(body.input[1].content);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({...emptyState(),goals:[{text:'需求摘要',sourceJobIds:[payload.turns[0].id]}]})}]}],usage:{input_tokens:50,output_tokens:20}});}
+    if(!body.tools)return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'已整理公開工作摘要'}]}]});
     return Response.json({status:'completed',output:[{type:'function_call',call_id:'finish',name:'finish',arguments:JSON.stringify({status:'completed',answer:'完整回答',steps:[],conclusions:['完成'],facts:[],inferences:[],unknown:[]})}]});
   }}});
   const server=instance.app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));
@@ -66,6 +69,6 @@ test('HTTP 勾選才產生摘要請求，取消勾選後回到原流程',async t
   async function send(autoMemory){const response=await fetch(origin+'/api/jobs',{method:'POST',headers,body:JSON.stringify({question:'完整需求測試',autoMemory})});assert.equal(response.status,202);const job=await response.json();let current;for(let i=0;i<100;i++){current=await (await fetch(origin+'/api/jobs/'+job.id,{headers})).json();if(current.status!=='running'&&!current.memoryUpdating)return current;await new Promise(r=>setTimeout(r,10));}assert.fail('未完成');}
   await send(false);assert.equal(summaryCalls,0);
   const automatic=await send(true);assert.equal(summaryCalls,1);assert.equal(automatic.memory.summaryVersion,1);assert.equal(automatic.contextUsage.mode,'automatic');
-  assert.equal(inputs[1].input[1].content.includes('完整回答'),true);
+  assert.equal(inputs.some(input=>input.input?.[0]?.content?.includes('對話記憶整理器')&&input.input[1].content.includes('完整回答')),true);
   const legacy=await send(false);assert.equal(summaryCalls,1);assert.equal(legacy.contextUsage.mode,'legacy');assert.equal(legacy.memory.mode,'legacy');
 });

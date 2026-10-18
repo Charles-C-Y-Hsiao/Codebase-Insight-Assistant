@@ -1,0 +1,33 @@
+{
+  "seriesId": "f6632a9b-c76a-461e-832a-48ecf508744e",
+  "seriesName": null,
+  "slug": "eis-wafer-issue-detection-flow",
+  "version": 1,
+  "previousJobId": null,
+  "draftJobId": null,
+  "model": "gpt-image-2.5-sunburst",
+  "prompt": "以下是依照你提供格式改寫後、符合原本七節點流程圖需求的版本：\n\n請製作一張約 16:7 比例的橫式企業技術簡報資訊圖表。\n這張圖片是 16:9 簡報中的主要內容區，已經扣除上方標題、英文副標題與描述的高度。因此圖片中不要加入主標題、英文副標題、頁碼或標題區，請直接生成主要流程圖內容，讓圖片可以放置在簡報標題與描述下方。\n主題：\nEIS Wafer Issue Detection Flow\n整體風格：\n\t•\t白色或極淡藍色背景\n\t•\t清晰、友善、專業的科技企業插畫風格\n\t•\t適合半導體工程、EIS wafer 分析與異常判定流程簡報\n\t•\t使用柔和的藍色、青綠色與少量暖橘色作為重點\n\t•\t使用七個大小一致、整齊排列的圓角資訊卡片\n\t•\t使用簡單扁平化向量圖示\n\t•\t卡片之間以清楚、連續、單一路徑的箭頭串連\n\t•\t版面由左至右排列，留白充足，避免過度擁擠\n\t•\t不使用照片\n\t•\t不使用複雜 3D 效果\n\t•\t圖示風格一致、比例正常，不要拉長或壓扁\n\t•\t所有節點標籤必須完整保留指定英文原文\n\t•\t英文文字必須清楚、正確、完整，不要產生亂碼或多餘文字\n\t•\t不要加入未指定的額外節點、分類或統計數據\n整體版面：\n畫面中央配置一條由左至右的單一路徑流程。\n流程必須包含以下七個節點，順序不可調換、不可分支、不可省略：\n「EIS Wafer（excluded noise wafer）」\n→「Flag by Rule（Auto）」\n→「Issue Candidates」\n→「Flag by Lot（Manual）」\n→「Issue Candidate」\n→「Manual Review」\n→「Event」\n七個節點必須保持同等層級，排列整齊、間距一致。所有節點之間使用清楚的細藍色或青綠色箭頭連接，箭頭只能表示由左至右的流程方向。\n第一個節點：EIS Wafer\n卡片標籤：\n「EIS Wafer」\n卡片副標題：\n「excluded noise wafer」\n圖示：\n使用晶圓、wafer map 或圓形晶圓圖示，表現經過 noise exclusion 的 EIS wafer。\n配色：\n淡藍色、青綠色，搭配少量藍色細節。\n第二個節點：Flag by Rule\n卡片標籤：\n「Flag by Rule」\n卡片副標題：\n「（Auto）」\n圖示：\n使用規則文件、自動化檢查、齒輪、勾選清單、規則節點或向上箭頭圖示，清楚表現自動化 Rule 判定。\n配色：\n深藍色與亮藍色。\n第三個節點：Issue Candidates\n卡片標籤：\n「Issue Candidates」\n卡片副標題：\n「multiple findings」\n圖示：\n使用多張問題卡片、重疊的異常資料卡、警示標記或多個候選項目，表現多筆待篩選的問題候選資料。\n配色：\n藍色、淡青色，搭配少量暖橘色警示重點。\n第四個節點：Flag by Lot\n卡片標籤：\n「Flag by Lot」\n卡片副標題：\n「（Manual）」\n圖示：\n使用 Lot 批次、資料群組、晶圓批次、資料堆疊或批次分類圖示，表現以 Lot 為單位進行人工標記。\n配色：\n青綠色與綠色，搭配少量暖橘色人工操作提示。\n第五個節點：Issue Candidate\n卡片標籤：\n「Issue Candidate」\n卡片副標題：\n「selected finding」\n圖示：\n使用單張問題卡片、單一異常資料、放大標記或已選取的問題項目，清楚表現從多個候選資料中選出的單一問題候選。\n配色：\n淡紫色、藍色或暖橘色重點。\n第六個節點：Manual Review\n卡片標籤：\n「Manual Review」\n卡片副標題：\n「human validation」\n圖示：\n使用人員檢視、放大鏡、人工審查、文件確認或人員與資料卡片互動的圖示。\n不得加入複雜人物場景，僅使用簡單扁平化的人員檢視圖示。\n配色：\n藍紫色與青綠色，搭配少量暖色作為確認重點。\n第七個節點：Event\n卡片標籤：\n「Event」\n卡片副標題：\n「recorded outcome」\n圖示：\n使用事件、行事曆、日期標記、完成勾選或事件紀錄圖示，表現最終形成可追蹤的 Event。\n配色：\n青綠色、藍色，搭配少量暖橘色完成標記。\n節點與箭頭：\n\t•\t七個節點必須嚴格按照指定順序由左至右排列\n\t•\t所有節點之間使用單一連續流程線\n\t•\t每兩個相鄰節點之間放置一個清楚的右向箭頭\n\t•\t不得出現分支、回流、交叉線或上下流程\n\t•\t不要使用表示平行模組或選擇分支的連線\n\t•\t箭頭不可穿過節點文字、圖示或卡片\n\t•\t節點大小、卡片樣式與文字層級必須一致\n\t•\t第一個節點代表流程起點，最後一個節點代表流程終點\n\t•\t不要加入額外的標題、說明句、編號或步驟文字\n視覺與排版要求：\n\t•\t圖片不包含主標題、英文副標題、頁碼或簡報描述區\n\t•\t僅呈現七個指定流程節點與其圖示\n\t•\t所有英文節點名稱必須逐字保留\n\t•\t「EIS Wafer（excluded noise wafer）」必須完整呈現\n\t•\t「Flag by Rule（Auto）」與「Flag by Lot（Manual）」的括號內容必須保留\n\t•\t「Issue Candidates」必須使用複數\n\t•\t「Issue Candidate」必須使用單數\n\t•\t所有文字必須清楚可辨識，避免過小或重疊\n\t•\t不要加入人物、照片、品牌 Logo、浮水印或多餘裝飾\n\t•\t不要加入虛構數字、統計數據或未指定的分類結果\n\t•\t整體視覺採用白底、藍青綠配色、圓角卡片與企業技術資訊圖表風格\n\t•\t版面必須適合直接放置於 16:9 簡報的標題與描述下方",
+  "currentRequest": "以下是依照你提供格式改寫後、符合原本七節點流程圖需求的版本：\n\n請製作一張約 16:7 比例的橫式企業技術簡報資訊圖表。\n這張圖片是 16:9 簡報中的主要內容區，已經扣除上方標題、英文副標題與描述的高度。因此圖片中不要加入主標題、英文副標題、頁碼或標題區，請直接生成主要流程圖內容，讓圖片可以放置在簡報標題與描述下方。\n主題：\nEIS Wafer Issue Detection Flow\n整體風格：\n\t•\t白色或極淡藍色背景\n\t•\t清晰、友善、專業的科技企業插畫風格\n\t•\t適合半導體工程、EIS wafer 分析與異常判定流程簡報\n\t•\t使用柔和的藍色、青綠色與少量暖橘色作為重點\n\t•\t使用七個大小一致、整齊排列的圓角資訊卡片\n\t•\t使用簡單扁平化向量圖示\n\t•\t卡片之間以清楚、連續、單一路徑的箭頭串連\n\t•\t版面由左至右排列，留白充足，避免過度擁擠\n\t•\t不使用照片\n\t•\t不使用複雜 3D 效果\n\t•\t圖示風格一致、比例正常，不要拉長或壓扁\n\t•\t所有節點標籤必須完整保留指定英文原文\n\t•\t英文文字必須清楚、正確、完整，不要產生亂碼或多餘文字\n\t•\t不要加入未指定的額外節點、分類或統計數據\n整體版面：\n畫面中央配置一條由左至右的單一路徑流程。\n流程必須包含以下七個節點，順序不可調換、不可分支、不可省略：\n「EIS Wafer（excluded noise wafer）」\n→「Flag by Rule（Auto）」\n→「Issue Candidates」\n→「Flag by Lot（Manual）」\n→「Issue Candidate」\n→「Manual Review」\n→「Event」\n七個節點必須保持同等層級，排列整齊、間距一致。所有節點之間使用清楚的細藍色或青綠色箭頭連接，箭頭只能表示由左至右的流程方向。\n第一個節點：EIS Wafer\n卡片標籤：\n「EIS Wafer」\n卡片副標題：\n「excluded noise wafer」\n圖示：\n使用晶圓、wafer map 或圓形晶圓圖示，表現經過 noise exclusion 的 EIS wafer。\n配色：\n淡藍色、青綠色，搭配少量藍色細節。\n第二個節點：Flag by Rule\n卡片標籤：\n「Flag by Rule」\n卡片副標題：\n「（Auto）」\n圖示：\n使用規則文件、自動化檢查、齒輪、勾選清單、規則節點或向上箭頭圖示，清楚表現自動化 Rule 判定。\n配色：\n深藍色與亮藍色。\n第三個節點：Issue Candidates\n卡片標籤：\n「Issue Candidates」\n卡片副標題：\n「multiple findings」\n圖示：\n使用多張問題卡片、重疊的異常資料卡、警示標記或多個候選項目，表現多筆待篩選的問題候選資料。\n配色：\n藍色、淡青色，搭配少量暖橘色警示重點。\n第四個節點：Flag by Lot\n卡片標籤：\n「Flag by Lot」\n卡片副標題：\n「（Manual）」\n圖示：\n使用 Lot 批次、資料群組、晶圓批次、資料堆疊或批次分類圖示，表現以 Lot 為單位進行人工標記。\n配色：\n青綠色與綠色，搭配少量暖橘色人工操作提示。\n第五個節點：Issue Candidate\n卡片標籤：\n「Issue Candidate」\n卡片副標題：\n「selected finding」\n圖示：\n使用單張問題卡片、單一異常資料、放大標記或已選取的問題項目，清楚表現從多個候選資料中選出的單一問題候選。\n配色：\n淡紫色、藍色或暖橘色重點。\n第六個節點：Manual Review\n卡片標籤：\n「Manual Review」\n卡片副標題：\n「human validation」\n圖示：\n使用人員檢視、放大鏡、人工審查、文件確認或人員與資料卡片互動的圖示。\n不得加入複雜人物場景，僅使用簡單扁平化的人員檢視圖示。\n配色：\n藍紫色與青綠色，搭配少量暖色作為確認重點。\n第七個節點：Event\n卡片標籤：\n「Event」\n卡片副標題：\n「recorded outcome」\n圖示：\n使用事件、行事曆、日期標記、完成勾選或事件紀錄圖示，表現最終形成可追蹤的 Event。\n配色：\n青綠色、藍色，搭配少量暖橘色完成標記。\n節點與箭頭：\n\t•\t七個節點必須嚴格按照指定順序由左至右排列\n\t•\t所有節點之間使用單一連續流程線\n\t•\t每兩個相鄰節點之間放置一個清楚的右向箭頭\n\t•\t不得出現分支、回流、交叉線或上下流程\n\t•\t不要使用表示平行模組或選擇分支的連線\n\t•\t箭頭不可穿過節點文字、圖示或卡片\n\t•\t節點大小、卡片樣式與文字層級必須一致\n\t•\t第一個節點代表流程起點，最後一個節點代表流程終點\n\t•\t不要加入額外的標題、說明句、編號或步驟文字\n視覺與排版要求：\n\t•\t圖片不包含主標題、英文副標題、頁碼或簡報描述區\n\t•\t僅呈現七個指定流程節點與其圖示\n\t•\t所有英文節點名稱必須逐字保留\n\t•\t「EIS Wafer（excluded noise wafer）」必須完整呈現\n\t•\t「Flag by Rule（Auto）」與「Flag by Lot（Manual）」的括號內容必須保留\n\t•\t「Issue Candidates」必須使用複數\n\t•\t「Issue Candidate」必須使用單數\n\t•\t所有文字必須清楚可辨識，避免過小或重疊\n\t•\t不要加入人物、照片、品牌 Logo、浮水印或多餘裝飾\n\t•\t不要加入虛構數字、統計數據或未指定的分類結果\n\t•\t整體視覺採用白底、藍青綠配色、圓角卡片與企業技術資訊圖表風格\n\t•\t版面必須適合直接放置於 16:9 簡報的標題與描述下方",
+  "projectSummary": "",
+  "projectSummaryVersion": 0,
+  "seriesSummary": "",
+  "seriesSummaryVersion": 0,
+  "referenceJobIds": [],
+  "references": [],
+  "createdAt": "2026-10-17T01:14:33.125Z",
+  "fileName": "eis-wafer-issue-detection-flow-v1.png",
+  "mime": "image/png",
+  "imageProject": null,
+  "outputFileName": null,
+  "projectStorage": {
+    "kind": "project",
+    "relativeDirectory": ".cda\\image-generations\\5317019977d0f82444b51a52fa47c3b4deb4ebe1d62dc88d\\79fbcc8c-82bd-487c-91e5-1d06b050f907\\f6632a9b-c76a-461e-832a-48ecf508744e"
+  },
+  "taskRecordFileName": "2051d5eb-8baf-4fca-96e2-fdbdaaeeae26.task.json",
+  "response": {
+    "answer": "已依據本次圖片需求開始創作。",
+    "source": "image-generation"
+  },
+  "width": 1897,
+  "height": 829
+}

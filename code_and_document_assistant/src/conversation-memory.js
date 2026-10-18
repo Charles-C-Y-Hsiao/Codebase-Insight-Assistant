@@ -58,7 +58,7 @@ class ConversationMemory {
     const confirmedChanged=memory.confirmedFingerprint!==confirmedFingerprint;
     if(!jobs.length||(!force&&!confirmedChanged&&JSON.stringify(sources)===JSON.stringify(memory.sources||[])))return;
     const priorUsable=(memory.sources||[]).every(s=>sources.some(x=>x.id===s.id&&x.fingerprint===s.fingerprint));
-    const newJobs=priorUsable?jobs.filter(j=>!memory.sources?.some(s=>s.id===j.id&&s.fingerprint===fingerprint(j))):jobs;
+    const newJobs=priorUsable&&!memory.rebuildAfterDeletion?jobs.filter(j=>!memory.sources?.some(s=>s.id===j.id&&s.fingerprint===fingerprint(j))):jobs;
     const estimated=estimateTokens({question,turns:jobs.map(turn)}),budget=this.model.config?.memoryBudgetTokens||8000;
     const reason=estimated>=Math.floor(budget*0.75)?'context_budget':'conversation_update';
     const event={version:memory.summaryVersion+1,reason,status:'running',startedAt:new Date().toISOString(),model:this.model.config.omitModel?'由公司端點指定':this.model.config.model,estimatedTokens:estimated,tokenEstimateMethod:'utf8-estimate',budgetTokens:budget,requests:0,usage:[],sourceJobIds:sources.map(s=>s.id)};
@@ -73,7 +73,7 @@ class ConversationMemory {
       if(!scope.root(scope.targetProjectId).permissions.ai)throw Object.assign(new Error('AI_PERMISSION'),{code:'AI_PERMISSION'});
     };
     try{
-      let structured=priorUsable?memory.structured||emptyState():emptyState();
+      let structured=priorUsable&&!memory.rebuildAfterDeletion?memory.structured||emptyState():emptyState();
       // Batch whole turns; never character-truncate a summary or silently drop an older turn.
       const inputBudget=(this.model.config?.contextBudgetTokens||32000)-(this.model.config?.maxOutputTokens||9000);let batch=[];
       const deadline=AbortSignal.timeout(this.model.config.overallTimeoutMs);
@@ -92,10 +92,11 @@ class ConversationMemory {
       if(batch.length||force||confirmedChanged)await send();check();
       memory.structured=structured;memory.summary=formatState(structured);memory.summaryVersion=event.version;memory.sources=sources;memory.compressedAt=new Date().toISOString();memory.sourceJobCount=jobs.length;
       memory.confirmedFingerprint=confirmedFingerprint;
+      delete memory.rebuildAfterDeletion;
       event.status='ok';event.summary=memory.summary;event.structured=structured;
       if(log){log.status='ok';log.result=`已保存摘要 v${event.version}；包含 ${jobs.length} 筆任務`;log.summaryVersion=event.version;}
     }catch(e){event.status='error';event.code=/^[A-Z][A-Z0-9_]+$/.test(e.code||'')?e.code:'MEMORY_ERROR';if(log){log.status='error';log.code=event.code;log.result='摘要未更新；保留原始對話與上一版摘要。';}}
     finally{event.finishedAt=new Date().toISOString();memory.updates.push(event);if(log)log.elapsedMs=Date.now()-log.startedAt;if(this.saved.data.conversations.includes(conversation))await this.saved.save();}
   }
 }
-module.exports={ConversationMemory,estimateTokens,fingerprint,turn,buildContext,emptyState};
+module.exports={ConversationMemory,estimateTokens,fingerprint,turn,buildContext,emptyState,formatState};

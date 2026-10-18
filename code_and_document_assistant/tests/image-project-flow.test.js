@@ -4,6 +4,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const os=require('node:os');
 const {createApp}=require('../server');
+const {AppState}=require('../src/app-state');
 
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5n8AAAAASUVORK5CYII=','base64');
 const responseCall=(name,args)=>({status:'completed',output:[{type:'function_call',call_id:'call-1',name,arguments:JSON.stringify(args)}],usage:{input_tokens:12,output_tokens:8}});
@@ -14,7 +15,7 @@ test('圖片專案使用固定根目錄，API key 預設模型與逐次管理碼
   await fs.mkdir(projectRoot);
   const calls=[],chatRequests=[];
   const instance=await createApp({runtime,imageProjectRoot,adminToken:'abcdef',aiOptions:{env:{CDA_MODEL_MODE:'real',CDA_AI_MODEL:'gpt-5.6-luna',CDA_AI_KEY:'FAKE'},fetchImpl:async(url,options)=>{
-    if(url.endsWith('/responses')){const body=JSON.parse(options.body);chatRequests.push(body);if(body.tools)return Response.json(responseCall('finish_image_discussion',{status:'completed',answer:'可以先用兩個幾何圖形規劃構圖。',steps:['確認構圖'],conclusions:['已整理圖片構圖方向'],facts:[],inferences:[],unknown:[],agentUnderstanding:'以兩個幾何圖形組成主視覺',discussion:'先確認左右構圖與留白比例。',prompt:'兩個幾何圖形主視覺，左右構圖，保留留白，簡潔風格'}));const system=body.input?.[0]?.content||'';const text=system.includes('圖片專案記憶整理器')?JSON.stringify({projectSummary:'共用幾何風格',seriesSummary:'兩個幾何圖形構圖'}):system.includes('圖片對話歷史篩選器')?'不是 JSON':'幾何主視覺';return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}],usage:{input_tokens:12,output_tokens:8}});}
+    if(url.endsWith('/responses')){const body=JSON.parse(options.body);chatRequests.push(body);if(body.tools)return Response.json(responseCall('finish_image_discussion',{status:'completed',answer:'可以先用兩個幾何圖形規劃構圖。',steps:['確認構圖'],conclusions:['已整理圖片構圖方向'],facts:[],inferences:[],unknown:[],agentUnderstanding:'以兩個幾何圖形組成主視覺',discussion:'先確認左右構圖與留白比例。',prompt:'兩個幾何圖形主視覺，左右構圖，保留留白，簡潔風格'}));const system=body.input?.[0]?.content||'',payload=JSON.parse(body.input[1].content);const text=system.includes('圖片專案記憶整理器')?JSON.stringify({projectSummary:'共用幾何風格',seriesSummary:'兩個幾何圖形構圖'}):system.includes('圖片對話歷史篩選器')?(payload.currentRequest.includes('成功篩選')?JSON.stringify({selectedJobIds:[payload.candidates[0].id],reason:'沿用第一筆構圖',reasons:Object.fromEntries(payload.candidates.map(item=>[item.id,item.id===payload.candidates[0].id?'保留相關構圖':'本次不需要']))}):'不是 JSON'):'幾何主視覺';return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}],usage:{input_tokens:12,output_tokens:8}});}
     calls.push({url,options});return Response.json({data:[{b64_json:png.toString('base64')}]});
   }}});
   const server=instance.app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
@@ -49,29 +50,62 @@ test('圖片專案使用固定根目錄，API key 預設模型與逐次管理碼
   assert.equal((await request('/api/image-draft')).data.images.length,1);
   const rejectedAttempt=await request('/api/image-project-attempt',{operation:'creation',outcome:'rejected',reason:'管理碼錯誤',imageCount:1,imageProjectId:id,seriesId:series.id});assert.equal(rejectedAttempt.status,200);assert.equal(rejectedAttempt.data.cleared,1);assert.equal((await request('/api/image-draft')).data.images.length,0);
   const audit=await fs.readFile(path.join(runtime,'audit.jsonl'),'utf8');assert.match(audit,/"action":"image-project-attempt"/);assert.match(audit,/"outcome":"rejected"/);assert.match(audit,/管理碼錯誤/);
+  const referenceUpload=await fetch(baseUrl+'/api/image-draft',{method:'POST',headers:{...headers,'content-type':'image/png','x-cda-image-name':encodeURIComponent('creation-reference.png')},body:png});assert.equal(referenceUpload.status,201);const creationReference=await referenceUpload.json();
   const summaryCandidate=await request('/api/image-projects/'+id+'/series/'+series.id+'/summary-candidate',{});
   assert.equal(summaryCandidate.status,200);assert.equal(summaryCandidate.data.candidate.projectSummary,'共用幾何風格');assert.deepEqual(summaryCandidate.data.candidate.sourceJobIds,[chat.id]);
   const appliedSummary=await request('/api/image-projects/'+id+'/series/'+series.id+'/apply-summary',{projectSummary:summaryCandidate.data.candidate.projectSummary,seriesSummary:summaryCandidate.data.candidate.seriesSummary,applyProject:true,applySeries:true,sourceJobIds:summaryCandidate.data.candidate.sourceJobIds});
   assert.equal(appliedSummary.data.project.memory.version,1);assert.equal(appliedSummary.data.project.series[0].memory.version,1);
+  const preview=await request('/api/image-project-chat/preview',{question:'只保留和目前需求相關的構圖歷史',imageProjectId:id,seriesId:series.id});
+  assert.equal(preview.data.phase,'candidate');assert.deepEqual(preview.data.candidates.map(item=>item.id),[chat.id]);
   const followupResponse=await request('/api/image-project-chat',{question:'只保留和目前需求相關的構圖歷史',imageProjectId:id,seriesId:series.id});
   assert.equal(followupResponse.status,202);await instance.engine.get(followupResponse.data.id,headers.cookie.slice('cda_session='.length)).finished;
   let followup;for(let attempt=0;attempt<20;attempt++){followup=(await request('/api/jobs/'+followupResponse.data.id)).data;if(followup.imageProjectDraft?.status!=='pending')break;await new Promise(resolve=>setTimeout(resolve,10));}
   assert.equal(followup.status,'completed');assert.equal(followup.imageProjectChat.historySelection.status,'fallback');assert.equal(followup.imageProjectChat.historySelection.attempts,1);assert.equal(followup.imageProjectChat.historySelection.warning,'歷史內容篩選失敗，已改用當前對話窗中的內容');assert.equal(followup.tools.find(tool=>tool.name==='ai.image_history_selection').status,'error');assert.equal(followup.ai.requests,2,'歷史篩選與圖片分析應分別計入一次模型請求');assert.equal(followup.ai.usage.length,2);
+  assert.deepEqual(followup.imageProjectChat.historySelection.candidateInput,preview.data.candidateInput);
+  assert.equal(followup.imageProjectChat.historySelection.mainContext.recent.length,0);
+  assert.equal(followup.imageProjectChat.historySelection.decisions[0].selected,false);
+  const imageFilterRequest=chatRequests.find(body=>body.input?.[0]?.content?.includes('圖片對話歷史篩選器'));
+  assert.deepEqual(JSON.parse(imageFilterRequest.input[1].content),preview.data.candidateInput);
+  assert.equal(JSON.stringify(imageFilterRequest).includes('input_image'),false,'第一階段不得傳入圖片');
+  const discussionUpload=await fetch(baseUrl+'/api/image-draft',{method:'POST',headers:{...headers,'content-type':'image/png','x-cda-image-name':encodeURIComponent('discussion-reference.png')},body:png});
+  assert.equal(discussionUpload.status,201);const discussionReference=await discussionUpload.json();
+  const requestCountBeforeSuccess=chatRequests.length;
+  const successfulResponse=await request('/api/image-project-chat',{question:'成功篩選並沿用構圖',imageProjectId:id,seriesId:series.id,imageIds:[discussionReference.id]});
+  assert.equal(successfulResponse.status,202);await instance.engine.get(successfulResponse.data.id,headers.cookie.slice('cda_session='.length)).finished;
+  let successful;for(let attempt=0;attempt<20;attempt++){successful=(await request('/api/jobs/'+successfulResponse.data.id)).data;if(successful.imageProjectDraft?.status!=='pending')break;await new Promise(resolve=>setTimeout(resolve,10));}
+  assert.equal(successful.imageProjectChat.historySelection.status,'completed');assert.deepEqual(successful.imageProjectChat.historySelection.selectedJobIds,[chat.id]);
+  assert.equal(successful.imageProjectChat.historySelection.decisions[0].selected,true);
+  assert.deepEqual(successful.imageProjectChat.historySelection.mainContext.recent.map(item=>item.id),[chat.id]);
+  const successRequests=chatRequests.slice(requestCountBeforeSuccess);
+  assert.equal(JSON.stringify(successRequests.find(body=>body.input?.[0]?.content?.includes('圖片對話歷史篩選器'))).includes('input_image'),false,'第一階段即使本輪有圖片也只可送文字');
+  assert.equal(JSON.stringify(successRequests.find(body=>body.tools)).includes('input_image'),true,'第二階段應收到本輪勾選圖片');
+  const reloaded=await new AppState(runtime).init();
+  const savedSuccess=reloaded.data.conversations.flatMap(item=>item.jobs).find(item=>item.id===successful.id);
+  assert.deepEqual(savedSuccess.imageProjectChat.historySelection.mainContext,successful.imageProjectChat.historySelection.mainContext);
+  assert.deepEqual(savedSuccess.imageProjectChat.historySelection.candidateInput,successful.imageProjectChat.historySelection.candidateInput);
+  const anotherConversation=(await request('/api/conversations',{})).data.id;
+  headers['x-cda-conversation']=anotherConversation;
+  const crossConversationPreview=await request('/api/image-project-chat/preview',{question:'新對話沿用同系列構圖',imageProjectId:id,seriesId:series.id});
+  assert(crossConversationPreview.data.candidates.some(item=>item.id===successful.id),'同系列圖片討論可跨一般對話作為候選歷史');
+  headers['x-cda-conversation']=conversation;
+  const protectedConversationDelete=await request('/api/conversations/'+conversation,undefined,'DELETE');
+  assert.equal(protectedConversationDelete.status,409);assert.match(protectedConversationDelete.data.error,/包含圖片創作專案任務/);
+  assert((await request('/api/conversations')).data.jobs.some(job=>job.id===chat.id),'拒絕刪除時應保留圖片討論任務索引');
   assert(chatRequests.length>=1);assert.deepEqual(chatRequests[0].tools.map(tool=>tool.name),['finish_image_discussion']);
   const chatInput=JSON.parse(chatRequests[0].input.find(item=>item.role==='user').content);assert.deepEqual(chatInput.files,[]);
   const oldFlow=await request('/api/image-generation',{prompt:'舊流程仍受專案 AI 授權限制'});
-  assert.equal(oldFlow.status,400);assert.match(oldFlow.data.error,/IMAGE_UNAVAILABLE/);
+  assert.equal(oldFlow.status,400);assert.match(oldFlow.data.error,/允許修改/);
   const missingCode=await request('/api/image-project-generation',{prompt:'新的圖片專案流程',imageProjectId:id,imageModel:'gpt-image-2.5-sunburst'});
   assert.equal(missingCode.status,403);assert.match(missingCode.data.error,/每次創作圖片/);
   const wrongCode=await request('/api/image-project-generation',{prompt:'新的圖片專案流程',imageProjectId:id,adminToken:'000000'});
   assert.equal(wrongCode.status,403);assert.equal(calls.length,0);
-  const firstResponse=await request('/api/image-project-generation',{prompt:'共用幾何風格\n\n兩個幾何圖形構圖\n\n新的圖片專案流程',currentRequest:'新的圖片專案流程',imageProjectId:id,seriesId:series.id,draftJobId:chat.id,adminToken:'abcdef'});
+  const firstResponse=await request('/api/image-project-generation',{prompt:'共用幾何風格\n\n兩個幾何圖形構圖\n\n新的圖片專案流程',currentRequest:'新的圖片專案流程',imageProjectId:id,seriesId:series.id,draftJobId:chat.id,referenceImageIds:[creationReference.id],adminToken:'abcdef'});
   assert.equal(firstResponse.status,202,firstResponse.data.error);assert.equal(firstResponse.data.imageCreation.model,'gpt-image-2.5-sunburst');
   await instance.creations.jobs.get(firstResponse.data.id).finished;
   const first=(await request('/api/jobs/'+firstResponse.data.id)).data;
   assert.equal(first.status,'completed');assert.equal(first.imageCreation.imageProject.id,id);assert.equal(first.imageCreation.draftJobId,chat.id);assert.match(first.imageCreation.outputFileName,/^主視覺-秋季-CON-bcdef123456-/);
   const files=await fs.readdir(path.join(imageProjectRoot,renamed.data.project.folderName));
-  assert.equal(files.length,2);assert(files.includes(first.imageCreation.outputFileName));
+  assert.equal(files.length,4);assert(files.includes(first.imageCreation.outputFileName));assert(files.includes(first.imageCreation.references[0].persistedFileName),'創作參考圖必須保存並在刪除系列時一併清理');
 
   const secondMissing=await request('/api/image-project-generation',{prompt:'第二版',imageProjectId:id,previousJobId:first.id});
   assert.equal(secondMissing.status,403);assert.equal(calls.length,1);

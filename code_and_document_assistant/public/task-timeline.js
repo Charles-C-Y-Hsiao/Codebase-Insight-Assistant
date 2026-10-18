@@ -21,6 +21,14 @@ function taskDetails(key,title,open=false){
   });
   detail.append(summary);return detail;
 }
+function timelineTaskDetails(key,title,kind){
+  const detail=taskDetails(key,title,false),summary=detail.querySelector(':scope > summary'),toggle=summary.querySelector('.task-toggle-icon');
+  const labels={ai:'AI',image:'Image',read:'Read',edit:'Edit',verify:'Verify',warning:'Warning',event:'Event'};
+  summary.replaceChildren(toggle,taskIcon(kind),node('span',labels[kind]||'Event','timeline-step-label'),node('span',title,'timeline-step-preview'));
+  detail.classList.add('timeline-step-detail');
+  const content=node('div',undefined,'timeline-step-content');content.append(node('div',title,'timeline-step-full-text'));detail.append(content);
+  return detail;
+}
 function taskIcon(kind){
   const names={ai:'br-brain-circuit',image:'rr-picture',read:'br-assessment',edit:'rc-settings-sliders',verify:'rr-memo-circle-check',warning:'br-file-exclamation',event:'rr-arrow-progress'};
   const i=node('i',undefined,'task-event-icon fi fi-'+names[kind]);i.setAttribute('aria-hidden','true');return i;
@@ -79,10 +87,15 @@ function timelineRows(job){
   }
   return rows.sort((a,b)=>(a.time??Infinity)-(b.time??Infinity));
 }
-function iterationStage(kind,text){
-  const row=node('div',undefined,'agent-stage');
-  row.append(taskIcon(kind),node('span',text));
-  return row;
+function iterationStage(job,iteration,stage,kind,label,text){
+  const key=job.id+':iteration-'+iteration.index+':'+stage,detail=node('details',undefined,'task-detail agent-stage agent-stage-disclosure');
+  detail.open=state.detailOpen.has(key)?state.detailOpen.get(key):false;
+  const summary=node('summary',undefined,'agent-stage-summary'),toggle=node('i',undefined,'task-toggle-icon fi fi-br-angle-small-'+(detail.open?'down':'right'));
+  toggle.setAttribute('aria-hidden','true');summary.append(toggle,taskIcon(kind),node('span',label,'agent-stage-label'),node('span',text,'agent-stage-text'));
+  const full=node('div',text,'agent-stage-full');detail.append(summary,full);
+  const sync=()=>{toggle.className='task-toggle-icon fi fi-br-angle-small-'+(detail.open?'down':'right');state.detailOpen.set(key,detail.open);};
+  detail.addEventListener('toggle',sync);summary.addEventListener('click',()=>queueMicrotask(sync));
+  return detail;
 }
 function renderAgentIterations(job,panel){
   const iterations=job.iterations||[];
@@ -91,10 +104,12 @@ function renderAgentIterations(job,panel){
   for(const [index,iteration] of iterations.entries()){
     const detail=taskDetails(job.id+':iteration-'+iteration.index,`Iteration ${iteration.index}`,!job.archived&&index===latest);
     detail.classList.add('agent-iteration');
-    detail.append(iterationStage('ai',`Decide · ${iteration.purpose||iteration.decision?.tool||'等待模型選擇操作'}`));
-    detail.append(iterationStage('edit',`Act · ${iteration.target||iteration.action?.tool||'尚未開始'}`));
-    detail.append(iterationStage('read',`Observe · ${iteration.observation||'pending'}`));
-    detail.append(iterationStage(iteration.status==='repeat'?'event':iteration.status==='stop'?'verify':'warning',`${iteration.status==='repeat'?'Repeat':'Stop'} · ${iteration.next||iteration.status}`));
+    detail.append(iterationStage(job,iteration,'decide','ai','Decide',iteration.purpose||iteration.decision?.tool||'等待模型選擇操作'));
+    detail.append(iterationStage(job,iteration,'act','edit','Act',iteration.target||iteration.action?.tool||'尚未開始'));
+    detail.append(iterationStage(job,iteration,'observe','read','Observe',iteration.observation||'pending'));
+    const next=iteration.next||iteration.status;
+    if(iteration.status==='repeat')detail.append(iterationStage(job,iteration,'repeat','event','Repeat',next));
+    else detail.append(iterationStage(job,iteration,'stop',iteration.status==='stop'?'verify':'warning','Stop',next));
     for(const preview of iteration.previews||[]){const source=node('div',undefined,'timeline-evidence');source.append(node('small',`${preview.id} · ${preview.name} · ${preview.location}`),node('pre',preview.excerpt));detail.append(source);}
     panel.append(detail);
   }
@@ -108,17 +123,17 @@ function renderTaskTimeline(job,article){
   renderAgentIterations(job,panel);
   const rows=timelineRows(job);
   for(const row of rows){
-    const detail=taskDetails(job.id+':'+row.key,row.text);detail.firstChild.prepend(taskIcon(row.kind));
-    if(Number.isFinite(row.time))detail.append(node('small',new Date(row.time).toLocaleString()));
-    if(row.tool?.purpose)detail.append(node('p','操作目的：'+row.tool.purpose,'timeline-operation'));
-    if(row.tool?.target)detail.append(node('p','操作對象：'+row.tool.target,'timeline-operation'));
-    if(row.tool?.result)detail.append(node('p','實際結果：'+row.tool.result,'timeline-operation'));
+    const detail=timelineTaskDetails(job.id+':'+row.key,row.text,row.kind),content=detail.querySelector(':scope > .timeline-step-content');
+    if(Number.isFinite(row.time))content.append(node('small',new Date(row.time).toLocaleString()));
+    if(row.tool?.purpose)content.append(node('p','操作目的：'+row.tool.purpose,'timeline-operation'));
+    if(row.tool?.target)content.append(node('p','操作對象：'+row.tool.target,'timeline-operation'));
+    if(row.tool?.result)content.append(node('p','實際結果：'+row.tool.result,'timeline-operation'));
     if(row.verification){
       const view=node('button','View full verification output');view.id=`task-view-verification-${job.id}-${row.key}`;view.type='button';
-      view.onclick=()=>{const panel=$('task-more-'+job.id);if(panel){panel.open=true;panel.scrollIntoView({behavior:'auto',block:'center'});}};detail.append(view);
+      view.onclick=()=>{const panel=$('task-more-'+job.id);if(panel){panel.open=true;panel.scrollIntoView({behavior:'auto',block:'center'});}};content.append(view);
     }
     const technical=row.tool?.verification?{...row.tool,verification:{...row.tool.verification,output:undefined}}:row.technical;
-    const technicalDetail=taskDetails(job.id+':'+row.key+':technical','技術紀錄（JSON）');technicalDetail.append(node('pre',JSON.stringify(technical,null,2)));detail.append(technicalDetail);panel.append(detail);
+    const technicalDetail=timelineTaskDetails(job.id+':'+row.key+':technical','技術紀錄（JSON）','read');technicalDetail.querySelector(':scope > .timeline-step-content').append(node('pre',JSON.stringify(technical,null,2)));content.append(technicalDetail);panel.append(detail);
   }
   if(!rows.length)panel.append(node('p','尚無執行紀錄'));
   article.append(panel);

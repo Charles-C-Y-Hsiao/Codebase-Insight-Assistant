@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "archiveType": "project-image-job",
+  "archivedAt": "2026-10-17T01:14:33.082Z",
+  "job": {
+    "id": "120b9d2b-7e21-4c75-860d-e20c668eafd4",
+    "projectId": "project-1e0ddbf02005354e85c5e760",
+    "conversationId": "902bdc0a-9862-4cfd-bac5-b03a1b7bbc7d",
+    "question": "請製作一張約 16:7 比例的橫式繁體中文企業技術簡報資訊圖表。\n\n這張圖片是 16:9 簡報中的主要內容區，\n已經扣除上方標題、英文副標題與兩句描述的高度。\n因此圖片中不要加入主標題、英文副標題、頁碼、標題區或描述文字。\n請直接生成主要流程圖表內容，讓圖片可以放置在簡報標題與描述下方。\n\n主題：\n從 Hit Lot 到最終 CYE 分類\n\n整體風格：\n- 白色背景\n- 專業、清楚、現代化的企業技術簡報風格\n- 適合半導體工程、資料分析與 CYE criteria 報告\n- 使用深藍色、亮藍色、深紫色與綠色\n- 使用圓角資訊卡片\n- 使用扁平化向量圖示\n- 使用清楚、粗細適中的流程箭頭\n- 版面乾淨、留白充足、不要過度擁擠\n- 不使用照片\n- 不使用複雜 3D 效果\n- 所有文字使用繁體中文，必要時保留英文專有名詞\n- 文字必須清楚、正確、完整，不要產生亂碼或多餘文字\n- 不要加入提示詞中沒有指定的內容\n\n整體流程：\n\n請製作一條由左至右的五階段流程：\n\n「Rule 產生 Hit Lot」\n→\n「User Review」\n→\n「Remark 分群」\n→\n「合併同類事件」\n→\n「重新計算並分類」\n\n五個階段使用大小一致的圓角卡片，\n卡片之間使用粗藍色箭頭連接。\n整體要清楚表達：\nHit Lot 不是最終結果，\n必須經過 user 判斷、Remark 分群與重新計算後，\n才產生最終 A / A1 / B / C 分類。\n\n第一階段：Rule 產生 Hit Lot\n\n卡片標題：\n\n「Rule 產生 Hit Lot」\n\n英文小標：\n\n「Rule Detection」\n\n卡片內容：\n\n「四種 Rule 分別執行」\n「產生各自的 Hit Lot」\n\n在卡片內加入四個小型彩色標籤：\n\n「Escalation」\n「Outlier」\n「Lot-base」\n「Zonal」\n\n配合資料清單、警示標記或資料點圖示。\n\n卡片下方放置小型藍色標籤：\n\n「原始偵測結果」\n\n請明確表現四種 Rule 是分別計算，\n不要將四種 Rule 合併成一個 Rule。\n\n第二階段：User Review\n\n卡片標題：\n\n「User Review」\n\n中文說明：\n\n「確認 Hit Lot 是否屬於同一異常原因」\n\n卡片內容：\n\n「User 檢視 Hit Lot」\n「判斷是否為同類原因」\n「輸入 Remark」\n\n使用人員檢視、勾選、放大鏡或確認圖示。\n\n卡片下方放置小型紫色標籤：\n\n「人工確認」\n\n第三階段：Remark 分群\n\n卡片標題：\n\n「Remark 分群」\n\n英文小標：\n\n「Grouping Key」\n\n卡片內容以四個整齊的小型欄位呈現：\n\n「CTMR」\n「Test Flow」\n「Product」\n「Remark」\n\n在欄位下方放置簡短說明：\n\n「相同 key 的 Hit Lot 視為同一族群」\n\n再加入一個淡黃色提示框：\n\n「Remark 空白值：視為同一群組」\n\n使用資料分組、標籤、資料夾或群組圖示。\n\n卡片下方放置小型綠色標籤：\n\n「確認同類事件」\n\n第四階段：合併同類事件\n\n卡片標題：\n\n「合併同類事件」\n\n英文小標：\n\n「Event Consolidation」\n\n卡片內容：\n\n「相同 key 的 Hit Lot」\n「合併為一個事件」\n「避免同一原因重複計算」\n\n視覺上呈現多個 Hit Lot 小圓點或小卡片，\n匯入一個較大的事件卡片。\n\n請加入簡化示意：\n\n「Hit Lot A」\n「Hit Lot B」\n「Hit Lot C」\n\n透過箭頭匯入：\n\n「同一異常事件」\n\n卡片下方放置小型橘色標籤：\n\n「事件合併」\n\n重要限制：\n\n- 合併只發生在相同 Rule 的判定流程內\n- 不要將不同 Rule 的結果跨 Rule 合併\n- 四種 Rule 仍然保留各自獨立的計算結果\n\n第五階段：重新計算並分類\n\n卡片標題：\n\n「重新計算並分類」\n\n英文小標：\n\n「Recalculation & Classification」\n\n卡片內容：\n\n「依合併後事件重新計算」\n「判定最終 CYE 分類」\n\n在卡片內放置四個清楚的彩色分類標籤：\n\n「A｜CYE」\n使用紅色或深橘色\n\n「A1｜CYE」\n使用紫色或紫紅色\n\n「B｜Pre-CYE」\n使用藍色\n\n「C｜Early Alert」\n使用綠色\n\n在四個分類標籤下方加入灰色小標籤：\n\n「未達分類門檻：不列入分類」\n\n如果同一事件符合多個分類，\n請以一個小型提示文字表示：\n\n「依分類優先順序保留最高分類」\n\n不要指定 A 與 A1 的具體優先順序，\n只呈現「依分類優先順序判定」的概念。\n\n流程下方的重點說明區：\n\n在整張流程圖下方放置一個淡藍色的大型圓角說明框，\n標題：\n\n「判定原則」\n\n說明文字：\n\n「Hit Lot 是偵測結果；合併後的事件才是最終分類與統計的基礎。」\n\n將以下詞語使用深藍色或綠色加粗：\n\n「Hit Lot」\n「合併後的事件」\n「最終分類與統計」\n\n底部重點橫幅：\n\n在主要資訊圖表最下方放置一條橫跨大部分版面的深藍色或紫藍色圓角橫幅。\n\n橫幅內使用白色粗體文字：\n\n「Hit Lot → User Review → Remark 分群 → 事件合併 → 重新計算 → A / A1 / B / C」\n\n視覺與排版要求：\n\n- 圖片不要包含主標題、英文副標題、頁碼或描述\n- 五個流程卡片必須由左至右排列\n- 箭頭方向必須一致，清楚表示流程順序\n- 四種 Rule 必須保持獨立計算，不可畫成跨 Rule 合併\n- Remark 空白值必須清楚標示為同一群組\n- 相同 CTMR / Test Flow / Product / Remark 的 Hit Lot 才能合併\n- 不要加入虛構數字或實際統計數據\n- 所有卡片邊界整齊、間距一致\n- 所有圖示比例正常，不要拉長或壓扁\n- 文字層級清楚，卡片標題大於說明文字\n- 不要加入人物照片、品牌 Logo、浮水印或未指定內容\n- 整體視覺必須與前 3 頁的白底、藍紫綠配色、圓角卡片與企業技術資訊圖表風格一致",
+    "status": "completed",
+    "progress": "圖片創作完成",
+    "plan": [],
+    "events": [],
+    "iterations": [],
+    "tools": [],
+    "evidence": [],
+    "result": {
+      "conclusions": [
+        "已產生 hit-lot-cye-cye-criteria-v1.png"
+      ],
+      "facts": [],
+      "inferences": [],
+      "unknown": [],
+      "mock": false
+    },
+    "ai": {
+      "provider": "openai",
+      "model": "gpt-image-2.5-sunburst",
+      "requests": 1,
+      "usage": [],
+      "cost": null
+    },
+    "archived": true,
+    "taskId": "120b9d2b-7e21-4c75-860d-e20c668eafd4",
+    "revision": 1,
+    "versions": [],
+    "startedAt": 1790778262967,
+    "finishedAt": 1790778297381,
+    "kind": "image",
+    "imageCreation": {
+      "seriesId": "6337ae85-fecf-454b-8c68-0cfa30fb08b0",
+      "slug": "hit-lot-cye-cye-criteria",
+      "version": 1,
+      "previousJobId": null,
+      "model": "gpt-image-2.5-sunburst",
+      "prompt": "請製作一張約 16:7 比例的橫式繁體中文企業技術簡報資訊圖表。\n\n這張圖片是 16:9 簡報中的主要內容區，\n已經扣除上方標題、英文副標題與兩句描述的高度。\n因此圖片中不要加入主標題、英文副標題、頁碼、標題區或描述文字。\n請直接生成主要流程圖表內容，讓圖片可以放置在簡報標題與描述下方。\n\n主題：\n從 Hit Lot 到最終 CYE 分類\n\n整體風格：\n- 白色背景\n- 專業、清楚、現代化的企業技術簡報風格\n- 適合半導體工程、資料分析與 CYE criteria 報告\n- 使用深藍色、亮藍色、深紫色與綠色\n- 使用圓角資訊卡片\n- 使用扁平化向量圖示\n- 使用清楚、粗細適中的流程箭頭\n- 版面乾淨、留白充足、不要過度擁擠\n- 不使用照片\n- 不使用複雜 3D 效果\n- 所有文字使用繁體中文，必要時保留英文專有名詞\n- 文字必須清楚、正確、完整，不要產生亂碼或多餘文字\n- 不要加入提示詞中沒有指定的內容\n\n整體流程：\n\n請製作一條由左至右的五階段流程：\n\n「Rule 產生 Hit Lot」\n→\n「User Review」\n→\n「Remark 分群」\n→\n「合併同類事件」\n→\n「重新計算並分類」\n\n五個階段使用大小一致的圓角卡片，\n卡片之間使用粗藍色箭頭連接。\n整體要清楚表達：\nHit Lot 不是最終結果，\n必須經過 user 判斷、Remark 分群與重新計算後，\n才產生最終 A / A1 / B / C 分類。\n\n第一階段：Rule 產生 Hit Lot\n\n卡片標題：\n\n「Rule 產生 Hit Lot」\n\n英文小標：\n\n「Rule Detection」\n\n卡片內容：\n\n「四種 Rule 分別執行」\n「產生各自的 Hit Lot」\n\n在卡片內加入四個小型彩色標籤：\n\n「Escalation」\n「Outlier」\n「Lot-base」\n「Zonal」\n\n配合資料清單、警示標記或資料點圖示。\n\n卡片下方放置小型藍色標籤：\n\n「原始偵測結果」\n\n請明確表現四種 Rule 是分別計算，\n不要將四種 Rule 合併成一個 Rule。\n\n第二階段：User Review\n\n卡片標題：\n\n「User Review」\n\n中文說明：\n\n「確認 Hit Lot 是否屬於同一異常原因」\n\n卡片內容：\n\n「User 檢視 Hit Lot」\n「判斷是否為同類原因」\n「輸入 Remark」\n\n使用人員檢視、勾選、放大鏡或確認圖示。\n\n卡片下方放置小型紫色標籤：\n\n「人工確認」\n\n第三階段：Remark 分群\n\n卡片標題：\n\n「Remark 分群」\n\n英文小標：\n\n「Grouping Key」\n\n卡片內容以四個整齊的小型欄位呈現：\n\n「CTMR」\n「Test Flow」\n「Product」\n「Remark」\n\n在欄位下方放置簡短說明：\n\n「相同 key 的 Hit Lot 視為同一族群」\n\n再加入一個淡黃色提示框：\n\n「Remark 空白值：視為同一群組」\n\n使用資料分組、標籤、資料夾或群組圖示。\n\n卡片下方放置小型綠色標籤：\n\n「確認同類事件」\n\n第四階段：合併同類事件\n\n卡片標題：\n\n「合併同類事件」\n\n英文小標：\n\n「Event Consolidation」\n\n卡片內容：\n\n「相同 key 的 Hit Lot」\n「合併為一個事件」\n「避免同一原因重複計算」\n\n視覺上呈現多個 Hit Lot 小圓點或小卡片，\n匯入一個較大的事件卡片。\n\n請加入簡化示意：\n\n「Hit Lot A」\n「Hit Lot B」\n「Hit Lot C」\n\n透過箭頭匯入：\n\n「同一異常事件」\n\n卡片下方放置小型橘色標籤：\n\n「事件合併」\n\n重要限制：\n\n- 合併只發生在相同 Rule 的判定流程內\n- 不要將不同 Rule 的結果跨 Rule 合併\n- 四種 Rule 仍然保留各自獨立的計算結果\n\n第五階段：重新計算並分類\n\n卡片標題：\n\n「重新計算並分類」\n\n英文小標：\n\n「Recalculation & Classification」\n\n卡片內容：\n\n「依合併後事件重新計算」\n「判定最終 CYE 分類」\n\n在卡片內放置四個清楚的彩色分類標籤：\n\n「A｜CYE」\n使用紅色或深橘色\n\n「A1｜CYE」\n使用紫色或紫紅色\n\n「B｜Pre-CYE」\n使用藍色\n\n「C｜Early Alert」\n使用綠色\n\n在四個分類標籤下方加入灰色小標籤：\n\n「未達分類門檻：不列入分類」\n\n如果同一事件符合多個分類，\n請以一個小型提示文字表示：\n\n「依分類優先順序保留最高分類」\n\n不要指定 A 與 A1 的具體優先順序，\n只呈現「依分類優先順序判定」的概念。\n\n流程下方的重點說明區：\n\n在整張流程圖下方放置一個淡藍色的大型圓角說明框，\n標題：\n\n「判定原則」\n\n說明文字：\n\n「Hit Lot 是偵測結果；合併後的事件才是最終分類與統計的基礎。」\n\n將以下詞語使用深藍色或綠色加粗：\n\n「Hit Lot」\n「合併後的事件」\n「最終分類與統計」\n\n底部重點橫幅：\n\n在主要資訊圖表最下方放置一條橫跨大部分版面的深藍色或紫藍色圓角橫幅。\n\n橫幅內使用白色粗體文字：\n\n「Hit Lot → User Review → Remark 分群 → 事件合併 → 重新計算 → A / A1 / B / C」\n\n視覺與排版要求：\n\n- 圖片不要包含主標題、英文副標題、頁碼或描述\n- 五個流程卡片必須由左至右排列\n- 箭頭方向必須一致，清楚表示流程順序\n- 四種 Rule 必須保持獨立計算，不可畫成跨 Rule 合併\n- Remark 空白值必須清楚標示為同一群組\n- 相同 CTMR / Test Flow / Product / Remark 的 Hit Lot 才能合併\n- 不要加入虛構數字或實際統計數據\n- 所有卡片邊界整齊、間距一致\n- 所有圖示比例正常，不要拉長或壓扁\n- 文字層級清楚，卡片標題大於說明文字\n- 不要加入人物照片、品牌 Logo、浮水印或未指定內容\n- 整體視覺必須與前 3 頁的白底、藍紫綠配色、圓角卡片與企業技術資訊圖表風格一致",
+      "createdAt": "2026-09-30T14:24:22.968Z",
+      "fileName": "hit-lot-cye-cye-criteria-v1.png",
+      "mime": "image/png",
+      "width": 1896,
+      "height": 830,
+      "projectStorage": {
+        "kind": "project",
+        "relativeDirectory": ".cda\\image-generations\\5317019977d0f82444b51a52fa47c3b4deb4ebe1d62dc88d\\902bdc0a-9862-4cfd-bac5-b03a1b7bbc7d\\6337ae85-fecf-454b-8c68-0cfa30fb08b0"
+      },
+      "taskRecordFileName": "120b9d2b-7e21-4c75-860d-e20c668eafd4.task.json"
+    },
+    "owner": "5317019977d0f82444b51a52fa47c3b4deb4ebe1d62dc88d"
+  }
+}

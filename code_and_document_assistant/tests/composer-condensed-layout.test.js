@@ -5,10 +5,15 @@ const path=require('node:path');
 
 const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../public/styles.css'),'utf8');
+const app=fs.readFileSync(path.join(__dirname,'../public/app.js'),'utf8');
 
 test('composer 預設精簡，功能集中在浮動選單且保留既有控制 ID',()=>{
   assert.match(html,/<button id="composer-more"[^>]*aria-controls="composer-menu"/);
   assert.match(html,/<div id="composer-menu" class="composer-menu" hidden>/);
+  assert.match(html,/<button id="composer-images"[^>]*aria-expanded="false"[^>]*aria-controls="composer-attachments"/);
+  assert.match(html,/<div id="composer-attachments" hidden>/);
+  assert.match(app,/function setComposerAttachments\(open,[\s\S]*?composer-attachments[\s\S]*?aria-expanded/);
+  assert.match(app,/composer-files'\)\.onclick=[\s\S]*?sidebar-collapsed[\s\S]*?setPanel\('left',false\)[\s\S]*?files-panel[\s\S]*?input\[type="checkbox"\]/);
   for(const id of ['composer-files','composer-images','composer-reference','composer-permission','ai-edit-label','model-help','cancel','send'])assert(html.includes(`id="${id}"`),`缺少 ${id}`);
   assert.match(html,/<button id="send"(?![^>]*class="primary")[^>]*>/);
   assert.match(html,/<div id="composer-submit-actions">\s*<button id="cancel"[\s\S]*?<button id="send"[\s\S]*?<\/div>/);
@@ -21,7 +26,9 @@ test('composer 預設精簡，功能集中在浮動選單且保留既有控制 I
   assert.match(css,/#composer-actions #composer-more\s*\{[\s\S]*?width:20px[\s\S]*?height:32px[\s\S]*?min-width:20px[\s\S]*?min-height:32px[\s\S]*?padding:0/);
   assert.match(css,/#ai-edit-label:not\(\[hidden\]\)[\s\S]*?gap: 1px/);
   assert.match(css,/#ai-edit-label input\s*\{\s*transform:translateY\(1px\)/);
-  assert.match(css,/.composer-menu\s*\{[\s\S]*?position:absolute[\s\S]*?bottom:calc\(100% \+ 8px\)/);
+  assert.match(css,/.composer-menu\s*\{[\s\S]*?position:fixed[\s\S]*?width:min\(360px,calc\(100vw - 24px\)\)/);
+  assert.match(app,/function positionComposerMenu\(\)[\s\S]*?getBoundingClientRect\(\)[\s\S]*?style\.bottom/);
+  assert.match(app,/main-scroll'\)\.addEventListener\('scroll',positionComposerMenu/);
   assert.match(css,/.composer-menu\[hidden\]\s*\{\s*display:none/);
   assert.match(css,/#composer-request #selected:empty[\s\S]*?display:none/);
   assert.match(html,/<div id="question-editor">\s*<div id="image-draft" class="attachment-gallery"><\/div>\s*<label class="visually-hidden" for="question">[\s\S]*?<textarea id="question"/);

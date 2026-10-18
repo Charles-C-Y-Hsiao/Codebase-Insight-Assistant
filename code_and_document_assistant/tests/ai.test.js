@@ -57,9 +57,9 @@ test('圖片創作討論依需求精簡分析，不強制輸出座標與完整 O
 });
 test('圖片歷史篩選只接受候選任務 ID，並保留選擇理由',async t=>{
   const f=await setup(t);let request;
-  const client=new AIClient({env:f.env,fetchImpl:async(url,options)=>{request=JSON.parse(options.body);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({selectedJobIds:['job-2'],reason:'第二筆包含目前要求的配色決定'})}]}],usage:{input_tokens:20,output_tokens:7}});}});
+  const client=new AIClient({env:f.env,fetchImpl:async(url,options)=>{request=JSON.parse(options.body);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({selectedJobIds:['job-2'],reason:'第二筆包含目前要求的配色決定',reasons:{'job-1':'構圖與本次配色無關','job-2':'包含要延續的配色決定'}})}]}],usage:{input_tokens:20,output_tokens:7}});}});
   const result=await client.selectImageHistory({currentRequest:'延續配色',projectSummary:'品牌規範',seriesSummary:'目前構圖',candidates:[{id:'job-1',question:'構圖'},{id:'job-2',question:'配色'}]},new AbortController().signal);
-  assert.deepEqual(result.selectedJobIds,['job-2']);assert.match(result.reason,/配色/);assert.match(request.input[0].content,/不得分析或推測圖片內容/);
+  assert.deepEqual(result.selectedJobIds,['job-2']);assert.match(result.reason,/配色/);assert.match(result.reasons['job-1'],/無關/);assert.match(request.input[0].content,/不得分析或推測圖片內容/);
   const invalid=new AIClient({env:f.env,fetchImpl:async()=>Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({selectedJobIds:['unknown'],reason:'錯誤 ID'})}]}]})});
   await assert.rejects(()=>invalid.selectImageHistory({candidates:[{id:'job-1'}]},new AbortController().signal),/AI_FORMAT/);
 });

@@ -35,7 +35,7 @@
     <div id="header-title-row"><strong id="app-title">Code &amp; Document</strong><span id="app-subtitle" class="muted">Assistant · Phase 2</span></div>
     <span id="current-model" class="muted" role="status">目前模型：載入中</span>
   </div>
-  <span class="badge" id="mode-label">文件解析 real · AI／業務工具 mock</span>
+  <span class="badge" id="mode-label">AI</span>
 </header>
 <div class="layout">
 <aside id="workspace-sidebar" class="sidebar">
@@ -59,8 +59,9 @@
       <div id="image-project-list" role="listbox" aria-label="圖片創作專案清單"></div>
     </section>
   </div>
+  <details id="workspace-tools-panel"><summary><i id="workspace-tools-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>工作區工具與設定</span></summary><div id="workspace-tools-content">
   <button id="refresh">更新文件索引</button><span id="index-status" class="muted"></span>
-  <details id="files-panel" open><summary><i id="files-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>已索引檔案</span></summary><div id="files" aria-label="可引用的檔案"></div></details>
+  <details id="files-panel"><summary><i id="files-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>已索引檔案</span></summary><div id="files" aria-label="可引用的檔案"></div></details>
   <details id="global-reference-panel"><summary><i id="global-reference-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>全域唯讀參考</span></summary><p>授權期間自動加入搜尋，包含各專案 demo/。助手、runtime、backups、.git、.env* 與 node_modules 等排除。</p><div id="global-reference-list"></div></details>
 
   <details id="connections-panel"><summary><i id="connections-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>真實連線缺少哪些設定</span></summary><pre id="connections"></pre></details>
@@ -68,6 +69,7 @@
   <details id="issues-panel"><summary><i id="issues-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>未索引項目</span></summary><div id="issues"></div></details>
   <details id="registry-panel"><summary><i id="registry-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>工具白名單</span></summary><pre id="registry"></pre></details>
   <details id="version-panel"><summary><i id="version-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>版本清理</span></summary><span class="muted">勾選後清除 runtime 備份檔與對應程式記錄。</span><button id="version-load" type="button">載入版本清單</button><div id="version-list"></div><button id="version-cleanup" type="button" hidden>清除勾選版本</button></details>
+  </div></details>
   </div>
 </aside>
 <main id="main-content">
@@ -77,6 +79,8 @@
 
   <div id="mode-switch" class="mode-switch" role="group" aria-label="操作模式">
     <button id="mode-query" type="button" aria-pressed="true" hidden>查詢文件</button>
+    <button id="context-filter-guide-button" type="button" aria-label="歷史內容篩選與追蹤" title="歷史內容篩選與追蹤"><i class="fi fi-rr-rectangle-list" aria-hidden="true"></i></button>
+    <button id="workflow-guide-button" type="button" aria-label="工作流程說明" title="工作流程說明"><i class="fi fi-br-overview" aria-hidden="true"></i></button>
     <button id="mode-ai-edit" type="button" aria-pressed="false" hidden>AI 修改程式</button>
     <button id="mode-edit" type="button" aria-pressed="false">人工編輯／靜態驗證</button>
   </div>
@@ -114,24 +118,34 @@
     <div id="composer-context">
       <section id="image-project-memory" hidden aria-label="圖片專案與系列記憶">
         <div id="image-project-memory-heading"><button id="image-project-memory-summary" type="button" aria-expanded="false" aria-controls="image-project-memory-content"><i class="fi fi-br-angle-small-right" aria-hidden="true"></i><span id="image-project-memory-line">尚未建立圖片系列</span></button><label id="image-series-picker-label" for="image-series-select"><span>切換系列</span><select id="image-series-select" aria-label="切換圖片系列"></select></label></div>
-        <div id="image-project-memory-actions"><button id="image-draft-create" type="button" disabled>用最新草稿創作</button><button id="image-series-new" type="button">新系列</button><button id="image-summary-update" type="button" disabled>更新摘要</button><button id="image-summary-copy" type="button" disabled>複製摘要</button></div>
+        <div id="image-project-memory-actions"><button id="image-draft-create" type="button" disabled>選擇來源並創作</button><button id="image-series-new" type="button">新系列</button><button id="image-summary-update" type="button" disabled>更新摘要</button><button id="image-summary-copy" type="button" disabled>複製摘要</button></div>
+        <details id="image-history-preview"><summary><i id="image-history-preview-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>本次圖片討論的歷史候選預覽</span></summary><p id="image-history-preview-status" class="muted" aria-live="polite">輸入需求後顯示待篩選的歷史文字。</p><div id="image-history-preview-groups"></div></details>
         <div id="image-project-memory-content" hidden><div id="image-project-shared-summary"></div><div id="image-series-list"></div></div>
       </section>
       <section id="conversation-memory" aria-labelledby="conversation-memory-title">
-        <div class="memory-heading"><h2 id="conversation-memory-title">對話記憶</h2><span id="memory-status" class="muted">尚無已確認需求</span></div>
-        <details id="memory-details"><summary><i id="memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>查看已確認需求與壓縮摘要</span></summary><div id="confirmed-requirements"></div><pre id="memory-summary"></pre><div id="memory-update-history"></div></details>
+        <details id="memory-details">
+          <summary class="memory-heading"><span id="memory-heading-title"><i id="memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span id="conversation-memory-title">對話記憶</span></span><span id="memory-status" class="muted">尚無已確認需求</span></summary>
+          <span id="memory-details-label" class="muted">查看已確認需求與本次歷史候選預覽</span>
+          <div id="confirmed-requirements"></div>
+          <span id="memory-summary-label" class="muted">本次歷史候選預覽</span>
+          <div id="memory-summary"><p id="memory-preview-status" class="muted" aria-live="polite">展開對話記憶或輸入需求後，會預覽固定內容與待篩選候選。</p><div id="memory-preview-groups"></div></div>
+          <div id="memory-update-history"></div>
+        </details>
       </section>
       <details id="skill-panel" aria-labelledby="skill-panel-title"><summary><span id="skill-panel-heading"><i id="skill-panel-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span id="skill-panel-title">建議技能</span></span><span id="active-skill" class="muted">尚未啟用</span></summary><div id="skill-suggestions"></div></details>
     </div>
     <div id="composer-request">
       <div id="selected" class="chips"></div>
       <div id="question-editor">
+        <div id="composer-image-row">
         <section id="image-discussion-references" hidden aria-label="本次圖片對話參考圖"><span id="image-discussion-references-title" hidden>本次圖片對話參考圖</span><div id="image-discussion-latest"><label id="image-use-latest-label"><input id="image-use-latest" type="checkbox" checked><span id="image-use-latest-text">圖一 · 最新圖片創作圖</span><span id="image-use-latest-preview"></span></label></div></section>
         <div id="image-draft" class="attachment-gallery"></div>
+        </div>
         <label class="visually-hidden" for="question">問題或修改需求</label><textarea id="question" rows="3" placeholder="想做什麼都可以" required maxlength="15000"></textarea>
       </div>
       <div id="mentions" hidden aria-label="檔案選擇"></div>
     </div>
+      </div>
     <div id="composer-footer">
     <div id="composer-actions" class="compose-actions">
       <div id="composer-leading-actions" class="composer-leading-actions">
@@ -152,17 +166,16 @@
     </div>
     <div id="composer-menu" class="composer-menu" hidden>
       <button id="composer-files" type="button">選取檔案</button>
-      <button id="composer-images" type="button">圖片與貼圖設定</button>
+      <button id="composer-images" type="button" aria-expanded="false" aria-controls="composer-attachments">圖片與貼圖設定</button>
       <button id="composer-create-image" type="button">創作圖片</button>
       <button id="composer-reference" type="button">加入唯讀參考</button>
       <button id="composer-permission" type="button">專案／授權管理</button>
-      <div id="composer-attachments">
+      <div id="composer-attachments" hidden>
         <div id="image-controls"><label for="image-limit">單張圖片上限（MB）<input id="image-limit" type="number" min="1" max="20" step="1" value="10"></label><span id="image-count">0 / 5 張</span><span>可貼入 PNG／JPEG／WebP，最多 5 張</span></div>
         <span id="image-support" class="muted"></span><span class="muted">圖片僅在送出問題時傳給 AI；重新整理保留，服務停止後清除。</span><p id="image-notice" role="status"></p>
       </div>
     </div>
     </div>
-      </div>
     </form>
   <div id="task-update-floating" hidden aria-live="polite">
     <span id="task-update-floating-label" role="button" tabindex="0" title="查看差異"></span>
@@ -199,19 +212,295 @@
   <h2 id="discard-title">有未送出的內容</h2><p>切換會清除尚未送出的問題或候選修改。是否放棄這些內容？</p>
   <div class="dialog-actions"><button id="keep-draft" type="button" autofocus>留下繼續編輯</button><button id="discard-draft" type="button">放棄並切換</button></div>
 </dialog>
+<dialog id="image-text-only-dialog" aria-labelledby="image-text-only-title">
+  <div class="dialog-heading"><h2 id="image-text-only-title">圖片目前只保留為草稿</h2><button id="image-text-only-close" type="button">關閉</button></div>
+  <p>目前圖片 API 尚未具備圖片解析能力。圖片可以貼入對話窗供本機預覽，但不能勾選，也不會送入 LLM 或生圖 API。圖片討論仍可使用文字；圖片創作只使用文字提示詞。</p>
+  <div class="dialog-actions"><button id="image-text-only-confirm" type="button">知道了</button></div>
+</dialog>
+<dialog id="task-delete-dialog" aria-labelledby="task-delete-title" aria-describedby="task-delete-message">
+  <div class="dialog-heading"><h2 id="task-delete-title">刪除任務</h2></div>
+  <p id="task-delete-message"></p>
+  <ul id="task-delete-effects"></ul>
+  <div class="dialog-actions"><button id="task-delete-cancel" type="button" autofocus>取消</button><button id="task-delete-confirm" type="button">確認刪除</button></div>
+</dialog>
+<dialog id="workflow-guide-dialog" aria-labelledby="workflow-guide-title">
+  <div class="dialog-heading"><h2 id="workflow-guide-title">工作流程說明</h2><button id="workflow-guide-close" type="button">關閉</button></div>
+  <div id="workflow-guide-tabs" role="tablist" aria-label="工作流程主題">
+    <button id="workflow-guide-tab-general" type="button" role="tab" aria-controls="workflow-guide-general" aria-selected="true">一般專案</button>
+    <button id="workflow-guide-tab-image" type="button" role="tab" aria-controls="workflow-guide-image" aria-selected="false">圖片創作</button>
+  </div>
+  <section id="workflow-guide-general" role="tabpanel" aria-labelledby="workflow-guide-tab-general">
+    <details id="workflow-guide-skills">
+      <summary id="workflow-guide-skills-title" title="&lt;details id=&quot;skill-panel&quot; aria-labelledby=&quot;skill-panel-title&quot;&gt;"><i id="workflow-guide-skills-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>建議技能</span></summary>
+      <div id="workflow-guide-skills-content">
+        <p>模型依目前輸入建議最多三種；建議不會自動執行，按下技能旁的按鈕才會啟用。</p>
+        <ol>
+          <li><strong>需求釐清</strong>：模型整理目前理解並提出 1–3 個問題，任務通常會停在「需要補充」。輸入少於 30 字，或包含「不知道、不確定、怎麼做、如何做、需求」等字詞時會建議。</li>
+          <li><strong>任務規劃</strong>：模型查閱必要資料後，列出執行步驟、相依關係與驗收條件，不會修改檔案。輸入包含「建立、新增、修改、改成、實作、開發、功能、頁面、程式、重構」等字詞時會建議。</li>
+          <li><strong>驗證檢查</strong>：模型根據取得的證據說明已驗證、尚未驗證及建議檢查項目，不會修改檔案。輸入包含「驗證、測試、確認、檢查、完成、正確、問題、錯誤、失敗」等字詞時會建議。</li>
+          <li>若沒有符合任何規則，預設建議「需求釐清」；最多顯示三種。</li>
+          <li>只有 real 模式會顯示技能建議；Mock 模式不會回傳建議。</li>
+        </ol>
+      </div>
+    </details>
+    <details id="workflow-guide-auto-memory">
+      <summary id="workflow-guide-auto-memory-title" title="&lt;label id=&quot;auto-memory-label&quot; title=&quot;&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;ai-auto-memory&quot;&gt;"><i id="workflow-guide-auto-memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>自動整理記憶 (額外 token)</span></summary>
+      <div id="workflow-guide-auto-memory-content">
+        <p>勾選後，文字任務完成時會使用目前模型整理記憶，額外消耗 token。整理材料包含既有結構化記憶、有效的已確認需求，以及尚未納入記憶的合格文字任務；不是固定只取最近 6 筆。圖片任務不納入這份一般對話記憶。若既有記憶來源失效，系統可能重新整理所有符合條件的文字任務。未勾選時沿用本機整理；此選項僅 real 模式顯示。</p>
+      </div>
+    </details>
+    <details id="workflow-guide-task-memory">
+      <summary id="workflow-guide-task-memory-title" title="&lt;section class=&quot;task-memory-attribution&quot; id=&quot;task-memory-items-*&quot; aria-label=&quot;此任務對應的對話記憶項目&quot;&gt;"><i id="workflow-guide-task-memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>對話記憶項目</span></summary>
+      <div id="workflow-guide-task-memory-content">
+        <p>展開任務卡的「詳細資訊」後，可查看依來源任務 ID 對應的記憶項目。分類包括：</p>
+        <ul>
+          <li><strong>目標</strong>：對話希望達成的結果。</li>
+          <li><strong>目前決定</strong>：已確認採用的選擇或方向。</li>
+          <li><strong>限制</strong>：執行時必須遵守的條件或避免事項。</li>
+          <li><strong>已完成</strong>：有紀錄可佐證已完成的工作。</li>
+          <li><strong>待辦與待確認</strong>：尚未完成、需要補充或仍待確認的事項。</li>
+        </ul>
+        <p>任務未產生可追溯的結構化記憶時，會顯示尚無對應項目的提示。此區顯示已保存的記憶來源，不代表「允許 AI 修改」已啟用。</p>
+      </div>
+    </details>
+    <details id="workflow-guide-conversation-memory">
+      <summary id="workflow-guide-conversation-memory-title" title="&lt;section id=&quot;conversation-memory&quot; aria-labelledby=&quot;conversation-memory-title&quot;&gt;"><i id="workflow-guide-conversation-memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>對話記憶</span></summary>
+      <div id="workflow-guide-conversation-memory-content">
+        <span id="workflow-guide-memory-legacy-title"><strong>未勾選自動整理記憶時：</strong></span>
+        <ul>
+          <li>每次送出前固定保留有效的已確認需求與可用的明確限制；從同一對話最近 6 筆合格文字任務建立候選，再由篩選 LLM 選出 0–6 筆。</li>
+          <li>明確限制目前取自來源仍有效的結構化記憶；若尚未建立或來源已失效，只有有效已確認需求會固定保留。重要限制可先確認為需求。</li>
+          <li>選中任務的完整文字欄位與狀態會進入主請求；沒有選中的舊任務與舊附件圖片不會附上。</li>
+          <li>篩選失敗時，主請求只帶本次需求與固定內容，並在任務追蹤中顯示原因。未勾選此開關不會略過歷史篩選。</li>
+        </ul>
+        <span id="workflow-guide-memory-automatic-title"><strong>勾選自動整理記憶時：</strong></span>
+        <ul>
+          <li>一般任務的歷史篩選與未勾選時相同：固定保留有效需求與可用限制，最多從最近 6 筆合格文字任務中選取 0–6 筆；不會因開關啟用就直接送出全部任務或結構化摘要。</li>
+          <li>此開關另外控制任務保存後的背景記憶整理；若送出前需要更新記憶，預覽與實際固定內容可能不同。</li>
+          <li>展開「對話記憶」後可預覽固定內容與標示「待篩選」的候選任務。送出前預覽不會呼叫篩選或記憶整理 LLM；送出後請在任務詳細資訊查看實際結果。</li>
+        </ul>
+        <span id="workflow-guide-memory-summary-request-title"><strong>自動整理記憶的另一個 LLM 請求：</strong></span>
+        <ul>
+          <li>整理請求會使用先前結構化記憶、有效已確認需求，以及尚未納入記憶且符合條件的任務；必要時分批送出。這與一般任務收到的歷史上下文是兩個不同請求。</li>
+          <li>編號清單是使用者在任務完成後按「確認為需求」保存的需求，不是 LLM 自動產生；勾選自動整理記憶時，有效項目會作為整理材料。</li>
+          <li>（有效）表示使用者確認為需求；（已被後續需求取代）表示確認以新需求取代舊需求，或編輯已確認任務並保存新版本。兩者都不是「確認套用」修改。</li>
+        </ul>
+        <span id="workflow-guide-memory-common-title"><strong>一般任務共同送入資料與目前可見範圍：</strong></span>
+        <ul>
+          <li>Real 模式且有候選任務時，第一個 LLM 請求是歷史篩選：收到本次需求、固定內容與候選文字，不收到圖片。接著主請求才收到系統指令與可用工具、本次問題、選用技能、篩選後的 conversationContext，以及本輪選取的檔案和圖片資訊。圖片內容另以影像輸入送出；檔案全文要等模型使用讀取或搜尋工具才會進入後續請求。</li>
+          <li>預覽位於 <code>#memory-details</code> 內的 <code>#memory-summary</code>，顯示送出前的固定內容與待篩選候選；不能把候選清單當成最終「已納入」。送出後在任務詳細資訊查看逐筆納入／排除理由、篩選材料，以及主請求實際收到的歷史上下文。</li>
+          <li>篩選 LLM 會逐筆回傳理由，但它仍可能漏掉有用的舊決定；因此有效已確認需求與可用的明確限制固定保留。Mock 模式會標示未送入 LLM。</li>
+          <li>一般情況下 conversationContext 不含本次問題；延續／編輯任務可能會把完整需求附在上下文。預覽不含另行傳送的圖片實際內容及工具後續取得的檔案內容；若送出前需要更新自動記憶，實際固定內容可能改變。</li>
+        </ul>
+      </div>
+    </details>
+    <details id="workflow-guide-task-delete">
+      <summary id="workflow-guide-task-delete-title" title="&lt;button class=&quot;task-question-delete&quot; type=&quot;button&quot; id=&quot;task-delete-*&quot;&gt;Delete&lt;/button&gt;"><i id="workflow-guide-task-delete-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>單張任務卡片 Delete</span></summary>
+      <div id="workflow-guide-task-delete-body">
+        <span>以下是一般專案單張任務卡片的 Delete 操作，與側邊欄刪除整個對話不同。</span>
+        <ul id="workflow-guide-task-delete-content">
+          <li><strong>操作位置與確認</strong>
+            <ul>
+              <li>每張一般任務卡片右上角有 <code>Delete</code>，與 <code>Edit</code>、<code>View</code> 並列。</li>
+              <li>點擊後會開啟自製確認視窗，列出刪除影響；確認後才執行。</li>
+              <li>圖片創作專案的任務不能透過這個按鈕刪除，畫面會提示原因。</li>
+            </ul>
+          </li>
+          <li><strong>刪除範圍</strong>
+            <ul>
+              <li>刪除一張任務卡片及其所有 Edit 版本，包含這些版本的任務紀錄。</li>
+              <li>若卡片有多個版本，「需求版本」區和刪除確認視窗都會額外提醒。</li>
+              <li>其他任務卡片保留。已寫入專案的檔案、共用備份與稽核紀錄也保留。</li>
+            </ul>
+          </li>
+          <li><strong>已確認需求</strong>
+            <ul>
+              <li>移除由被刪任務及其版本產生的已確認需求。</li>
+              <li>如果被刪需求曾取代較早的需求，系統會依剩餘取代關係判斷：沒有其他需求繼續取代時，恢復較早需求為有效。</li>
+            </ul>
+          </li>
+          <li><strong>摘要與歷史追蹤</strong>
+            <ul>
+              <li>本機摘要依剩餘任務重新整理。</li>
+              <li>結構化模型摘要及其更新紀錄，會移除涉及被刪任務或來源不明的項目，保留其他可追溯項目，並標示已刪改。</li>
+              <li>刪除當下不會立即呼叫 LLM；後續記憶整理執行時才重建模型摘要。</li>
+              <li>其他任務的歷史快照會移除被刪任務，以及無法安全拆分的固定內容、摘要與篩選理由；保留可辨識的其他候選任務，並標示快照已刪改。</li>
+            </ul>
+          </li>
+          <li><strong>執行中任務與圖片</strong>
+            <ul>
+              <li>目標任務若正在執行，系統會嘗試取消；已開始的檔案寫入則等待完成。</li>
+              <li>同一對話的其他任務或記憶整理仍在執行，或等待超過 30 秒時，保留卡片並提示重試。</li>
+              <li>一般生圖若尚未完整保存到專案歸檔，會阻止單筆刪除。歸檔完整時，專案內 PNG、JSON 和任務歸檔保留；中央 runtime 中可對應到該任務的 PNG／JSON 會嘗試清理，失敗時顯示警告。</li>
+            </ul>
+          </li>
+        </ul>
+        <span><strong>清除的限制：</strong>模型摘要的來源 ID 由 LLM 填寫，可能漏標，所以不能保證保留下來的摘要完全沒有被刪任務的內容。另外，後續任務自己的需求與回答原文會保留；若其中提到被刪內容，未來仍可能再次進入歷史上下文。</span>
+      </div>
+    </details>
+  </section>
+  <section id="workflow-guide-image" role="tabpanel" aria-labelledby="workflow-guide-tab-image" hidden>
+    <details id="workflow-guide-image-discussion">
+      <summary id="workflow-guide-image-discussion-title" title="id=&quot;image-discussion-references&quot;"><i id="workflow-guide-image-discussion-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>未勾選「創作圖片」而送出圖片討論</span></summary>
+      <div id="workflow-guide-image-discussion-content">
+        <ol>
+          <li><strong>第一階段：篩選相關歷史</strong>
+            <span>如果同系列有歷史候選，系統先送給篩選 LLM：</span>
+            <ul>
+              <li>本次需求。</li>
+              <li>目前已套用的專案摘要與系列摘要。</li>
+              <li>同系列最近最多 6 筆圖片討論文字。每筆包含任務 ID、需求、公開回答、結論、推論、未知事項與狀態。</li>
+            </ul>
+            <span>篩選模型從中選出 <strong>0～6 筆</strong>；這一階段不會收到圖片本身。如果沒有候選，則略過篩選請求。如果篩選失敗，系統顯示警告，後續仍使用本次需求及兩份摘要繼續討論。</span>
+          </li>
+          <li><strong>第二階段：圖片討論與分析</strong>
+            <span>主請求會送入：</span>
+            <ul>
+              <li>本次需求、系統規則與圖片討論技能指示。</li>
+              <li>目前已套用的<strong>專案摘要、系列摘要</strong>。</li>
+              <li>第一階段<strong>實際選中</strong>的歷史討論文字。</li>
+              <li>本輪選取的附件圖片；若沒有取消「最新系列圖片」，也會帶入該圖片。</li>
+              <li>圖片的識別 ID、名稱、寬度與高度。</li>
+            </ul>
+            <span>圖片最多 <strong>5 張</strong>，最新系列圖片也計入。圖片實際內容會轉成 <strong>Base64 data URL</strong>，作為 API 的圖片輸入送出，不只是把 Base64 字串當一般文字交給模型。需要圖片專案允許外送，且模型端點支援圖片理解。</span>
+          </li>
+          <li><strong>創作草稿是什麼時候產生的？</strong>
+            <span>本輪圖片討論完成後，模型會回傳並保存「Agent 理解」、「參考圖片觀察」及<strong>候選完整提示詞</strong>，形成這一輪的創作草稿。</span>
+            <span>目前程式<strong>不會把上一輪的 <code>imageProjectDraft.prompt</code> 欄位直接固定帶入</strong>下一輪圖片討論。不過，如果上一輪的公開回答中包含提示詞，而該輪又被歷史篩選選中，模型仍可能透過公開回答間接看到那段文字。</span>
+          </li>
+        </ol>
+      </div>
+    </details>
+    <details id="workflow-guide-image-creation">
+      <summary id="workflow-guide-image-creation-title" title="id=&quot;image-create-mode-label&quot;"><i id="workflow-guide-image-creation-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>勾選「創作圖片」送出圖片創作</span></summary>
+      <div id="workflow-guide-image-creation-content">
+        <span>勾選「創作圖片」後，系統會開啟確認視窗。確認後，圖片模型收到的是<strong>完整提示詞、圖片模型設定，以及實際選用的圖片材料</strong>。</span>
+        <ul>
+          <li><strong>完整提示詞</strong>
+            <ul>
+              <li>確認視窗會依情況組合<mark>本次要求</mark>、<mark>專案摘要</mark>、<mark>系列摘要</mark>、<mark>候選提示詞</mark>及<mark>上一版提示詞</mark>；你可以在送出前檢查與修改。</li>
+              <li>若有上一版提示詞可參考，系統會加入修改優先規則，並可能包含上述各項內容。</li>
+              <li>若沒有上一版，但選取了候選提示詞，目前會以候選提示詞作為完整提示詞；不會再自動另外加入本次要求和兩份摘要。</li>
+              <li>若沒有上一版，也沒有候選提示詞，則組合專案摘要、系列摘要與本次要求。</li>
+              <li>實際選用上一版圖片時，後端會確保提示詞包含修改優先規則；若確認視窗中的文字沒有這段，後端會補上。</li>
+            </ul>
+          </li>
+          <li><strong>圖片材料</strong>
+            <ul>
+              <li><strong>上一版圖片</strong>：選用時作為修改基礎，獨立於參考圖片清單。</li>
+              <li><strong>本次創作材料</strong>：確認視窗會列出選取的候選草稿所保存的參考圖，以及本輪貼入對話窗的草稿圖片。這些圖片會合併、依 ID 去重，預設不加入，需在確認視窗勾選。</li>
+              <li>系統最多接受 <strong>5 張勾選的參考圖片</strong>。若另有一張上一版圖片且尚未包含在參考清單中，會再加入上一版，因此一次圖片編輯請求<strong>最多可能有 6 張圖片</strong>。</li>
+            </ul>
+          </li>
+          <li><strong>送出方式</strong>
+            <ul>
+              <li>沒有上一版或參考圖片時，送出文字生成請求。</li>
+              <li>有圖片材料時，送出圖片編輯請求，使用 <code>multipart/form-data</code> 傳送圖片檔案內容，而不是 Base64 data URL。</li>
+              <li>圖片服務回傳生成結果後，系統會將回應中的 Base64 圖片解碼並保存為 PNG。</li>
+            </ul>
+          </li>
+        </ul>
+        <span>這個流程<strong>不會先篩選同系列最近 6 筆圖片討論</strong>；那是未勾選「創作圖片」時的圖片討論流程。產圖時，請以確認視窗中的<strong>完整提示詞</strong>和實際勾選的材料為主要檢查依據；若選用上一版，後端可能再補上修改優先規則。</span>
+      </div>
+    </details>
+    <details id="workflow-guide-image-text-only-mode">
+      <summary id="workflow-guide-image-text-only-mode-title" title="const MAGE_TEXT_ONLY_MODE = true;（BEoL；預設 false）"><i id="workflow-guide-image-text-only-mode-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span><code>MAGE_TEXT_ONLY_MODE = true</code>（BEoL；預設 false）</span></summary>
+      <div id="workflow-guide-image-text-only-mode-content">
+        <span><code>MAGE_TEXT_ONLY_MODE = true</code> 時，仍可討論圖片和創作圖片；差異是輸入圖片不會送進 LLM 或生圖 API。</span>
+        <table id="workflow-guide-image-text-only-mode-table">
+          <thead><tr><th scope="col">項目</th><th scope="col">原本圖片輸入可用時</th><th scope="col">設為 <code>true</code> 後</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">一般專案</th><td>可選取圖片並隨任務送出</td><td>草稿圖片不能勾選或送出；LLM 只收到文字</td></tr>
+            <tr><th scope="row">圖片討論</th><td>可將勾選的附件圖、最新系列圖送給 LLM</td><td>仍送出本次要求、專案／系列摘要與符合條件的歷史文字；不送圖片內容，也不把圖片記為該任務附件</td></tr>
+            <tr><th scope="row">圖片創作</th><td>可把上一版圖片或參考圖交給生圖 API 編輯</td><td>仍可創作；完整文字提示詞照常送出，但上一版圖、參考圖及草稿圖都不會送出</td></tr>
+            <tr><th scope="row">延續上一版</th><td>生圖模型可以讀取上一版圖片</td><td>保留上一版的文字提示詞和版本關聯，依文字重新生成；模型看不到上一版圖片</td></tr>
+            <tr><th scope="row">圖片選取介面</th><td>依流程勾選圖片材料</td><td>圖片仍可在畫面預覽，但圖片選項會取消勾選並停用；貼圖時會顯示自製提示窗</td></tr>
+            <tr><th scope="row">生圖結果</th><td>收到圖片後保存</td><td>仍會接收並保存生圖結果為 PNG</td></tr>
+          </tbody>
+        </table>
+        <span>文字中若提到圖片，描述文字仍可能送進模型，但圖片像素不會送出。設為 <code>true</code> 限制的是<strong>圖片輸入</strong>，不會停用圖片創作或阻止接收生圖結果。</span>
+      </div>
+    </details>
+    <details id="workflow-guide-image-draft-create">
+      <summary id="workflow-guide-image-draft-create-title" title="&lt;button id=&quot;image-draft-create&quot; type=&quot;button&quot;&gt;選擇來源並創作&lt;/button&gt;"><i id="workflow-guide-image-draft-create-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>選擇來源並創作</span></summary>
+      <div id="workflow-guide-image-draft-create-content">
+        <p>開啟圖片創作確認視窗後，明確選擇不使用候選、指定候選提示詞，或延續指定圖片版本。預設不選候選，也不會暗中取用最新版本。</p>
+        <p>視窗顯示來源需求與時間、各段字數、完整提示詞及圖片材料。選擇上一版時，文字模式只沿用提示詞，不傳送圖片；圖片輸入模式可用該圖片作為編輯基礎。按下此按鈕本身不會送出產圖請求。</p>
+      </div>
+    </details>
+    <details id="workflow-guide-image-summary">
+      <summary id="workflow-guide-image-summary-title" title="id=&quot;image-summary-dialog&quot;"><i id="workflow-guide-image-summary-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>摘要更新</span></summary>
+      <div id="workflow-guide-image-summary-content"><p>系統整理新增的圖片討論與創作紀錄，提出專案摘要及系列摘要候選。檢查候選內容後再選擇套用。</p></div>
+    </details>
+  </section>
+</dialog>
+<dialog id="context-filter-guide-dialog" aria-labelledby="context-filter-guide-dialog-title">
+  <div class="dialog-heading"><h2 id="context-filter-guide-dialog-title">歷史內容篩選與追蹤</h2><button id="context-filter-guide-close" type="button">關閉</button></div>
+  <div id="context-filter-guide-tabs" role="tablist" aria-label="優化構想主題">
+    <button id="context-filter-guide-tab-general" type="button" role="tab" aria-controls="context-filter-guide-general" aria-selected="true">一般專案</button>
+    <button id="context-filter-guide-tab-image" type="button" role="tab" aria-controls="context-filter-guide-image" aria-selected="false">圖片創作</button>
+  </div>
+  <section id="context-filter-guide-general" role="tabpanel" aria-labelledby="context-filter-guide-tab-general">
+    <details id="workflow-guide-context-filter" open>
+      <summary id="workflow-guide-context-filter-title"><i id="workflow-guide-context-filter-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>歷史內容篩選與 LLM 請求組裝</span></summary>
+      <div id="workflow-guide-context-filter-content">
+        <p>可以把提示詞交給 LangChain 編排，但 LangChain 本身不會自動減少雜訊。要改善歷史內容與本次需求不相關的問題，仍要明確設計「依本次需求篩選歷史」的步驟。</p>
+        <p>原本的組裝方式已有部分篩選：歷史只來自同一對話且符合外送條件的任務，但仍可能納入與本次需求無關的內容。因此現在先建立有限候選，再逐筆篩選與記錄結果。</p>
+        <p>若要改善，建議拆成明確的兩階段：</p>
+        <ol>
+          <li>依專案、授權與任務狀態取得可用歷史，再挑出有限的候選項目。</li>
+          <li>用篩選請求根據本次需求，從候選項目選出相關任務 ID，並回傳選取理由。</li>
+          <li>主請求只收到本次需求、必要規則、篩選後的歷史，以及必要的檔案或圖片資料。</li>
+          <li>在 <code>#memory-summary</code> 顯示選入與排除項目及理由；篩選失敗時顯示提示，並採用明確的退回方式。</li>
+        </ol>
+        <p>這會多一次 LLM 呼叫，增加延遲與 token 成本；篩選器也可能漏掉有用的舊決定。因此重要限制與有效確認需求應保留為固定上下文，再篩選一般任務歷史。LangChain 不會替系統決定篩選規則；可用 LangGraph 將流程拆成明確節點並按需要組裝上下文，也可以由現有程式自行實作。<a href="https://docs.langchain.com/oss/javascript/langgraph/thinking-in-langgraph" target="_blank" rel="noreferrer">LangGraph 流程設計文件</a></p>
+        <p>方向是<mark>加入可追蹤的歷史篩選流程</mark>，優化點是讓選入、排除與失敗退回都有紀錄，而不是單純把提示詞改交給 <strong>LangChain</strong>。</p>
+      </div>
+    </details>
+    <details id="context-filter-guide-plan">
+      <summary id="context-filter-guide-plan-title"><i id="context-filter-guide-plan-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>可追蹤歷史篩選的實作與驗證計畫</span></summary>
+      <div id="context-filter-guide-plan-content">
+        <p>目前流程依下列範圍運作：</p>
+        <ul>
+          <li><strong>一般專案：</strong>每次送出前，從最近 6 筆合格任務建立候選歷史；有效已確認需求與明確限制固定保留。篩選 LLM 可選 0–6 筆，並回傳逐筆納入或排除理由。選中的任務以完整文字欄位與狀態送入主請求。</li>
+          <li><strong>圖片討論：</strong>第一階段只看本次需求、專案／系列摘要及同系列最近 6 筆討論文字，不分析圖片；第二階段才收到篩選後的歷史、摘要、本次需求與本輪選取圖片。</li>
+          <li><strong>預覽與追蹤：</strong>送出前顯示固定內容及最多 6 筆候選歷史，明確標示「待篩選」；送出後自動接續主請求，並可查納入／排除理由、篩選 LLM 收到的候選文字，以及主請求實際收到的歷史上下文。</li>
+          <li><strong>保存與退回：</strong>將候選、結果、理由、實際上下文、usage 與錯誤保存到 <code>state.json</code>，服務重啟後仍可查。一般專案篩選失敗時只帶本次需求與固定內容，不帶一般歷史；圖片討論沿用既定回退方式並顯示警告。Mock 模式略過篩選並標示未送入 LLM。</li>
+          <li><strong>驗證程式：</strong>覆蓋正常選取與零筆選取、逾時／格式錯誤退回、圖片不進入第一階段、usage 與追蹤資料保存及重啟讀取、Mock 標示，以及預覽內容和實際送入上下文一致。</li>
+        </ul>
+        <p>候選範圍限制在最近 6 筆，能控制成本並讓預覽清楚，但可能漏掉更早的重要決定；固定保留的確認需求與明確限制可降低風險。</p>
+      </div>
+    </details>
+  </section>
+  <section id="context-filter-guide-image" role="tabpanel" aria-labelledby="context-filter-guide-tab-image" hidden>
+    <details id="context-filter-guide-image-flow" open>
+      <summary id="context-filter-guide-image-flow-title"><i id="context-filter-guide-image-flow-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>圖片討論的兩階段上下文</span></summary>
+      <div id="context-filter-guide-image-flow-content">
+        <ul>
+          <li>第一階段依本次需求、專案摘要、系列摘要及同系列最近 6 筆討論文字，篩選出相關的歷史任務；不讀取或分析圖片內容。</li>
+          <li>第二階段才把選出的歷史文字、本次需求、專案與系列摘要，以及本次勾選的圖片交給圖片理解模型。</li>
+          <li>若歷史篩選逾時或格式錯誤，第二階段仍會使用本次需求、兩種摘要與選取圖片繼續，並顯示「歷史內容篩選失敗，已改用當前對話窗中的內容」。</li>
+          <li>沒有候選歷史時會略過第一階段請求；圖片創作則依確認視窗中選取的提示詞、摘要與參考圖直接進行，不套用圖片討論的歷史篩選。</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+</dialog>
 <dialog id="image-create-dialog" aria-labelledby="image-create-title">
-    <div id="image-create-heading"><h2 id="image-create-title">圖片創作</h2><span><span id="image-create-model"></span> · 第 <strong id="image-create-version">1</strong> 版</span><span>確認後使用下列摘要和提示詞產生圖片。</span></div>
-    <div id="image-create-memory"><section id="image-create-project-summary-panel"><span class="image-create-section-label">專案摘要</span><div id="image-create-project-summary"></div></section><section id="image-create-series-summary-panel"><span class="image-create-section-label">系列摘要</span><div id="image-create-series-summary"></div></section><section id="image-create-previous" hidden><span id="image-create-previous-label" class="image-create-section-label">圖一 · 上一版圖片（將作為修改基礎）</span><div id="image-create-previous-preview"></div></section><section id="image-create-references" hidden aria-labelledby="image-create-references-label"><div class="image-create-section-heading"><span id="image-create-references-label" class="image-create-section-label">本次創作材料</span><span id="image-create-reference-count" class="muted"></span></div><p class="image-create-section-hint">以下圖片會一併提供給圖片模型作為本次創作的參考材料；編號與圖片對話一致。</p><div id="image-create-reference-list"></div></section><label id="image-create-request-label" for="image-create-request"><span class="image-create-section-label">本次新增要求</span><textarea id="image-create-request" rows="3"></textarea></label><label id="image-create-full-prompt-label" for="image-create-full-prompt"><span class="image-create-section-label">合併後完整提示詞</span><textarea id="image-create-full-prompt" rows="8"></textarea></label><section id="image-create-prompt-diff-panel" aria-labelledby="image-create-prompt-diff-label"><span id="image-create-prompt-diff-label" class="image-create-section-label">與上一版完整提示詞的差異</span><div id="image-create-prompt-diff" aria-label="與上一版完整提示詞的差異"></div></section></div>
+    <div id="image-create-heading"><span id="image-create-title">圖片創作</span><span><span id="image-create-model"></span> · 第 <strong id="image-create-version">1</strong> 版</span><span>確認後使用下列摘要和提示詞產生圖片。</span></div>
+    <section id="image-create-source-panel" hidden><strong>提示詞來源</strong><p id="image-create-source-info"></p><p id="image-create-source-mode"></p></section>
+    <div id="image-create-prompt-count" role="status" aria-live="polite" hidden></div>
+<div id="image-create-memory"><section id="image-create-full-prompt-label" aria-labelledby="image-create-full-prompt-heading"><label id="image-create-full-prompt-heading" class="image-create-section-label" for="image-create-full-prompt">合併後完整提示詞</label><textarea id="image-create-full-prompt" rows="8"></textarea></section><section id="image-create-previous" hidden><span id="image-create-previous-label" class="image-create-section-label">圖一 · 上一版圖片（將作為修改基礎）</span><div id="image-create-previous-preview"></div></section><section id="image-create-references" hidden aria-labelledby="image-create-references-label"><div class="image-create-section-heading"><span id="image-create-references-label" class="image-create-section-label">本次創作材料</span><span id="image-create-reference-count" class="muted"></span></div><p class="image-create-section-hint">以下圖片會一併提供給圖片模型作為本次創作的參考材料；編號與圖片對話一致。</p><div id="image-create-reference-list"></div></section><section id="image-create-prompt-diff-panel" aria-labelledby="image-create-prompt-diff-label"><span id="image-create-prompt-diff-label" class="image-create-section-label">與上一版完整提示詞的差異</span><div id="image-create-prompt-diff" aria-label="與上一版完整提示詞的差異"></div></section><section id="image-create-request-label" aria-labelledby="image-create-request-heading"><label id="image-create-request-heading" class="image-create-section-label" for="image-create-request">本次新增要求</label><textarea id="image-create-request" rows="3"></textarea></section><section id="image-create-project-summary-panel"><span class="image-create-section-label">專案摘要</span><div id="image-create-project-summary"></div></section><section id="image-create-series-summary-panel"><span class="image-create-section-label">系列摘要</span><div id="image-create-series-summary"></div></section><section id="image-create-candidate" hidden aria-labelledby="image-create-candidate-label"><div id="image-create-candidate-heading" class="image-create-section-heading"><span id="image-create-candidate-label" class="image-create-section-label">候選提示詞</span><div id="image-create-draft-label" hidden><span class="image-create-section-label">候選提示詞版本</span><select id="image-create-draft-select" aria-label="選擇候選提示詞版本"></select></div></div><div id="image-create-candidate-prompt" tabindex="0" aria-label="選定候選提示詞"></div></section></div>
   <div id="image-create-prompt" tabindex="0" aria-label="待確認的圖片提示詞" hidden></div>
   <p id="image-create-error" role="alert"></p>
-  <div id="image-create-actions"><div id="image-create-model-picker"><span>圖片模型</span><select id="image-create-model-select" aria-label="選擇圖片模型"><option value="gpt-image-2.5-sunburst" selected>gpt-image-2.5-sunburst</option><option value="gpt-image-1">gpt-image-1</option></select></div><div id="image-create-draft-label" hidden><span>圖片討論草稿</span><select id="image-create-draft-select" aria-label="選擇圖片討論草稿"></select></div><label id="image-create-admin-label" for="image-create-admin" hidden>6 碼管理碼<input id="image-create-admin" type="password" inputmode="text" maxlength="6" autocomplete="off"></label><div id="image-create-buttons"><button id="image-create-back" type="button">返回修改</button><button id="image-create-confirm" type="button">開始創作</button></div></div>
+  <div id="image-create-actions"><div id="image-create-model-picker"><span>圖片模型</span><select id="image-create-model-select" aria-label="選擇圖片模型"><option value="gpt-image-2.5-sunburst" selected>gpt-image-2.5-sunburst</option><option value="gpt-image-1">gpt-image-1</option></select></div><label id="image-create-admin-label" for="image-create-admin" hidden>6 碼管理碼<input id="image-create-admin" type="password" inputmode="text" maxlength="6" autocomplete="off"></label><div id="image-create-buttons"><button id="image-create-back" type="button">返回修改</button><button id="image-create-confirm" type="button">開始創作</button></div></div>
 </dialog>
 <dialog id="image-summary-dialog" aria-labelledby="image-summary-title">
   <div class="dialog-heading"><h2 id="image-summary-title">更新圖片摘要</h2><button id="image-summary-close" type="button">關閉</button></div>
   <p>以下候選只整理自上次成功套用後的新內容，可分別套用或先修改。</p>
   <div id="image-summary-loading" role="status" aria-live="polite" hidden><span class="image-summary-loading-indicator" aria-hidden="true"></span><span>正在確認專案內容並整理摘要，請稍候…</span></div>
-  <section><label><input id="image-summary-apply-project" type="checkbox" checked> 套用專案摘要候選</label><div id="image-summary-project-diff"></div><textarea id="image-summary-project" rows="7"></textarea></section>
-  <section><label><input id="image-summary-apply-series" type="checkbox" checked> 套用系列摘要候選</label><div id="image-summary-series-diff"></div><textarea id="image-summary-series" rows="7"></textarea></section>
+  <section id="image-summary-project-section"><label><input id="image-summary-apply-project" type="checkbox" checked> 套用專案摘要候選</label><label class="image-summary-current-label" for="image-summary-project-current">目前專案摘要</label><textarea id="image-summary-project-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-project">新的專案摘要候選</label><textarea id="image-summary-project" rows="4"></textarea></section>
+  <section id="image-summary-series-section"><label><input id="image-summary-apply-series" type="checkbox" checked> 套用系列摘要候選</label><label class="image-summary-current-label" for="image-summary-series-current">目前系列摘要</label><textarea id="image-summary-series-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-series">新的系列摘要候選</label><textarea id="image-summary-series" rows="4"></textarea></section>
   <p id="image-summary-error" role="alert"></p><div class="dialog-actions"><button id="image-summary-cancel" type="button">Cancel</button><button id="image-summary-modify" type="button">Enable Editing</button><button id="image-summary-apply" type="button">Apply Changes</button></div>
 </dialog>
 <dialog id="image-series-actions-dialog" aria-labelledby="image-series-actions-title">
