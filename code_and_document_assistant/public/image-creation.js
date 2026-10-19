@@ -48,7 +48,7 @@ function renderImageProjectMemory(){
   const versions=series?imageSeriesVersions(series.id):[],latest=versions.at(-1),summary=series?.memory?.summary||'尚未建立系列摘要',line=series?series.name+' · '+(latest?'v'+latest.imageCreation.version:'尚無版本'):'尚未建立圖片系列';
   const drafts=series?imageSeriesDrafts(series.id).filter(job=>job.imageProjectDraft.status==='completed'):[];
   const picker=$('image-series-select');picker.replaceChildren();const placeholder=node('option','尚未建立系列');placeholder.value='';picker.append(placeholder);for(const item of project?.series||[]){const option=node('option',item.name);option.value=item.id;picker.append(option);}picker.disabled=!project?.series?.length;picker.value=state.imageSeriesId||'';picker.title=series?.name||'尚未建立系列';setupImageSeriesPicker(picker);
-  $('image-project-memory-line').textContent=line;const summaryButton=$('image-project-memory-summary');summaryButton.dataset.tooltip=summary;if(!summaryButton.dataset.tooltipBound){bindFileTooltip(summaryButton);summaryButton.dataset.tooltipBound='true';}$('image-summary-update').disabled=!series||!imageSeriesJobs(series.id).some(job=>![...(project?.memory?.sourceJobIds||[]),...(series.memory?.sourceJobIds||[])].includes(job.id));$('image-summary-copy').disabled=!series;$('image-draft-create').disabled=!series;$('image-draft-create').textContent='選擇來源並創作';renderImageDiscussionReferences();
+  $('image-project-memory-line').textContent=line;const summaryButton=$('image-project-memory-summary');summaryButton.dataset.tooltip=summary;if(!summaryButton.dataset.tooltipBound){bindFileTooltip(summaryButton);summaryButton.dataset.tooltipBound='true';}const projectSources=new Set(project?.memory?.sourceJobIds||[]),seriesSources=new Set(series?.memory?.sourceJobIds||[]);$('image-summary-update').disabled=!series||!imageSeriesJobs(series.id).some(job=>job.status==='completed'&&!(projectSources.has(job.id)&&seriesSources.has(job.id)));$('image-summary-copy').disabled=!series;$('image-draft-create').disabled=!series;$('image-draft-create').textContent='選擇來源並創作';renderImageDiscussionReferences();
   $('image-project-shared-summary').textContent='專案摘要：'+(project?.memory?.summary||'尚未建立');const list=$('image-series-list');list.replaceChildren();
   for(const item of project?.series||[]){
     const row=node('div',undefined,'image-series-row');row.setAttribute('aria-current',String(item.id===state.imageSeriesId));
@@ -199,7 +199,22 @@ function setImageSummaryLoading(loading){
   $('image-summary-apply').disabled=loading;
   dialog.classList.toggle('image-summary-loading',loading);
 }
-async function openImageSummary(){const project=currentImageProject(),series=currentImageSeries();if(!project||!series)return;const button=$('image-summary-update'),dialog=$('image-summary-dialog');button.disabled=true;$('image-summary-error').textContent='';if(!dialog.open)dialog.showModal();setImageSummaryLoading(true);try{const data=await api('/api/image-projects/'+encodeURIComponent(project.id)+'/series/'+encodeURIComponent(series.id)+'/summary-candidate',{});state.imageSummaryCandidate=data.candidate;$('image-summary-project').value=data.candidate.projectSummary;$('image-summary-series').value=data.candidate.seriesSummary;$('image-summary-project').readOnly=true;$('image-summary-series').readOnly=true;renderSummaryCurrent('image-summary-project-current',data.current.projectSummary,'尚未建立專案摘要');renderSummaryCurrent('image-summary-series-current',data.current.seriesSummary,'尚未建立系列摘要');$('image-summary-error').textContent='';setImageSummaryLoading(false);}catch(error){setImageSummaryLoading(false);$('image-summary-error').textContent=error.message;}finally{button.disabled=false;}}
+async function openImageSummary(){
+  const project=currentImageProject(),series=currentImageSeries();if(!project||!series)return;
+  const button=$('image-summary-update'),dialog=$('image-summary-dialog'),sourceInfo=$('image-summary-source-info');
+  button.disabled=true;state.imageSummaryCandidate=null;$('image-summary-error').textContent='';sourceInfo.hidden=true;sourceInfo.textContent='';
+  $('image-summary-project').value='';$('image-summary-series').value='';if(!dialog.open)dialog.showModal();setImageSummaryLoading(true);
+  try{
+    const data=await api('/api/image-projects/'+encodeURIComponent(project.id)+'/series/'+encodeURIComponent(series.id)+'/summary-candidate',{});
+    state.imageSummaryCandidate=data.candidate;$('image-summary-project').value=data.candidate.projectSummary;$('image-summary-series').value=data.candidate.seriesSummary;
+    $('image-summary-project').readOnly=true;$('image-summary-series').readOnly=true;
+    renderSummaryCurrent('image-summary-project-current',data.current.projectSummary,'尚未建立專案摘要');
+    renderSummaryCurrent('image-summary-series-current',data.current.seriesSummary,'尚未建立系列摘要');
+    sourceInfo.textContent='本次整理 '+data.candidate.sourceJobIds.length+' 筆已完成任務 · '+(data.candidate.usage?.requests||1)+' 次摘要請求；過長文字只提供前後摘錄。'+(data.candidate.remainingCount?'尚有 '+data.candidate.remainingCount+' 筆，套用後可再次更新。':'');sourceInfo.hidden=false;
+    setImageSummaryLoading(false);
+  }catch(error){setImageSummaryLoading(false);$('image-summary-apply').disabled=true;$('image-summary-modify').disabled=true;$('image-summary-error').textContent=error.message;}
+  finally{button.disabled=false;}
+}
 function closeImageSummary(){if(!$('image-summary-loading').hidden)return;$('image-summary-dialog').close();}
 $('image-summary-update').onclick=openImageSummary;$('image-summary-close').onclick=$('image-summary-cancel').onclick=closeImageSummary;
 $('image-summary-modify').onclick=()=>{$('image-summary-project').readOnly=false;$('image-summary-series').readOnly=false;$('image-summary-modify').disabled=true;$('image-summary-project').focus();};

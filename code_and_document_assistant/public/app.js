@@ -90,6 +90,7 @@ for(const id of ['workflow-guide-image-discussion','workflow-guide-image-creatio
 $('workflow-guide-context-filter-title').parentElement.addEventListener('toggle',()=>{$('workflow-guide-context-filter-toggle-icon').className='fi fi-br-angle-small-'+($('workflow-guide-context-filter').open?'down':'right');});
 $('context-filter-guide-plan').addEventListener('toggle',()=>{$('context-filter-guide-plan-toggle-icon').className='fi fi-br-angle-small-'+($('context-filter-guide-plan').open?'down':'right');});
 $('context-filter-guide-image-flow-title').parentElement.addEventListener('toggle',()=>{$('context-filter-guide-image-flow-toggle-icon').className='fi fi-br-angle-small-'+($('context-filter-guide-image-flow').open?'down':'right');});
+$('context-filter-guide-image-data-title').parentElement.addEventListener('toggle',()=>{$('context-filter-guide-image-data-toggle-icon').className='fi fi-br-angle-small-'+($('context-filter-guide-image-data').open?'down':'right');});
 for(const panel of [$('context-filter-guide-general'),$('context-filter-guide-image')])for(const detail of panel.querySelectorAll(':scope > details'))detail.addEventListener('toggle',()=>{if(detail.open)for(const other of panel.querySelectorAll(':scope > details[open]'))if(other!==detail)other.open=false;});
 $('memory-details').addEventListener('toggle',()=>{$('memory-toggle-icon').className='fi fi-br-angle-small-'+($('memory-details').open?'down':'right');if($('memory-details').open)scheduleMemoryPreview();});
 $('ai-auto-memory').addEventListener('change',scheduleMemoryPreview);

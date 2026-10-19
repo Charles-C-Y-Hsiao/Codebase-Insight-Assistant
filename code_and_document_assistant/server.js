@@ -10,6 +10,7 @@ const {ProjectScope}=require('./src/project-scope.js');
 const {AppState}=require('./src/app-state.js');
 const {ConversationMemory,estimateTokens,turn}=require('./src/conversation-memory.js');
 const {generalHistoryPreview,generalHistoryContext}=require('./src/history-selection.js');
+const {excerpt,summaryTurn,orderedSummaryJobs,summaryBatches}=require('./src/image-summary-context.js');
 const sessionLifetime=30*86400000;
 // 公司圖片 API 尚無圖片解析能力。
 // false：維持目前流程，圖片可依既有流程送往 LLM／生圖 API。
@@ -235,18 +236,22 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }));
   app.post('/api/image-projects/:id/series/:seriesId/summary-candidate',route(async(req,res)=>{
     if(engine.model.mode!=='real'||typeof engine.model.summarizeImageProject!=='function')throw new Error('圖片摘要需要 real AI 模式');
-    const ctx=independentImageContext(req),project=imageProjects.find(req.params.id);
+    independentImageContext(req);const project=imageProjects.find(req.params.id);
     if(project.aiAllowed===false)throw new Error('AI_PERMISSION：目前圖片專案未允許內容送往 AI');
-    const series=imageProjects.series(project.id,req.params.seriesId),conversation=saved.conversation(req.owner,ctx.projectId,ctx.conversationId),pending=imageProjects.pendingJobs(project.id,series.id,conversation);
+    const series=imageProjects.series(project.id,req.params.seriesId),ownerJobs=saved.data.conversations.filter(item=>item.owner===req.owner).flatMap(item=>item.jobs||[]),pending=imageProjects.pendingJobs(project.id,series.id,{jobs:ownerJobs});
     if(!pending.length)throw new Error('目前沒有自上次套用摘要後的新內容');
-    const turns=pending.map(job=>({id:job.id,type:job.kind==='image'?'generation':'chat',request:job.question,response:job.result?.answer||job.result?.conclusions?.join('；')||'',fullPrompt:job.imageCreation?.prompt||''}));
-    const result=await engine.model.summarizeImageProject({project:{name:project.name,previousSummary:project.memory.summary},series:{name:series.name,previousSummary:series.memory.summary},turns},AbortSignal.timeout(engine.model.config.overallTimeoutMs),()=>{if(imageProjects.find(project.id).aiAllowed===false)throw new Error('AI_PERMISSION：圖片專案外送授權已變更');});
-    res.json({candidate:{projectSummary:result.projectSummary,seriesSummary:result.seriesSummary,sourceJobIds:pending.map(job=>job.id),usage:result.usage},current:{projectSummary:project.memory.summary,seriesSummary:series.memory.summary}});
+    const selected=orderedSummaryJobs(pending).slice(0,24);
+    let projectSummary=project.memory.summary,seriesSummary=series.memory.summary;const usage={inputTokens:0,outputTokens:0,requests:0};
+    for(const batch of summaryBatches(selected)){
+      const result=await engine.model.summarizeImageProject({project:{name:project.name,previousSummary:excerpt(projectSummary,1500)},series:{name:series.name,previousSummary:excerpt(seriesSummary,1500)},materialNote:'長文字只保留前後摘錄；中段省略的內容不可推測。每批依時間順序接續前一批摘要。',turns:batch.map(summaryTurn)},AbortSignal.timeout(engine.model.config.overallTimeoutMs),()=>{if(imageProjects.find(project.id).aiAllowed===false)throw new Error('AI_PERMISSION：圖片專案外送授權已變更');});
+      projectSummary=result.projectSummary;seriesSummary=result.seriesSummary;usage.requests++;usage.inputTokens+=result.usage?.inputTokens||0;usage.outputTokens+=result.usage?.outputTokens||0;
+    }
+    res.json({candidate:{projectSummary,seriesSummary,sourceJobIds:selected.map(job=>job.id),remainingCount:pending.length-selected.length,usage},current:{projectSummary:project.memory.summary,seriesSummary:series.memory.summary}});
   }));
   app.post('/api/image-projects/:id/series/:seriesId/apply-summary',route(async(req,res)=>{
     const sourceJobIds=Array.isArray(req.body.sourceJobIds)?req.body.sourceJobIds.filter(value=>typeof value==='string').slice(0,100):[];
     if(!sourceJobIds.length)throw new Error('摘要候選缺少來源紀錄');
-    const ctx=independentImageContext(req),conversation=saved.conversation(req.owner,ctx.projectId,ctx.conversationId),allowed=new Set(conversation.jobs.filter(job=>(job.imageProjectChat?.projectId===req.params.id&&job.imageProjectChat?.seriesId===req.params.seriesId)||(job.imageCreation?.imageProject?.id===req.params.id&&job.imageCreation?.seriesId===req.params.seriesId)).map(job=>job.id));if(sourceJobIds.some(id=>!allowed.has(id)))throw new Error('摘要來源不屬於目前圖片系列');
+    independentImageContext(req);const allowed=new Set(saved.data.conversations.filter(item=>item.owner===req.owner).flatMap(item=>item.jobs||[]).filter(job=>job.status==='completed'&&((job.imageProjectChat?.projectId===req.params.id&&job.imageProjectChat?.seriesId===req.params.seriesId)||(job.imageCreation?.imageProject?.id===req.params.id&&job.imageCreation?.seriesId===req.params.seriesId))).map(job=>job.id));if(sourceJobIds.some(id=>!allowed.has(id)))throw new Error('摘要來源不屬於目前圖片系列');
     const values={sourceJobIds};if(req.body.applyProject===true){if(typeof req.body.projectSummary!=='string')throw new Error('專案摘要格式不合法');values.projectSummary=req.body.projectSummary;}if(req.body.applySeries===true){if(typeof req.body.seriesSummary!=='string')throw new Error('系列摘要格式不合法');values.seriesSummary=req.body.seriesSummary;}
     if(values.projectSummary===undefined&&values.seriesSummary===undefined)throw new Error('請至少選擇一項摘要套用');
     const project=await imageProjects.applySummaries(req.params.id,req.params.seriesId,values);res.json({project});

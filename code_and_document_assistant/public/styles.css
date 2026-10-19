@@ -183,11 +183,11 @@ html,body { height:100%; }
 #workflow-guide-task-delete-toggle-icon { flex:0 0 18px; color:#657589; font-size:16px; line-height:1; transform:translateY(0px); }
 #workflow-guide-task-delete-body { display:flex; flex-direction:column; gap:3px; }
 #workflow-guide-task-delete-body ul { margin:0; padding-left:22px; }
-#workflow-guide-context-filter,#context-filter-guide-plan,#context-filter-guide-image-flow { display:flex; flex-direction:column; gap:0; padding:4px 8px; border:1px solid #dce3ed; border-radius:8px; background:#f9fafc; }
-#workflow-guide-context-filter > summary,#context-filter-guide-plan > summary,#context-filter-guide-image-flow > summary { display:flex; align-items:center; gap:2px; padding:0; color:#203047; font-size:14px; font-weight:600; cursor:pointer; list-style:none; }
-#workflow-guide-context-filter > summary::marker,#context-filter-guide-plan > summary::marker,#context-filter-guide-image-flow > summary::marker { content:none; display:none; }
-#workflow-guide-context-filter > summary::-webkit-details-marker,#context-filter-guide-plan > summary::-webkit-details-marker,#context-filter-guide-image-flow > summary::-webkit-details-marker { display:none; }
-#workflow-guide-context-filter-toggle-icon,#context-filter-guide-plan-toggle-icon,#context-filter-guide-image-flow-toggle-icon { flex:0 0 18px; color:#657589; font-size:16px; line-height:1; transform:translateY(0px); }
+#workflow-guide-context-filter,#context-filter-guide-plan,#context-filter-guide-image-flow,#context-filter-guide-image-data { display:flex; flex-direction:column; gap:0; padding:4px 8px; border:1px solid #dce3ed; border-radius:8px; background:#f9fafc; }
+#workflow-guide-context-filter > summary,#context-filter-guide-plan > summary,#context-filter-guide-image-flow > summary,#context-filter-guide-image-data > summary { display:flex; align-items:center; gap:2px; padding:0; color:#203047; font-size:14px; font-weight:600; cursor:pointer; list-style:none; }
+#workflow-guide-context-filter > summary::marker,#context-filter-guide-plan > summary::marker,#context-filter-guide-image-flow > summary::marker,#context-filter-guide-image-data > summary::marker { content:none; display:none; }
+#workflow-guide-context-filter > summary::-webkit-details-marker,#context-filter-guide-plan > summary::-webkit-details-marker,#context-filter-guide-image-flow > summary::-webkit-details-marker,#context-filter-guide-image-data > summary::-webkit-details-marker { display:none; }
+#workflow-guide-context-filter-toggle-icon,#context-filter-guide-plan-toggle-icon,#context-filter-guide-image-flow-toggle-icon,#context-filter-guide-image-data-toggle-icon { flex:0 0 18px; color:#657589; font-size:16px; line-height:1; transform:translateY(0px); }
 #workflow-guide-context-filter-content { display:flex; flex-direction:column; gap:10px; line-height:1.5; }
 #workflow-guide-context-filter-content > p { margin:0; }
 #workflow-guide-context-filter-content ol { margin:0; padding-left:24px; }
@@ -197,6 +197,15 @@ html,body { height:100%; }
 #context-filter-guide-plan-content > p { margin:0; }
 #context-filter-guide-plan-content ul { margin:0; padding-left:24px; }
 #context-filter-guide-plan-content li + li { margin-top:3px; }
+#context-filter-guide-image-data-content { display:flex; flex-direction:column; gap:14px; line-height:1.55; }
+#context-filter-guide-image-data-content > p { margin:0; }
+.context-filter-guide-image-data-table-wrap { max-width:100%; min-width:0; overflow-x:auto; scrollbar-width:thin; }
+#context-filter-guide-image-data-table { width:100%; min-width:640px; border-collapse:collapse; table-layout:fixed; }
+#context-filter-guide-image-data-table th,#context-filter-guide-image-data-table td { padding:10px 8px; border-bottom:1px solid #e2e7ee; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+#context-filter-guide-image-data-table th:first-child { width:22%; }
+#context-filter-guide-image-data-table th:nth-child(2) { width:33%; }
+#context-filter-guide-image-data-table th:nth-child(3) { width:45%; }
+#context-filter-guide-image-data-table tbody tr:last-child th,#context-filter-guide-image-data-table tbody tr:last-child td { border-bottom:0; }
 #workflow-guide-image-discussion,
 #workflow-guide-image-creation,
 #workflow-guide-image-text-only-mode,

@@ -473,8 +473,8 @@
     </details>
   </section>
   <section id="context-filter-guide-image" role="tabpanel" aria-labelledby="context-filter-guide-tab-image" hidden>
-    <details id="context-filter-guide-image-flow" open>
-      <summary id="context-filter-guide-image-flow-title"><i id="context-filter-guide-image-flow-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>圖片討論的兩階段上下文</span></summary>
+    <details id="context-filter-guide-image-flow">
+      <summary id="context-filter-guide-image-flow-title"><i id="context-filter-guide-image-flow-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>圖片討論的兩階段上下文</span></summary>
       <div id="context-filter-guide-image-flow-content">
         <ul>
           <li>第一階段依本次需求、專案摘要、系列摘要及同系列最近 6 筆討論文字，篩選出相關的歷史任務；不讀取或分析圖片內容。</li>
@@ -482,6 +482,28 @@
           <li>若歷史篩選逾時或格式錯誤，第二階段仍會使用本次需求、兩種摘要與選取圖片繼續，並顯示「歷史內容篩選失敗，已改用當前對話窗中的內容」。</li>
           <li>沒有候選歷史時會略過第一階段請求；圖片創作則依確認視窗中選取的提示詞、摘要與參考圖直接進行，不套用圖片討論的歷史篩選。</li>
         </ul>
+      </div>
+    </details>
+    <details id="context-filter-guide-image-data">
+      <summary id="context-filter-guide-image-data-title"><i id="context-filter-guide-image-data-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>一張圖片的創作資料</span></summary>
+      <div id="context-filter-guide-image-data-content">
+        <p>以目前專案的區塊來看，<strong>一張圖片的創作資料</strong>可以拆成這幾層；其中「系列摘要」描述這一系列要延續的方向，並不等於某一張圖的完整風格設定。</p>
+        <div class="context-filter-guide-image-data-table-wrap">
+          <table id="context-filter-guide-image-data-table">
+            <thead><tr><th scope="col">層次</th><th scope="col">對應目前專案</th><th scope="col">負責的內容</th></tr></thead>
+            <tbody>
+              <tr><td>跨系列共通設定</td><th scope="row">專案摘要</th><td>品牌、常用風格、比例、色彩與禁止事項</td></tr>
+              <tr><td>這一組圖片的方向</td><th scope="row">系列摘要</th><td>主題、構圖、已決定的版本方向與待調整事項</td></tr>
+              <tr><td>本輪想改什麼</td><th scope="row">本次要求</th><td>例如「只改成藍色系，其他內容保留」</td></tr>
+              <tr><td>討論形成的提案</td><th scope="row">候選提示詞版本</th><td>圖片討論產出的創作草稿；可選用，但不會自動變成正式摘要</td></tr>
+              <tr><td>真正用來產圖的文字</td><th scope="row">完整提示詞</th><td>在創作確認視窗組合並可手動修改；這是送往生圖 API 的文字</td></tr>
+              <tr><td>視覺依據</td><th scope="row">上一版圖片、參考圖、草稿附件</th><td>依選取狀態使用；<code>MAGE_TEXT_ONLY_MODE = true</code> 時只供畫面查看，不送圖片內容</td></tr>
+              <tr><td>產出與追溯</td><th scope="row">圖片 v1、v2…及任務紀錄</th><td>保存 PNG、實際完整提示詞、摘要版本快照及上一版關聯</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>如果目標是<strong>「保留圖二的內容與排版，只換配色」</strong>，最直接的對應是：選「延續圖片 v2」，在本次要求寫明只改配色，再檢查確認視窗的完整提示詞。只選系列摘要或早期候選提示詞，未必包含圖二每個區塊的細節。在文字模式下，即使選了 v2，模型仍只能依 <strong>v2 的提示詞文字</strong>重建，無法看到 v2 的像素，因此不能保證版面完全一致。</p>
+        <p>相關組裝方式見 <code>public/image-creation.js</code>。</p>
       </div>
     </details>
   </section>
@@ -499,6 +521,7 @@
   <div class="dialog-heading"><h2 id="image-summary-title">更新圖片摘要</h2><button id="image-summary-close" type="button">關閉</button></div>
   <p>以下候選只整理自上次成功套用後的新內容，可分別套用或先修改。</p>
   <div id="image-summary-loading" role="status" aria-live="polite" hidden><span class="image-summary-loading-indicator" aria-hidden="true"></span><span>正在確認專案內容並整理摘要，請稍候…</span></div>
+  <p id="image-summary-source-info" class="muted" hidden></p>
   <section id="image-summary-project-section"><label><input id="image-summary-apply-project" type="checkbox" checked> 套用專案摘要候選</label><label class="image-summary-current-label" for="image-summary-project-current">目前專案摘要</label><textarea id="image-summary-project-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-project">新的專案摘要候選</label><textarea id="image-summary-project" rows="4"></textarea></section>
   <section id="image-summary-series-section"><label><input id="image-summary-apply-series" type="checkbox" checked> 套用系列摘要候選</label><label class="image-summary-current-label" for="image-summary-series-current">目前系列摘要</label><textarea id="image-summary-series-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-series">新的系列摘要候選</label><textarea id="image-summary-series" rows="4"></textarea></section>
   <p id="image-summary-error" role="alert"></p><div class="dialog-actions"><button id="image-summary-cancel" type="button">Cancel</button><button id="image-summary-modify" type="button">Enable Editing</button><button id="image-summary-apply" type="button">Apply Changes</button></div>
