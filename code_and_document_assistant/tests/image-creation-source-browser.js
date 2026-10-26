@@ -23,7 +23,7 @@ async function main(){
     server=instance.app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
     browser=await require('puppeteer').launch({executablePath:process.env.CDA_BROWSER||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,userDataDir:path.join(base,'chrome-profile'),args:['--no-sandbox','--disable-dev-shm-usage']});
     const page=await browser.newPage();await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>state.conversation&&state.imageProjectGeneration.enabled);
-    await page.click('#image-project-add');await page.waitForFunction(()=>state.imageProjectId&&state.imageWorkspaceActive);
+    await page.click('#image-project-add');await page.click('#sidebar-create-confirm');await page.waitForFunction(()=>state.imageProjectId&&state.imageWorkspaceActive);
     await page.type('#question','建立舊主題構圖');await page.click('#send');await page.waitForFunction(()=>[...state.taskJobs.values()].some(job=>job.imageProjectDraft?.status==='completed'));
     await page.type('#question','本次要畫新的流程圖');await page.click('#image-draft-create');await page.waitForSelector('#image-create-dialog[open]');
     assert.equal(await page.$eval('#image-create-draft-select',element=>element.value),'','按鈕不能預選最新候選');

@@ -87,8 +87,8 @@ function timelineRows(job){
   }
   return rows.sort((a,b)=>(a.time??Infinity)-(b.time??Infinity));
 }
-function iterationStage(job,iteration,stage,kind,label,text){
-  const key=job.id+':iteration-'+iteration.index+':'+stage,detail=node('details',undefined,'task-detail agent-stage agent-stage-disclosure');
+function iterationStage(job,iteration,stage,kind,label,text,keyPrefix=''){
+  const key=job.id+keyPrefix+':iteration-'+iteration.index+':'+stage,detail=node('details',undefined,'task-detail agent-stage agent-stage-disclosure');
   detail.open=state.detailOpen.has(key)?state.detailOpen.get(key):false;
   const summary=node('summary',undefined,'agent-stage-summary'),toggle=node('i',undefined,'task-toggle-icon fi fi-br-angle-small-'+(detail.open?'down':'right'));
   toggle.setAttribute('aria-hidden','true');summary.append(toggle,taskIcon(kind),node('span',label,'agent-stage-label'),node('span',text,'agent-stage-text'));
@@ -97,21 +97,79 @@ function iterationStage(job,iteration,stage,kind,label,text){
   detail.addEventListener('toggle',sync);summary.addEventListener('click',()=>queueMicrotask(sync));
   return detail;
 }
+function renderAgentIteration(job,iteration,{keyPrefix='',open=false,title=`Iteration ${iteration.index}`,progressive=false}={}){
+    const detail=taskDetails(job.id+keyPrefix+':iteration-'+iteration.index,title,open);
+    detail.classList.add('agent-iteration');
+    detail.dataset.iterationIndex=String(iteration.index);
+    if(!progressive||iteration.decision||iteration.purpose)detail.append(iterationStage(job,iteration,'decide','ai','Decide',iteration.purpose||iteration.decision?.tool||'等待模型選擇操作',keyPrefix));
+    if(!progressive||iteration.action)detail.append(iterationStage(job,iteration,'act','edit','Act',iteration.target||iteration.action?.tool||'尚未開始',keyPrefix));
+    if(!progressive||iteration.observation)detail.append(iterationStage(job,iteration,'observe','read','Observe',iteration.observation||'pending',keyPrefix));
+    const next=iteration.next||iteration.status;
+    if(iteration.status==='repeat')detail.append(iterationStage(job,iteration,'repeat','event','Repeat',next,keyPrefix));
+    else if(!progressive||iteration.status==='stop')detail.append(iterationStage(job,iteration,'stop',iteration.status==='stop'?'verify':'warning','Stop',next,keyPrefix));
+    for(const preview of iteration.previews||[]){const source=node('div',undefined,'timeline-evidence');source.append(node('small',`${preview.id} · ${preview.name} · ${preview.location}`),node('pre',preview.excerpt));detail.append(source);}
+    return detail;
+}
 function renderAgentIterations(job,panel){
   const iterations=job.iterations||[];
-  if(!iterations.length)return;
-  const latest=iterations.length-1;
-  for(const [index,iteration] of iterations.entries()){
-    const detail=taskDetails(job.id+':iteration-'+iteration.index,`Iteration ${iteration.index}`,!job.archived&&index===latest);
-    detail.classList.add('agent-iteration');
-    detail.append(iterationStage(job,iteration,'decide','ai','Decide',iteration.purpose||iteration.decision?.tool||'等待模型選擇操作'));
-    detail.append(iterationStage(job,iteration,'act','edit','Act',iteration.target||iteration.action?.tool||'尚未開始'));
-    detail.append(iterationStage(job,iteration,'observe','read','Observe',iteration.observation||'pending'));
-    const next=iteration.next||iteration.status;
-    if(iteration.status==='repeat')detail.append(iterationStage(job,iteration,'repeat','event','Repeat',next));
-    else detail.append(iterationStage(job,iteration,'stop',iteration.status==='stop'?'verify':'warning','Stop',next));
-    for(const preview of iteration.previews||[]){const source=node('div',undefined,'timeline-evidence');source.append(node('small',`${preview.id} · ${preview.name} · ${preview.location}`),node('pre',preview.excerpt));detail.append(source);}
-    panel.append(detail);
+  for(const [index,iteration] of iterations.entries())panel.append(renderAgentIteration(job,iteration,{open:!job.archived&&index===iterations.length-1}));
+}
+function taskExecutionEntries(job){
+  const iterations=job.iterations||[],groups=iterations.map(iteration=>({iteration,rows:[],time:iteration.startedAt})),entries=[];
+  for(const row of timelineRows(job)){
+    const tool=row.tool||job.tools?.[Number(row.key.match(/^verification-(\d+)$/)?.[1])];
+    let group;
+    if(tool&&(!String(tool.name||'').startsWith('ai.')||tool.name==='ai.request')){
+      // Explicit round links take precedence over timestamps, which can coincide.
+      if(Number.isInteger(tool.iterationIndex))group=groups.find(item=>item.iteration.index===tool.iterationIndex);
+      else if(Number.isFinite(tool.startedAt))group=groups.findLast((item,index)=>Number.isFinite(item.time)&&tool.startedAt>=item.time&&(!Number.isFinite(groups[index+1]?.time)||tool.startedAt<groups[index+1].time));
+    }
+    // A pending model request is a real row, but does not create empty stages.
+    if(group&&(group.iteration.decision||group.iteration.purpose||group.iteration.action||group.iteration.observation))group.rows.push(row);
+    else entries.push({row,time:row.time});
+  }
+  entries.push(...groups.filter(group=>group.iteration.decision||group.iteration.purpose||group.iteration.action||group.iteration.observation));
+  return entries.sort((a,b)=>(a.time??Infinity)-(b.time??Infinity));
+}
+function renderCurrentTaskIteration(job,panel){
+  const current=node('div',undefined,'task-current-iteration');current.id='task-current-iteration-'+job.id;
+  const entries=taskExecutionEntries(job),latestEntry=entries.findLast(entry=>entry.iteration?.decision||entry.iteration?.purpose)||entries.findLast(entry=>entry.iteration),latest=latestEntry?.iteration;
+  const active=!job.archived&&['running','applying','awaiting_approval'].includes(job.status);
+  const prior=state.activityIterations.get(job.id);
+  if(latest){
+    current.dataset.iterationIndex=String(latest.index);
+    if(prior!==undefined&&prior!==latest.index){
+      state.detailOpen.set(job.id+':current:iteration-'+prior,false);
+      state.detailOpen.set(job.id+':current:iteration-'+latest.index,true);
+    }
+    state.activityIterations.set(job.id,latest.index);
+  }
+  if(latest){
+    const purpose=node('strong',latest.purpose||latest.decision?.tool||'已記錄的操作','task-execution-purpose');purpose.id='task-execution-purpose-'+job.id;panel.append(purpose);
+    const section=node('section',undefined,'task-execution-direction');section.dataset.iterationIndex=String(latest.index);
+    const detail=renderAgentIteration(job,latest,{keyPrefix:':current',open:active,progressive:true});
+    appendTimelineRows(job,detail,latestEntry.rows,':current');section.append(detail);current.append(section);
+  }
+  // Earlier steps remain in the full timeline; this area shows the latest action.
+  const rows=entries.filter(entry=>entry.row&&(!latest||Number.isFinite(entry.time)&&entry.time>=latest.startedAt)).map(entry=>entry.row);
+  appendTimelineRows(job,current,rows,':current');
+  if(!job.archived&&job.status==='running'&&!job.iterations?.at(-1)?.decision)current.append(node('span','正在取得下一步操作','task-activity-hint'));
+  else if(!entries.length)current.append(node('span',job.progress||'尚無執行紀錄','task-activity-hint'));
+  panel.append(current);
+}
+function appendTimelineRows(job,panel,rows,keyPrefix=''){
+  for(const row of rows){
+    const detail=timelineTaskDetails(job.id+keyPrefix+':'+row.key,row.text,row.kind),content=detail.querySelector(':scope > .timeline-step-content');
+    if(Number.isFinite(row.time))content.append(node('small',new Date(row.time).toLocaleString()));
+    if(row.tool?.purpose)content.append(node('p','操作目的：'+row.tool.purpose,'timeline-operation'));
+    if(row.tool?.target)content.append(node('p','操作對象：'+row.tool.target,'timeline-operation'));
+    if(row.tool?.result)content.append(node('p','實際結果：'+row.tool.result,'timeline-operation'));
+    if(row.verification){
+      const view=node('button','View full verification output');view.id=`${keyPrefix?'current-':''}task-view-verification-${job.id}-${row.key}`;view.type='button';
+      view.onclick=()=>{const panel=$('task-more-'+job.id);if(panel){panel.open=true;panel.scrollIntoView({behavior:'auto',block:'center'});}};content.append(view);
+    }
+    const technical=row.tool?.verification?{...row.tool,verification:{...row.tool.verification,output:undefined}}:row.technical;
+    const technicalDetail=timelineTaskDetails(job.id+keyPrefix+':'+row.key+':technical','技術紀錄（JSON）','read');technicalDetail.querySelector(':scope > .timeline-step-content').append(node('pre',JSON.stringify(technical,null,2)));content.append(technicalDetail);panel.append(detail);
   }
 }
 function renderTaskTimeline(job,article){
@@ -122,21 +180,49 @@ function renderTaskTimeline(job,article){
   panel.firstChild.append(node('span',inline,'timeline-summary-inline'));
   renderAgentIterations(job,panel);
   const rows=timelineRows(job);
-  for(const row of rows){
-    const detail=timelineTaskDetails(job.id+':'+row.key,row.text,row.kind),content=detail.querySelector(':scope > .timeline-step-content');
-    if(Number.isFinite(row.time))content.append(node('small',new Date(row.time).toLocaleString()));
-    if(row.tool?.purpose)content.append(node('p','操作目的：'+row.tool.purpose,'timeline-operation'));
-    if(row.tool?.target)content.append(node('p','操作對象：'+row.tool.target,'timeline-operation'));
-    if(row.tool?.result)content.append(node('p','實際結果：'+row.tool.result,'timeline-operation'));
-    if(row.verification){
-      const view=node('button','View full verification output');view.id=`task-view-verification-${job.id}-${row.key}`;view.type='button';
-      view.onclick=()=>{const panel=$('task-more-'+job.id);if(panel){panel.open=true;panel.scrollIntoView({behavior:'auto',block:'center'});}};content.append(view);
-    }
-    const technical=row.tool?.verification?{...row.tool,verification:{...row.tool.verification,output:undefined}}:row.technical;
-    const technicalDetail=timelineTaskDetails(job.id+':'+row.key+':technical','技術紀錄（JSON）','read');technicalDetail.querySelector(':scope > .timeline-step-content').append(node('pre',JSON.stringify(technical,null,2)));content.append(technicalDetail);panel.append(detail);
-  }
+  appendTimelineRows(job,panel,rows);
   if(!rows.length)panel.append(node('p','尚無執行紀錄'));
   article.append(panel);
+}
+function taskOutcome(job){
+  if(job.imageProjectChat||!['completed','partial','failed','cancelled','needs_input'].includes(job.status))return null;
+  const completed=[],pending=[],verification=[],passedMessages=new Set();
+  const addVerification=(label,result)=>{
+    if(!result)return;
+    const status={passed:'通過',failed:'失敗',not_run:'未執行',unavailable:'無法執行'}[result.status]||result.status||'結果未知';
+    verification.push(`${label}：${status}${result.message?' · '+result.message:''}`);
+    if(result.status==='passed'&&result.message)passedMessages.add(result.message);
+  };
+  if(job.applied){completed.push(`${job.restored?'已還原':'已修改'} ${job.applied.path||job.proposal?.path||'檔案'}`);addVerification('套用後靜態驗證',job.applied.verification);}
+  else if(job.proposal)pending.push(`修改提案尚未套用：${job.proposal.path||'檔案'}`);
+  for(const file of job.creations||[]){
+    if(file.status==='created'){completed.push(`已建立 ${file.relativePath}`);addVerification(file.relativePath+' 的靜態驗證',file.result?.verification);}
+    else pending.push(`${{skipped:'已略過，未建立',failed:'建立失敗',cancelled:'已取消，未建立',pending:'尚待確認建立'}[file.status]||file.status}：${file.relativePath}${file.error?' · '+file.error:''}`);
+  }
+  for(const tool of job.tools||[]){
+    if(tool.status==='error')pending.push(`${tool.name} 失敗${tool.message||tool.result||tool.code?'：'+(tool.message||tool.result||tool.code):''}`);
+    if(tool.name==='propose_edit'&&tool.verification)addVerification('候選修改預檢',tool.verification);
+  }
+  const run=job.serviceRun;
+  if(run){
+    if(run.status==='running')completed.push(`服務已啟動：${run.entry} · 127.0.0.1:${run.port}`);
+    else pending.push(`服務狀態：${run.status} · ${run.entry} · Port ${run.port}`);
+    const check=run.initialMonitor?.checks?.[0];
+    if(check)verification.push(`啟動時程序／Port 檢查：${check.processAlive&&check.portOpen?'通過':'未通過'}${check.error?' · '+check.error:''}`);
+    if(run.apiVerification)verification.push(`API 驗證：${run.apiVerification.passed?'通過':'失敗'} · ${run.apiVerification.method} ${run.apiVerification.path}${run.apiVerification.actualStatus?' · HTTP '+run.apiVerification.actualStatus:''}`);
+    else verification.push('API 回應驗證：未執行');
+  }
+  for(const text of job.result?.unknown||[]){
+    if(/^AI 語意判斷不構成正確性保證/.test(text)||[...passedMessages].some(message=>text===message||text.endsWith('：'+message)))continue;
+    pending.push('待確認：'+text);
+  }
+  if(!completed.length&&job.status==='completed'&&!job.creations?.length&&!job.proposal&&!run)completed.push(...(job.result?.conclusions?.length?job.result.conclusions:['已提供本次回答']));
+  if(!completed.length)completed.push('尚無可確認已完成的項目；已取得的結果保留於最終回答與執行紀錄。');
+  if(!pending.length)pending.push(job.status==='completed'?'未記錄其他待辦項目。':'流程未完整結束，請查看最終回答及執行紀錄。');
+  if(!verification.length)verification.push('未記錄實際執行的驗證。');
+  const changed=job.applied||(job.creations||[]).some(file=>file.status==='created');
+  if(changed)verification.push('瀏覽器功能驗證：未執行。');
+  return {completed:[...new Set(completed)],pending:[...new Set(pending)],verification:[...new Set(verification)]};
 }
 function selectTask(id){const job=state.taskJobs.get(id);if(!job||state.selectedTask===id)return;state.selectedTask=id;show(job);}
 setInterval(()=>{

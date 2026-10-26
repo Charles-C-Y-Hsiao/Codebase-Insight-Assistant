@@ -26,10 +26,10 @@ async function main(){
     await page.click('#start-skill-clarify-requirements');await page.waitForFunction(()=>document.getElementById('history').textContent.includes('誰會使用登入功能'));
     stage='clarified';
     assert.equal(requests.length,1);assert.deepEqual(requests[0].tools.map(x=>x.name),['finish']);
-    await page.click('[id^="task-confirm-requirement-"]');await page.waitForFunction(()=>document.getElementById('memory-status').textContent.includes('1 項已確認'));
+    await page.click('[id^="task-confirm-requirement-"]');await page.waitForFunction(()=>document.getElementById('confirmed-requirements').textContent.includes('建立登入功能'));
     stage='confirmed';
     assert.match(await page.$eval('#memory-summary',e=>e.textContent),/建立登入功能/);
-    await page.reload({waitUntil:'networkidle0'});await page.waitForFunction(()=>document.getElementById('memory-status').textContent.includes('1 項已確認'));
+    await page.reload({waitUntil:'networkidle0'});await page.waitForFunction(()=>document.getElementById('confirmed-requirements').textContent.includes('建立登入功能'));
     stage='reloaded';
     assert.match(await page.$eval('#confirmed-requirements',e=>e.textContent),/建立登入功能/);
     assert.deepEqual(errors,[]);console.log('PASS: skill suggestion requires start; clarification is read-only; confirmed memory survives reload');

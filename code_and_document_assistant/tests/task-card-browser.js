@@ -89,11 +89,27 @@ async function main(){
     const edited=await page.evaluate(async()=>{
       $('question').value='';state.questionBaseline='';state.editorBaseline=$('edit-content').value;
       const original=state.taskJobs.get('card-check');await editTask(original);const loaded=$('question').value;cancelEdit.click();const cancelled=$('question').value;
-      show({...original,id:'revision-two',taskId:'card-check',revision:2,question:'新版完整需求',versions:[{...original,revision:1}]});
+      show({...original,id:'revision-two',taskId:'card-check',revision:2,startedAt:Date.now()+60000,question:'新版完整需求',versions:[{...original,revision:1}]});
       const card=$('task-card-check');$('task-question-view-revision-two').click();
       return {loaded,cancelled,cards:document.querySelectorAll('#task-card-check').length,old:card.querySelector('.task-question-versions').textContent.includes(original.question),order:[...card.querySelector('.task-heading-actions').children].map(x=>x.textContent),latest:card.querySelector('.task-card-question-text').textContent};
     });
-    assert.equal(edited.loaded,'請檢查資料並整理重點');assert.equal(edited.cancelled,'');assert.equal(edited.cards,1);assert.equal(edited.old,true);assert.deepEqual(edited.order,['Edit','Hide']);assert.equal(edited.latest,'新版完整需求');
+    assert.equal(edited.loaded,'請檢查資料並整理重點');assert.equal(edited.cancelled,'');assert.equal(edited.cards,1);assert.equal(edited.old,true);assert.deepEqual(edited.order,['ID: card-check','Edit','Hide','Delete']);assert.equal(edited.latest,'新版完整需求');
+    const repeatedEdit=await page.evaluate(()=>{
+      const second=state.taskJobs.get('revision-two'),third={...second,id:'revision-three',revision:3,startedAt:Date.now()+120000,question:'建立 docs/feature-overview.md',creations:[{id:'skipped-doc',relativePath:'docs/feature-overview.md',purpose:'功能說明',status:'skipped'}],versions:[...second.versions,{...second,versions:undefined}]};
+      const positionBefore=[...document.querySelectorAll('#history > article')].indexOf($('task-card-check'));
+      show(third);
+      const card=$('task-card-check'),positionAfter=[...document.querySelectorAll('#history > article')].indexOf(card);
+      show(second);show(third.versions[0]);
+      const retained=state.taskJobs.get('revision-three');
+      return {positionKept:positionBefore===positionAfter,jobId:card.dataset.jobId,visible:!card.hidden,expanded:state.questionExpanded.has(third.id),cards:document.querySelectorAll('#task-card-check').length,revision:retained?.revision,versions:retained?.versions.length,skipped:retained?.creations[0].status,oldReplaced:state.taskJobs.has(second.id),question:card.querySelector('.task-card-question-text').textContent};
+    });
+    assert.deepEqual(repeatedEdit,{positionKept:true,jobId:'revision-three',visible:true,expanded:true,cards:1,revision:3,versions:2,skipped:'skipped',oldReplaced:false,question:'建立 docs/feature-overview.md'});
+    const originalOrder=await page.evaluate(()=>{
+      const base=state.taskJobs.get('revision-three'),first={...base,id:'first-original',taskId:'first-original',revision:1,startedAt:1000,versions:[]},second={...base,id:'second-original',taskId:'second-original',revision:1,startedAt:2000,versions:[]};
+      show(first);show(second);show({...first,id:'first-edited',revision:2,startedAt:4000,versions:[first]});
+      return [...document.querySelectorAll('#history > article')].filter(card=>['task-first-original','task-second-original'].includes(card.id)).map(card=>card.id);
+    });
+    assert.deepEqual(originalOrder,['task-first-original','task-second-original'],'較早任務再次 Edit 後仍保留原本順序');
     const sent=await page.evaluate(async()=>{
       $('question').value='讀取文件並整理來源';await submit({preventDefault(){}});const first=state.taskJobs.get(state.job),cleared=$('question').value;
       await editTask(first);$('question').value='讀取文件並整理新版來源';await submit({preventDefault(){}});

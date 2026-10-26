@@ -1,0 +1,34 @@
+{
+  "id": "5d51de74-f3d1-47e4-9509-10b528d73365",
+  "name": "0b528d73365",
+  "folderName": "0b528d73365",
+  "createdAt": "2026-10-18T15:59:15.681Z",
+  "aiAllowed": true,
+  "memory": {
+    "summary": "",
+    "version": 0,
+    "versions": [],
+    "lastAppliedJobId": null,
+    "sourceJobIds": [],
+    "updatedAt": null
+  },
+  "series": [
+    {
+      "id": "beb4c93e-d257-4d7f-8631-a011b2cb9071",
+      "name": "新圖片系列",
+      "manualName": false,
+      "createdAt": "2026-10-18T16:57:58.148Z",
+      "updatedAt": "2026-10-18T16:57:58.148Z",
+      "memory": {
+        "summary": "",
+        "version": 0,
+        "versions": [],
+        "lastAppliedJobId": null,
+        "sourceJobIds": [],
+        "updatedAt": null
+      },
+      "imports": []
+    }
+  ],
+  "directory": "C:\\Web_Practice\\ReAct\\image-creation\\0b528d73365"
+}

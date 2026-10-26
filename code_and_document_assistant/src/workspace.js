@@ -11,7 +11,7 @@ const editable = new Map([
   ['discount.py', ['return amount - rate', 'return amount * (1 - rate)']],
   ['page.html', ['lang="en"', 'lang="zh-Hant"']]
 ]);
-const codeExtensions=new Set(['.js','.cjs','.mjs','.py','.html','.css','.json']);
+const codeExtensions=new Set(['.js','.cjs','.mjs','.py','.html','.css','.json','.md']);
 class Workspace {
   constructor(base,limits) { this.base=base; this.limits=limits; this.rules=new VerificationRules(base); this.roots=[]; this.files=[]; this.issues=[]; this.updatedAt=null; this.indexing=false; this.proposals=new Map(); this.writing=false; }
   async init(examples, extraExamples=[]) {
@@ -161,7 +161,7 @@ class Workspace {
   async createProposal(fileId,after,source='manual') {
     const file=await this.read(fileId);const root=this.roots.find(r=>r.id===file.rootId);
     if(!root.permissions.write)throw new Error('此資料夾沒有修改授權');
-    if(!codeExtensions.has(path.extname(file.path).toLowerCase()))throw new Error('只支援程式文字檔修改');
+    if(!codeExtensions.has(path.extname(file.path).toLowerCase()))throw new Error('只支援程式或 Markdown 文字檔修改');
     if(typeof after!=='string'||after.includes('\0')||Buffer.byteLength(after)>262144)throw new Error('新內容不合法或超過 256 KiB');
     if(file.content===after)throw new Error('沒有內容差異');
     for(const [id,p] of this.proposals)if(p.expiresAt<Date.now())this.proposals.delete(id);

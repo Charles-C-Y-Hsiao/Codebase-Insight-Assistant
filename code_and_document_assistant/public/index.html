@@ -5,6 +5,8 @@
   <title>Code & Document Assistant</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="sidebar.css">
+  <link rel="stylesheet" href="vendor/fontawesome-6.7.2/css/fontawesome.min.css">
+  <link rel="stylesheet" href="vendor/fontawesome-6.7.2/css/solid.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/css/diff2html.min.css">
@@ -30,13 +32,16 @@
   <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css" />
 </head>
 <body>
-<header id="app-header">
+<div id="app-header-shell">
+<button id="app-header-toggle" type="button" aria-controls="app-header" aria-expanded="false" aria-label="展開頁首資訊"></button>
+<header id="app-header" inert>
   <div id="header-identity">
     <div id="header-title-row"><strong id="app-title">Code &amp; Document</strong><span id="app-subtitle" class="muted">Assistant · Phase 2</span></div>
     <span id="current-model" class="muted" role="status">目前模型：載入中</span>
   </div>
   <span class="badge" id="mode-label">AI</span>
 </header>
+</div>
 <div class="layout">
 <aside id="workspace-sidebar" class="sidebar">
   <div class="panel-heading"><button id="sidebarToggle" class="panel-toggle" type="button" aria-controls="workspace-sidebar" aria-expanded="true" aria-label="收合工作區" title="收合工作區"><i class="fi fi-br-angle-small-left" aria-hidden="true"></i></button><span class="panel-title">工作區</span></div>
@@ -47,6 +52,7 @@
       <select id="active-project" hidden aria-label="目前修改目標"></select>
       <select id="active-conversation" hidden aria-label="此專案的對話"></select>
       <div id="project-list" aria-label="專案清單"></div>
+      <button id="project-list-more" class="project-list-more" type="button" aria-controls="project-list" aria-expanded="false" hidden>顯示更多</button>
       <button id="new-conversation" type="button" hidden>新對話</button>
       <span id="project-location" class="muted" hidden></span>
     </details>
@@ -57,6 +63,7 @@
     <section id="image-project-panel" hidden aria-label="圖片創作專案">
       <p id="image-project-status" role="status"></p>
       <div id="image-project-list" role="listbox" aria-label="圖片創作專案清單"></div>
+      <button id="image-project-list-more" class="project-list-more" type="button" aria-controls="image-project-list" aria-expanded="false" hidden>顯示更多</button>
     </section>
   </div>
   <details id="workspace-tools-panel"><summary><i id="workspace-tools-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>工作區工具與設定</span></summary><div id="workspace-tools-content">
@@ -124,11 +131,8 @@
       </section>
       <section id="conversation-memory" aria-labelledby="conversation-memory-title">
         <details id="memory-details">
-          <summary class="memory-heading"><span id="memory-heading-title"><i id="memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span id="conversation-memory-title">對話記憶</span></span><span id="memory-status" class="muted">尚無已確認需求</span></summary>
-          <span id="memory-details-label" class="muted">查看已確認需求與本次歷史候選預覽</span>
-          <div id="confirmed-requirements"></div>
-          <span id="memory-summary-label" class="muted">本次歷史候選預覽</span>
-          <div id="memory-summary"><p id="memory-preview-status" class="muted" aria-live="polite">展開對話記憶或輸入需求後，會預覽固定內容與待篩選候選。</p><div id="memory-preview-groups"></div></div>
+          <summary class="memory-heading"><span id="memory-heading-title"><i id="memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span id="conversation-memory-title">對話記憶</span></span><span id="memory-status" class="muted" tabindex="0"><span id="memory-overview-line"><span id="memory-details-label">查看 </span><span id="confirmed-requirements">尚無已確認需求</span><span id="memory-summary-label"> 與本次歷史候選預覽</span></span><span id="memory-status-meta"></span></span></summary>
+          <div id="memory-summary"><div id="memory-preview-status"><span id="memory-preview-status-text" class="muted" role="status" aria-live="polite">展開對話記憶或輸入需求後，可預覽固定內容與待篩選候選；</span><span id="confirmed-requirement-list">尚無已確認需求。</span></div><div id="memory-preview-groups"></div></div>
           <div id="memory-update-history"></div>
         </details>
       </section>
@@ -160,6 +164,9 @@
       </section>
       <span id="model-help" class="composer-model" title="目前使用的模型" hidden>模型為固定規則</span>
       <div id="composer-submit-actions">
+          <button id="text-model-picker" type="button" aria-haspopup="menu" aria-controls="text-model-menu" aria-expanded="false" disabled><span id="text-model-name">模型載入中</span><span id="text-model-effort"></span><i class="fi fi-br-angle-small-down" aria-hidden="true"></i></button>
+          <span class="composer-service-action-slot"><button id="project-services-settings" type="button" aria-label="服務設定" title="服務設定" aria-expanded="false"><i class="fi fi-rr-toggle-off" aria-hidden="true"></i></button></span>
+          <span class="composer-service-action-slot"><button id="project-services-stop" type="button" hidden aria-label="停止專案服務" title="停止專案服務"><i class="fi fi-sr-power" aria-hidden="true"></i></button></span>
         <button id="cancel" type="button" disabled aria-label="停止任務" title="停止任務"><i class="fi fi-sr-stop-circle" aria-hidden="true"></i></button>
         <button id="send" aria-label="送出問題" title="送出問題"><i class="fi fi-ss-arrow-circle-up" aria-hidden="true"></i></button>
       </div>
@@ -178,8 +185,15 @@
     </div>
     </form>
   <div id="task-update-floating" hidden aria-live="polite">
-    <span id="task-update-floating-label" role="button" tabindex="0" title="查看差異"></span>
-    <button id="task-update-floating-action" type="button" aria-label="改程式" data-tooltip="改程式"><i class="fi fi-br-square-terminal" aria-hidden="true"></i></button>
+    <div id="task-update-floating-header">
+      <button id="task-update-floating-label" type="button"></button>
+      <button id="task-update-floating-action" type="button" aria-label="改程式" data-tooltip="改程式"><i class="fi fi-br-square-terminal" aria-hidden="true"></i></button>
+      <button id="task-update-floating-collapse" type="button" aria-expanded="false" aria-controls="task-update-floating-body" aria-label="展開修改預覽" title="展開修改預覽" hidden><i class="fi fi-br-angle-small-up" aria-hidden="true"></i></button>
+    </div>
+    <div id="task-update-floating-body" hidden>
+      <label for="task-update-floating-task-select">待確認任務</label><select id="task-update-floating-task-select" aria-label="切換待確認任務"></select>
+      <div id="task-update-floating-preview"></div>
+    </div>
   </div>
   </details>
 </main>
@@ -192,6 +206,36 @@
   </div>
 </aside>
 </div>
+<dialog id="project-services-floating" aria-label="專案服務設定">
+  <div class="project-services-floating-heading"><strong>專案服務</strong><button id="project-services-settings-close" type="button" aria-label="收合服務設定" title="收合服務設定"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div>
+  <label for="project-services-select">服務與 Port<select id="project-services-select"></select></label>
+  <div id="project-services-floating-status" role="status">載入服務狀態…</div>
+  <div class="project-services-floating-actions"><button id="project-services-open-start" type="button">啟動設定</button><button id="project-services-scan-changes" type="button">驗證最近修改的 API</button></div>
+  <section id="project-services-startup-config" hidden aria-labelledby="project-service-start-title">
+    <div class="dialog-heading"><h2 id="project-service-start-title">確認啟動專案服務</h2><button id="project-service-start-close" type="button">取消</button></div>
+    <div id="project-services-startup-fields">
+      <p>選擇目前專案中的單一 Node 入口。確認後才會執行；使用 127.0.0.1 驗證程序與 Port。</p>
+      <label for="project-service-entry">啟動入口<select id="project-service-entry"></select></label>
+      <label for="project-service-port">預期 Port<input id="project-service-port" type="number" min="1" max="65535" inputmode="numeric"></label>
+      <label for="project-service-modules">專案外 node_modules 絕對路徑<input id="project-service-modules" type="text" autocomplete="off" placeholder="C:\shared-deps\node_modules"><small>路徑會保存於目前專案；有服務正在執行時會鎖定，全部停止後才能修改。</small></label>
+      <details id="project-service-api-settings"><summary><i id="project-service-api-settings-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>API 回應驗證（選填）</span></summary>
+        <p>填寫本站路徑後，啟動成功會自動請求。未填時只驗證程序與 Port；標頭、Body 與比對值不會保存到任務紀錄。</p>
+        <label for="project-service-api-method">方法<select id="project-service-api-method"><option>GET</option><option>HEAD</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
+        <label for="project-service-api-path">路徑與查詢參數<input id="project-service-api-path" type="text" placeholder="/api/test"></label>
+        <label for="project-service-api-headers">標頭（JSON 物件，選填）<textarea id="project-service-api-headers" rows="2" placeholder='{"Content-Type":"application/json"}'></textarea></label>
+        <label for="project-service-api-body">Body（選填，最多 8 KiB）<textarea id="project-service-api-body" rows="2"></textarea></label>
+        <label for="project-service-api-status">預期狀態碼<input id="project-service-api-status" type="number" min="100" max="599" value="200"></label>
+        <label for="project-service-api-contains">回應文字須包含（選填）<input id="project-service-api-contains" type="text"></label>
+        <label for="project-service-api-json-path">JSON 欄位路徑（選填，例如 data.status）<input id="project-service-api-json-path" type="text"></label>
+        <label for="project-service-api-json-expected">JSON 預期值（選填，例如 "ok" 或 true）<input id="project-service-api-json-expected" type="text"></label>
+      </details>
+      <label for="project-service-admin">本次服務的 6 碼管理碼<input id="project-service-admin" type="password" maxlength="6" autocomplete="off"></label>
+      <p id="project-service-command"></p>
+    </div>
+    <p id="project-service-start-status" role="status"></p>
+    <div class="dialog-actions"><button id="project-service-dependencies" type="button">檢查外部依賴</button><button id="project-service-dev-dependencies" type="button">檢查開發依賴</button><button id="project-service-start-confirm" type="button" class="primary">確認啟動</button></div>
+  </section>
+</dialog>
 <div id="task-update-overlay" hidden role="status" aria-live="assertive" tabindex="-1">
   <div id="task-update-overlay-content"><span id="task-update-overlay-spinner" aria-hidden="true"></span><strong>正在修改程式</strong><span>套用完成前暫停其他操作</span></div>
 </div>
@@ -204,7 +248,7 @@
   <p id="permission-error" role="alert"></p>
 </dialog>
 <dialog id="reference-dialog" aria-labelledby="reference-title">
-  <div class="dialog-heading"><h2 id="reference-title">加入唯讀參考</h2><button id="close-reference" type="button">完成</button></div>
+  <div class="dialog-heading"><h2 id="reference-title">加入唯讀參考</h2><button id="close-reference" type="button" aria-label="關閉唯讀參考" title="關閉唯讀參考"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div>
   <p>勾選已授權的專案，只加入讀取與搜尋範圍，不切換修改目標。</p>
   <div id="reference-projects"></div><p id="reference-error" role="alert"></p>
 </dialog>
@@ -223,17 +267,72 @@
   <ul id="task-delete-effects"></ul>
   <div class="dialog-actions"><button id="task-delete-cancel" type="button" autofocus>取消</button><button id="task-delete-confirm" type="button">確認刪除</button></div>
 </dialog>
+<dialog id="task-id-copy-dialog" aria-labelledby="task-id-copy-title">
+  <div class="dialog-heading"><h2 id="task-id-copy-title">已複製任務 ID</h2></div>
+  <p id="task-id-copy-message"></p>
+</dialog>
+<dialog id="project-service-install-dialog" aria-labelledby="project-service-install-title">
+  <h2 id="project-service-install-title">確認安裝外部依賴</h2><p id="project-service-install-details"></p><p id="project-service-install-status" role="status"></p>
+  <div class="dialog-actions"><button id="project-service-install-cancel" type="button">取消</button><button id="project-service-install-confirm" type="button" class="primary">確認安裝到專案外</button></div>
+</dialog>
+<dialog id="project-service-stop-dialog" aria-labelledby="project-service-stop-title">
+  <h2 id="project-service-stop-title">停止專案服務</h2><label for="project-service-stop-select">執行中的服務<select id="project-service-stop-select"></select></label>
+  <pre id="project-service-stop-output"></pre><p id="project-service-stop-message">停止後，該 Port 將不再由此服務監聽。</p>
+  <div class="dialog-actions"><button id="project-service-stop-cancel" type="button">取消</button><button id="project-service-stop-confirm" type="button">確認停止所選服務</button></div>
+</dialog>
+<dialog id="project-service-verify-dialog" aria-labelledby="project-service-verify-title">
+  <div class="dialog-heading"><h2 id="project-service-verify-title">確認 API 重測</h2><button id="project-service-verify-close" type="button">關閉</button></div>
+  <p id="project-service-verify-service"></p><p>只請求所選服務的 127.0.0.1 Port。POST 等請求可能修改該服務的資料；請核對方法與路徑後再確認。敏感標頭、Body 與比對值須重新填寫。</p>
+  <label for="project-service-verify-method">方法<select id="project-service-verify-method"><option>GET</option><option>HEAD</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
+  <label for="project-service-verify-path">路徑與查詢參數<input id="project-service-verify-path" type="text" placeholder="/api/test"></label>
+  <label for="project-service-verify-headers">標頭（JSON 物件，選填）<textarea id="project-service-verify-headers" rows="2"></textarea></label>
+  <label for="project-service-verify-body">Body（選填）<textarea id="project-service-verify-body" rows="2"></textarea></label>
+  <label for="project-service-verify-status">預期狀態碼<input id="project-service-verify-status" type="number" min="100" max="599" value="200"></label>
+  <label for="project-service-verify-contains">回應文字須包含（選填）<input id="project-service-verify-contains" type="text"></label>
+  <label for="project-service-verify-json-path">JSON 欄位路徑（選填）<input id="project-service-verify-json-path" type="text"></label>
+  <label for="project-service-verify-json-expected">JSON 預期值（選填）<input id="project-service-verify-json-expected" type="text"></label>
+  <label for="project-service-verify-admin">本次服務的 6 碼管理碼<input id="project-service-verify-admin" type="password" maxlength="6" autocomplete="off"></label>
+  <p id="project-service-verify-status-message" role="status"></p>
+  <div class="dialog-actions"><button id="project-service-verify-confirm" type="button" class="primary">確認送出並驗證</button></div>
+</dialog>
+<dialog id="project-service-change-verify-dialog" aria-labelledby="project-service-change-verify-title">
+  <div class="dialog-heading"><h2 id="project-service-change-verify-title">確認驗證本次修改的 API</h2><button id="project-service-change-verify-close" type="button">關閉</button></div>
+  <p id="project-service-change-verify-source"></p><p>請檢查每個路由的請求資料。GET／HEAD 預設勾選；POST／PUT／PATCH／DELETE 預設不勾選，請確認資料安全後再選取。所有勾選項目會依序送出；敏感欄位不保存。</p>
+  <div id="project-service-change-verify-routes"></div>
+  <label for="project-service-change-verify-admin">本次服務的 6 碼管理碼<input id="project-service-change-verify-admin" type="password" maxlength="6" autocomplete="off"></label>
+  <p id="project-service-change-verify-status" role="status"></p>
+  <div class="dialog-actions"><button id="project-service-change-verify-confirm" type="button" class="primary">確認送出勾選路由</button></div>
+</dialog>
+<div id="text-model-menu" popover="auto" role="menu" aria-label="模型與思考深度">
+  <div class="text-model-menu-header"><span class="text-model-menu-heading">選取模型</span><button id="text-model-manage" type="button" role="menuitem" aria-label="模型管理" aria-describedby="text-model-manage-tooltip" data-tooltip="模型管理"><i class="fi fi-rr-settings" aria-hidden="true"></i></button><span id="text-model-manage-tooltip" role="tooltip">模型管理</span></div>
+  <div id="text-model-options"></div>
+  <section id="text-model-depth-section">
+    <span id="text-model-depth-heading" class="text-model-menu-heading">Thinking depth</span>
+    <div id="text-model-depths"></div>
+  </section>
+  <span id="text-model-status" role="status"></span>
+</div>
+<dialog id="text-model-manage-dialog" aria-labelledby="text-model-manage-title">
+  <div class="dialog-heading"><h2 id="text-model-manage-title">管理模型</h2><button id="text-model-manage-close" type="button" aria-label="關閉模型管理"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div>
+  <p>勾選要出現在選單的模型，並設定簡短顯示名稱。所有模型沿用目前服務的 API 端點與金鑰；實際可用的模型 ID 與深度須由該 API 支援。</p>
+  <div id="text-model-editor"></div>
+  <div id="text-model-manager-tools" class="text-model-manager-tools"><button id="text-model-add" type="button">新增模型</button><span>取消勾選或刪除後，使用該模型的對話需重新選擇；已開始的任務繼續使用原設定。</span></div>
+  <span id="text-model-manage-status" role="status"></span>
+  <div class="dialog-actions"><button id="text-model-manage-cancel" type="button">取消</button><button id="text-model-manage-save" type="button" class="primary">儲存設定</button></div>
+</dialog>
 <dialog id="workflow-guide-dialog" aria-labelledby="workflow-guide-title">
-  <div class="dialog-heading"><h2 id="workflow-guide-title">工作流程說明</h2><button id="workflow-guide-close" type="button">關閉</button></div>
+  <div class="dialog-heading"><h2 id="workflow-guide-title">工作流程說明</h2><button id="workflow-guide-close" type="button" aria-label="關閉工作流程說明" title="關閉工作流程說明"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div>
   <div id="workflow-guide-tabs" role="tablist" aria-label="工作流程主題">
     <button id="workflow-guide-tab-general" type="button" role="tab" aria-controls="workflow-guide-general" aria-selected="true">一般專案</button>
     <button id="workflow-guide-tab-image" type="button" role="tab" aria-controls="workflow-guide-image" aria-selected="false">圖片創作</button>
+    <button id="workflow-guide-tab-common" type="button" role="tab" aria-controls="workflow-guide-common" aria-selected="false">共用功能</button>
+    <button id="workflow-guide-tab-styles" type="button" role="tab" aria-controls="workflow-guide-styles" aria-selected="false">樣式</button>
   </div>
   <section id="workflow-guide-general" role="tabpanel" aria-labelledby="workflow-guide-tab-general">
     <details id="workflow-guide-skills">
       <summary id="workflow-guide-skills-title" title="&lt;details id=&quot;skill-panel&quot; aria-labelledby=&quot;skill-panel-title&quot;&gt;"><i id="workflow-guide-skills-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>建議技能</span></summary>
       <div id="workflow-guide-skills-content">
-        <p>模型依目前輸入建議最多三種；建議不會自動執行，按下技能旁的按鈕才會啟用。</p>
+        <p>系統依目前輸入的字數與關鍵字，使用固定規則建議最多三種技能；建議不會自動執行，按下技能旁的按鈕才會啟用。</p>
         <ol>
           <li><strong>需求釐清</strong>：模型整理目前理解並提出 1–3 個問題，任務通常會停在「需要補充」。輸入少於 30 字，或包含「不知道、不確定、怎麼做、如何做、需求」等字詞時會建議。</li>
           <li><strong>任務規劃</strong>：模型查閱必要資料後，列出執行步驟、相依關係與驗收條件，不會修改檔案。輸入包含「建立、新增、修改、改成、實作、開發、功能、頁面、程式、重構」等字詞時會建議。</li>
@@ -246,7 +345,18 @@
     <details id="workflow-guide-auto-memory">
       <summary id="workflow-guide-auto-memory-title" title="&lt;label id=&quot;auto-memory-label&quot; title=&quot;&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;ai-auto-memory&quot;&gt;"><i id="workflow-guide-auto-memory-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>自動整理記憶 (額外 token)</span></summary>
       <div id="workflow-guide-auto-memory-content">
-        <p>勾選後，文字任務完成時會使用目前模型整理記憶，額外消耗 token。整理材料包含既有結構化記憶、有效的已確認需求，以及尚未納入記憶的合格文字任務；不是固定只取最近 6 筆。圖片任務不納入這份一般對話記憶。若既有記憶來源失效，系統可能重新整理所有符合條件的文字任務。未勾選時沿用本機整理；此選項僅 real 模式顯示。</p>
+        <p>一般專案要區分<strong>歷史篩選</strong>與<strong>記憶整理</strong>：預設可能使用 LLM 的是前者；<code>#auto-memory-label</code> 控制的是額外的後者。</p>
+        <div class="workflow-guide-memory-table-wrap">
+          <table id="workflow-guide-auto-memory-table">
+            <thead><tr><th scope="col">流程</th><th scope="col">何時執行</th><th scope="col">做什麼</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">預設的歷史篩選</th><td>一般任務送出時，處於 Real 模式、專案已授權 AI，且有候選任務</td><td>從同一對話最近最多 6 筆合格文字任務中，讓 LLM 選出與本次要求相關的 0–6 筆，再交給執行任務的主請求。程式見 <code>src/history-selection.js</code> 與 <code>server.js</code>。</td></tr>
+              <tr><th scope="row">自動整理記憶（額外 token）</th><td>勾選後，通常在任務保存後；接近記憶預算門檻時也可能在送出前</td><td>另發 LLM 請求，把合格任務、有效的已確認需求及既有結構化記憶整理成「目標、目前決定、限制、已完成、待辦與待確認」等項目。程式見 <code>src/conversation-memory.js</code>。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>沒勾選自動整理，也仍可能呼叫 LLM 篩選歷史；勾選後多了結構化記憶整理，歷史篩選仍照常進行。沒勾選時，超過 6 筆任務或保存 Edit 新版本會觸發不呼叫 LLM 的本機文字摘要（<code>src/app-state.js</code>）；一般任務的歷史主要由上述篩選流程決定，不能將本機摘要視為預設整份送給主請求。</p>
+        <p>自動整理的材料不是固定只取最近 6 筆；圖片任務不納入這份一般對話記憶。若既有記憶來源失效，系統可能重新整理所有符合條件的文字任務。此選項僅 Real 模式顯示。</p>
       </div>
     </details>
     <details id="workflow-guide-task-memory">
@@ -287,8 +397,9 @@
         </ul>
         <span id="workflow-guide-memory-common-title"><strong>一般任務共同送入資料與目前可見範圍：</strong></span>
         <ul>
-          <li>Real 模式且有候選任務時，第一個 LLM 請求是歷史篩選：收到本次需求、固定內容與候選文字，不收到圖片。接著主請求才收到系統指令與可用工具、本次問題、選用技能、篩選後的 conversationContext，以及本輪選取的檔案和圖片資訊。圖片內容另以影像輸入送出；檔案全文要等模型使用讀取或搜尋工具才會進入後續請求。</li>
+          <li>Real 模式且有候選任務時，第一個 LLM 請求是歷史篩選：收到本次需求、固定內容與候選文字，不收到圖片。接著主請求才收到系統指令與可用工具、本次問題、選用技能、篩選後的 conversationContext，以及本輪選取的檔案和圖片資訊。只有關閉 <code>MAGE_TEXT_ONLY_MODE</code> 且實際選取圖片時，圖片內容才另以影像輸入送出；檔案全文要等模型使用讀取或搜尋工具才會進入後續請求。</li>
           <li>預覽位於 <code>#memory-details</code> 內的 <code>#memory-summary</code>，顯示送出前的固定內容與待篩選候選；不能把候選清單當成最終「已納入」。送出後在任務詳細資訊查看逐筆納入／排除理由、篩選材料，以及主請求實際收到的歷史上下文。</li>
+          <li>輸入區的模型按鈕可選擇文字模型與思考深度，按對話保存；初始深度為「中」。每次操作固定送出時的設定，歷史篩選、主請求、記憶／圖片摘要、提示詞整合與完工整理沿用同一份快照，圖片生成維持獨立模型。停用或刪除模型後，舊對話需重新選擇才能送出新的文字請求。</li>
           <li>篩選 LLM 會逐筆回傳理由，但它仍可能漏掉有用的舊決定；因此有效已確認需求與可用的明確限制固定保留。Mock 模式會標示未送入 LLM。</li>
           <li>一般情況下 conversationContext 不含本次問題；延續／編輯任務可能會把完整需求附在上下文。預覽不含另行傳送的圖片實際內容及工具後續取得的檔案內容；若送出前需要更新自動記憶，實際固定內容可能改變。</li>
         </ul>
@@ -338,6 +449,208 @@
         <span><strong>清除的限制：</strong>模型摘要的來源 ID 由 LLM 填寫，可能漏標，所以不能保證保留下來的摘要完全沒有被刪任務的內容。另外，後續任務自己的需求與回答原文會保留；若其中提到被刪內容，未來仍可能再次進入歷史上下文。</span>
       </div>
     </details>
+    <details id="workflow-guide-task-floating">
+      <summary id="workflow-guide-task-floating-title" title="id=&quot;task-update-floating&quot;"><i id="workflow-guide-task-floating-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span><code>#composer-panel</code> 上方的浮動提示 id=<code>task-update-floating</code></span></summary>
+      <div id="workflow-guide-task-floating-content">
+        <p><code>#composer-panel</code> 上方浮動提示的外層 ID 是 <strong><code>task-update-floating</code></strong>。它只追蹤目前一般專案、目前對話中的程式修改任務；圖片討論任務不會列入。畫面結構見 <code>public/index.html:180</code>，顯示邏輯見 <code>public/app.js:156</code>。</p>
+        <div class="workflow-guide-floating-table-wrap">
+          <table id="workflow-guide-task-floating-table">
+            <thead><tr><th scope="col">ID</th><th scope="col">目前用途</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>task-update-floating-header</code></th><td>收合時保留的單行提示列</td></tr>
+              <tr><th scope="row"><code>task-update-floating-label</code></th><td>顯示待確認筆數；有單檔修改提案時，點擊會在右側查看差異</td></tr>
+              <tr><th scope="row"><code>task-update-floating-action</code></th><td>單檔修改提案待確認時原有的「改程式」快捷按鈕</td></tr>
+              <tr><th scope="row"><code>task-update-floating-collapse</code></th><td>展開或收合浮動預覽</td></tr>
+              <tr><th scope="row"><code>task-update-floating-body</code></th><td>展開後的可捲動內容</td></tr>
+              <tr><th scope="row"><code>task-update-floating-task-select</code></th><td>多筆任務待確認時切換任務</td></tr>
+              <tr><th scope="row"><code>task-update-floating-preview</code></th><td>顯示所選任務的差異、新檔與確認操作</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>任務進入<strong>待確認</strong>時，內容預設收合，只顯示提示列；可手動展開預覽。預覽中可查看修改前後差異、預檢結果與新檔內容，並沿用原本的套用、逐檔「確認建立／略過」流程。收合後，即使下一份新檔開始等待確認，也不會自動重開。原任務卡的 <code>task-workbench-*</code> 保留，另有 <code>task-workbench-preview-*</code> 按鈕可手動開啟浮動預覽。預覽邏輯見 <code>public/app.js:138</code>，任務卡入口見 <code>public/app.js:829</code>。</p>
+        <p>已完成或歸檔的任務可手動重開查看保存的紀錄；若舊歸檔沒有保留提案全文，浮動預覽會說明無法重播全文。</p>
+      </div>
+    </details>
+  </section>
+  <section id="workflow-guide-common" role="tabpanel" aria-labelledby="workflow-guide-tab-common" hidden>
+    <details id="workflow-guide-harness">
+      <summary id="workflow-guide-harness-title" title="目前專案 harness 功能總覽"><i id="workflow-guide-harness-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>目前專案的 Harness 功能</span></summary>
+      <div id="workflow-guide-harness-content">
+        <span>Harness 是包住 LLM 的工具與執行控制層，負責限制可讀寫範圍、管理確認流程、執行服務並保存結果。以下整理目前已實作的主要能力。</span>
+        <ol>
+          <li><strong>模型與工具協作</strong>
+            <ul>
+              <li><strong>工具呼叫：</strong>搜尋文件、讀取原文、計算、提出程式修改或新檔，以及規劃 Node 服務啟動。</li>
+              <li><strong>工具限制：</strong>工具參數依 schema 驗證，只能在授權範圍內操作；模型不能自行擴大權限。</li>
+              <li><strong>任務控制：</strong>記錄操作、步驟與結果，支援取消、逾時及錯誤回報。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>src/ai-agent.js</code>（line 6）、<code>src/engine.js</code>（line 13）</span>
+          </li>
+          <li><strong>專案授權與資料範圍</strong>
+            <ul>
+              <li><strong>資料夾授權：</strong>分別設定讀取、修改、靜態驗證及 AI 外送權限，授權可設定期限。</li>
+              <li><strong>專案範圍：</strong>區分目前修改目標與唯讀參考資料夾，限制任務能讀取及寫入的位置。</li>
+              <li><strong>檔案索引：</strong>掃描、解析、搜尋及讀取授權資料夾中的文件與程式碼；索引受檔案數量、大小與總容量限制。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>src/workspace.js</code>（line 48）、<code>src/project-scope.js</code>（line 3）、<code>src/parsers.js</code>（line 26）</span>
+          </li>
+          <li><strong>檔案提案與受控修改</strong>
+            <ul>
+              <li><strong>修改既有檔案：</strong>先產生差異並核對版本、執行預檢，等待使用者確認才套用；可查看結果或還原。</li>
+              <li><strong>建立新檔案：</strong>每次最多提案 20 份，逐檔確認建立或略過；支援 HTML、CSS、JS、JSON、Python、Markdown 等格式。</li>
+              <li><strong>文件與資料夾：</strong>可建立及修改 Markdown；建立 Markdown 時可一併建立必要子資料夾。其他格式的新檔需要父資料夾已存在。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>src/new-files.js</code>（line 5）、<code>src/workspace.js</code>（line 161）、<code>src/engine.js</code>（line 182）</span>
+          </li>
+          <li><strong>對話歷史與記憶</strong>
+            <ul>
+              <li><strong>歷史篩選：</strong>一般任務及圖片討論可依本次需求篩選相關歷史，並保存納入或排除結果。</li>
+              <li><strong>自動整理記憶：</strong>一般專案可選擇額外使用 LLM 整理記憶；來源仍須符合專案 AI 外送授權。</li>
+              <li><strong>任務保存：</strong>保存對話、工具操作、摘要、驗證結果及記憶來源，供任務卡回查。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>src/conversation-memory.js</code>（line 36）、<code>server.js</code>（line 638）、<code>src/app-state.js</code>（line 12）</span>
+          </li>
+          <li><strong>圖片討論與圖片創作</strong>
+            <ul>
+              <li><strong>圖片專案：</strong>管理專案、系列、摘要、歷史討論、提示詞整合紀錄與圖片版本。</li>
+              <li><strong>創作流程：</strong>組合完整提示詞，確認後送出生成，保存圖片及版本關聯。</li>
+              <li><strong>目前模式：</strong><code>server.js</code> 中的 <code>MAGE_TEXT_ONLY_MODE</code> 設為 <code>true</code>；圖片像素不送進 LLM 或生圖 API，仍可進行文字討論與文字提示詞生圖。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>server.js</code>（line 21、322、377）</span>
+          </li>
+          <li><strong>安全與操作確認</strong>
+            <ul>
+              <li><strong>請求驗證：</strong>使用工作階段及 CSRF 檢查，並確認目前專案仍在授權範圍。</li>
+              <li><strong>逐次確認：</strong>修改、新檔、服務啟動及 API 驗證依流程等待使用者確認；服務啟動、依賴安裝與 API 驗證仍需本機管理碼。停止目前專案中由服務管理器追蹤的服務，則依使用者明確指令執行，不需管理碼。</li>
+              <li><strong>資料保護：</strong>限制路徑越界，遮罩 API 驗證中的敏感資料，並記錄重要操作。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>server.js</code>（line 123）、<code>src/project-scope.js</code>（line 3）、<code>src/workspace.js</code>（line 234）</span>
+          </li>
+          <li><strong>操作介面與結果回查</strong>
+            <ul>
+              <li><strong>任務卡：</strong>查看回答、工具活動、差異、新檔確認、服務紀錄及驗證結果。</li>
+              <li><strong>服務面板：</strong>從輸入區開啟浮動面板，查看服務、開啟啟動設定或掃描最近修改的 API。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>public/index.html</code>（line 163、182）、<code>public/project-services-ui.js</code>（line 154）</span>
+          </li>
+        </ol>
+      </div>
+    </details>
+    <details id="workflow-guide-service">
+      <summary id="workflow-guide-service-title" title="服務啟動與 API 驗證流程"><i id="workflow-guide-service-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>服務啟動與 API 驗證</span></summary>
+      <div id="workflow-guide-service-content">
+        <span>服務流程分為啟動方式、服務啟動、初始監測與 API 驗證：</span>
+        <ul>
+          <li><strong>啟動方式：</strong>目前可由 BAT 呼叫 PowerShell 啟動腳本，讀取設定、輸入 API key 並設定環境變數；PowerShell 最後執行 <code>node server.js</code>。實際服務由 Node.js 執行，前端使用 HTML、CSS 與 JavaScript。</li>
+          <li><strong>服務啟動：</strong>系統掃描 Node 入口候選，確認入口與 Port 後啟動。專案外的 <code>node_modules</code> 路徑按專案保存；有服務正在啟動或執行時，該路徑會鎖定。</li>
+          <li><strong>啟動監測：</strong>啟動時檢查程序與 <code>127.0.0.1</code> Port，之後每 30 秒檢查一次，最多五分鐘並記錄錯誤。</li>
+          <li><strong>監測與管理：</strong>五分鐘後停止定時監測與輸出擷取。服務面板只在開啟或手動操作時刷新；仍可查看初始監測結果及停止服務。也可用「關閉 3015」或「關閉服務」等自然語言停止目前專案內由服務管理器追蹤的服務，不需管理碼；若有多項服務且無法判定目標，會先詢問。</li>
+          <li><strong>API 驗證：</strong>可設定方法、路徑、標頭、Body、預期狀態及回應條件；也可掃描最近已套用修改中的 Express 字串路由，選取後確認送出。</li>
+          <li><strong>執行界線：</strong>目前沒有任意 Bash／Shell 命令工具；服務以 Node 子程序啟動，依賴安裝限於指定的專案外目錄。</li>
+        </ul>
+        <span>流程可以整理成：</span>
+        <pre><code>BAT（可選）
+→ PowerShell 啟動腳本
+→ 設定環境變數與 API key
+→ Node.js 執行服務入口
+→ 檢查程序與 127.0.0.1 Port
+→ 最長五分鐘的初始監測
+→ 查看服務狀態或驗證 API</code></pre>
+        <span><strong>簡言之：</strong>PowerShell 負責啟動前的環境設定，Node.js 負責實際執行服務；Harness 管理服務啟動、初始監測與 API 驗證。</span>
+        <span><strong>參考：</strong> <code>start_ai.ps1</code>、<code>start_ai_luna_local.bat</code>、<code>src/project-services.js</code>、<code>server.js</code></span>
+      </div>
+    </details>
+    <details id="workflow-guide-conversation-tasks">
+      <summary id="workflow-guide-conversation-tasks-title" title="一般專案的對話、Edit、需求版本與任務排序"><i id="workflow-guide-conversation-tasks-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>對話與任務執行</span></summary>
+      <div id="workflow-guide-conversation-tasks-content">
+        <span>依照 <code>docs/project_module_blocks.md</code>，<strong>對話 Edit、版本與排序主要屬於「對話與任務執行」</strong>；畫面呈現則對應「前端介面與互動」。</span>
+        <span>目前一般專案的對話功能，可整理為以下大分支與中分支：</span>
+        <ul>
+          <li><strong>對話與任務執行</strong>
+            <ul>
+              <li><strong>對話管理：</strong>新增、切換與載入對話；每個對話包含多筆任務卡。</li>
+              <li><strong>任務識別：</strong><code>taskId</code> 識別同一筆任務；每次 Edit 重跑會產生新的執行 <code>id</code>。</li>
+              <li><strong>Edit 與需求版本：</strong>Edit 建立新版，舊版保存在 <code>versions</code>；可查看舊要求、結果與操作紀錄，也可載入舊版重新編輯。</li>
+              <li><strong>任務卡排序：</strong>依任務<strong>首次建立時間，由舊到新</strong>排列；Edit 保留原卡片位置。</li>
+              <li><strong>對話清單排序：</strong>側邊的對話清單依更新時間，由新到舊排列。</li>
+              <li><strong>專案清單：</strong>一般專案與圖片專案各按最近一次對話／任務更新時間由新到舊排列，Edit 重送也會更新排序。兩組清單各預設顯示 5 個專案，可「顯示更多」展開全部或「收合」回到前 5 個；切換到清單外的專案時自動展開，保留時間順序。</li>
+              <li><strong>執行狀態與追蹤：</strong>呈現執行中、待確認、完成、部分完成、失敗與取消等狀態。</li>
+              <li><strong>逐步執行區：</strong>一般專案對話卡只顯示最新一個 Iteration 區塊；上方以可換行的公開操作目的提示執行方向。Decide、Act、Observe、Repeat／Stop 隨進度出現，不預先產生占位步驟；等下一輪有實際 Decide 才替換舊區塊，等待時保留上一輪並標示處理中。同輪更新保留手動收合狀態，等待確認時保留既有操作入口。完成後自動收合執行區，下方統一顯示最終回答、已完成、待辦與驗證結果；完整 <code>timeline-*</code> 仍可回查，無新增 LLM 請求。</li>
+              <li><strong>完成結果整理：</strong>保留最終回答，再依實際工具與檔案結果列出已完成、未完成／待確認及驗證結果；執行過程自動收合。沿用既有工作摘要，不增加新的 LLM 請求。</li>
+              <li><strong>新檔確認流程：</strong>逐檔確認建立或略過；「略過」保留任務及操作紀錄。</li>
+            </ul>
+          </li>
+          <li><strong>前端介面與互動</strong>
+            <ul>
+              <li><strong>任務卡操作：</strong>複製 ID、Edit、View、Delete 與預覽修改。</li>
+              <li><strong>需求版本呈現：</strong>透過 View 展開完整需求及各版本內容。</li>
+              <li><strong>畫面狀態同步：</strong>新版更新同一張卡片，保留展開狀態；忽略晚到的舊版回應。</li>
+              <li><strong>浮動修改工作台：</strong>查看差異、新檔內容，並執行確認建立或略過。</li>
+            </ul>
+          </li>
+          <li><strong>AI 請求與上下文</strong>
+            <ul>
+              <li><strong>本次要求組裝：</strong>依目前送出的文字、所選檔案與授權設定建立請求。</li>
+              <li><strong>歷史篩選：</strong>從合格歷史任務選出相關內容，供本次任務使用。</li>
+              <li><strong>需求延續判定：</strong>處理「好、繼續、執行」等簡短指令，必要時要求選擇延續來源。</li>
+            </ul>
+          </li>
+          <li><strong>摘要與記憶管理</strong>
+            <ul>
+              <li><strong>已確認需求：</strong>保存使用者確認的需求，以及後續取代關係。</li>
+              <li><strong>對話摘要：</strong>整理既有任務，提供後續對話參考。</li>
+              <li><strong>自動整理記憶：</strong>勾選後額外呼叫 LLM，整理結構化記憶。</li>
+            </ul>
+          </li>
+          <li><strong>附件與檔案保存</strong>
+            <ul>
+              <li><strong>任務與版本保存：</strong>保存本次要求、結果、版本、工具及執行紀錄。</li>
+              <li><strong>檔案操作結果：</strong>保存新檔的已建立、已略過、失敗等結果。</li>
+              <li><strong>歷史載入：</strong>重新整理或重啟後，重新顯示已保存的對話紀錄。</li>
+            </ul>
+          </li>
+          <li><strong>資料刪除與完整性</strong>
+            <ul>
+              <li><strong>單筆任務刪除：</strong>刪除該任務及其全部需求版本。</li>
+              <li><strong>整個對話刪除：</strong>處理對話中的任務與相關資料。</li>
+              <li><strong>來源完整性：</strong>刪除後同步處理受影響的記憶與歷史來源。</li>
+              <li><strong>版本保護：</strong>避免舊執行回呼覆蓋新版保存資料或前端卡片。</li>
+            </ul>
+          </li>
+        </ul>
+        <span><strong>參考：</strong><code>public/app.js</code> 負責畫面排序與版本更新，<code>server.js</code> 負責歷史回傳順序，<code>src/app-state.js</code> 負責版本保存。</span>
+      </div>
+    </details>
+    <details id="workflow-guide-data-deletion">
+      <summary id="workflow-guide-data-deletion-title" title="一般專案與圖片創作的刪除範圍及資料完整性"><i id="workflow-guide-data-deletion-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>資料刪除與完整性</span></summary>
+      <div id="workflow-guide-data-deletion-content">
+        <span>側邊欄 <code>#conversations-project-*</code> 中的 <code>.conversation-delete</code> 刪除的是<strong>一整個對話</strong>，不是磁碟上的子資料夾。</span>
+        <div class="workflow-guide-data-deletion-table-wrap">
+          <table id="workflow-guide-data-deletion-table">
+            <thead><tr><th scope="col">操作</th><th scope="col">目前刪除範圍</th><th scope="col">保留內容與主要限制</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">一般專案「刪除專案」</th><td>專案登錄、<strong>所有工作階段</strong>中屬於該專案的對話與任務、服務設定及相關索引；也移除啟動設定檔中的對應項目。</td><td><strong>保留磁碟專案資料夾與檔案</strong>，先封存圖片產出與任務紀錄。服務或任務仍在執行、等待確認，或其他專案仍依賴其圖片版本時會阻止刪除；使用自製視窗二次確認。<code>server.js:635</code></td></tr>
+              <tr><th scope="row">側邊欄「子專案刪除」</th><td>刪除<strong>目前工作階段的一整個對話</strong>，包含其中任務。</td><td>保留專案登錄與磁碟檔案。對話若含圖片創作專案任務，為保護系列索引會阻止刪除；一般生圖紀錄須先完成歸檔。確認方式目前是瀏覽器原生 <code>confirm</code>。<code>public/sidebar.js:7</code>、<code>server.js:552</code></td></tr>
+              <tr><th scope="row">任務卡右上角 <code>Delete</code></th><td>刪除<strong>目前對話的一張任務卡及其所有 Edit 版本</strong>，並清理相關已確認需求、記憶來源與歷史快照。</td><td>保留其他任務、已寫入的專案檔案及專案內圖片歸檔。圖片創作專案任務不能由此刪除；使用自製確認視窗。<code>public/app.js:855</code>、<code>server.js:777</code></td></tr>
+              <tr><th scope="row">圖片創作「刪除圖片系列」</th><td>刪除該系列登錄、符合條件的討論與創作任務、提示詞整合紀錄，以及找到的系列圖片與附件檔。</td><td>保留圖片創作專案本身和其他系列；需要<strong>6 碼管理碼</strong>，有執行中任務會阻止。<code>server.js:451</code></td></tr>
+              <tr><th scope="row">刪除整個圖片創作專案</th><td>移除專案登錄與<strong>所有工作階段</strong>中屬於該圖片專案的任務、系列索引及提示詞整合紀錄；混合對話中的其他任務保留。</td><td><strong>保留圖片專案資料夾與產出檔案</strong>，先在 <code>.cda/deletion-archive/</code> 封存清單、任務、摘要與整合紀錄。執行中任務或跨專案直接依賴會阻止刪除；獨立複製品保留並標記來源已移除。使用自製視窗二次確認，不需管理碼。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span><strong>仍待補強的邊界：</strong>刪除單一圖片系列目前只清理提出刪除的工作階段；其他工作階段若也有該系列任務，可能留下失去系列登錄的紀錄。刪除整個圖片創作專案則會跨所有工作階段盤點與清理。<code>server.js</code></span>
+        <section id="workflow-guide-image-project-delete">
+          <h3 id="workflow-guide-image-project-delete-title">刪除整個圖片創作專案</h3>
+          <ul>
+            <li>在圖片專案列的三點選單加入垃圾桶按鈕，點擊後以自製視窗再次確認，<strong>不需管理碼</strong>。</li>
+            <li>刪除前檢查所有工作階段；若有執行中的任務、提示詞整合，或其他專案直接依賴其圖片版本，就阻止刪除。</li>
+            <li>先將清單、任務、摘要與提示詞整合紀錄封存到圖片專案資料夾的 <code>.cda/deletion-archive/</code>。歸檔失敗時保留登錄與任務。</li>
+            <li>歸檔成功後，移除助手內的圖片專案登錄、相關任務和索引；混合對話及其中的其他任務保留，相關記憶來源會清理。</li>
+            <li><strong>磁碟上的圖片專案資料夾與已產出的檔案保留</strong>。其他圖片專案的獨立複製品也保留，並在助手紀錄中標記來源已移除。</li>
+            <li>已更新上方「資料刪除與完整性」說明。暫存資料的 HTTP 測試 <strong>3/3 通過</strong>，瀏覽器選單與確認流程也通過；測試沒有刪除實際專案。</li>
+          </ul>
+        </section>
+      </div>
+    </details>
   </section>
   <section id="workflow-guide-image" role="tabpanel" aria-labelledby="workflow-guide-tab-image" hidden>
     <details id="workflow-guide-image-discussion">
@@ -359,13 +672,13 @@
               <li>本次需求、系統規則與圖片討論技能指示。</li>
               <li>目前已套用的<strong>專案摘要、系列摘要</strong>。</li>
               <li>第一階段<strong>實際選中</strong>的歷史討論文字。</li>
-              <li>本輪選取的附件圖片；若沒有取消「最新系列圖片」，也會帶入該圖片。</li>
-              <li>圖片的識別 ID、名稱、寬度與高度。</li>
+              <li>圖片輸入模式下，本輪選取的附件圖片；若沒有取消「最新系列圖片」，也會帶入該圖片。</li>
+              <li>圖片輸入模式下，所送圖片的識別 ID、名稱、寬度與高度。</li>
             </ul>
-            <span>圖片最多 <strong>5 張</strong>，最新系列圖片也計入。圖片實際內容會轉成 <strong>Base64 data URL</strong>，作為 API 的圖片輸入送出，不只是把 Base64 字串當一般文字交給模型。需要圖片專案允許外送，且模型端點支援圖片理解。</span>
+            <span>圖片輸入模式最多 <strong>5 張</strong>，最新系列圖片也計入。圖片實際內容會轉成 <strong>Base64 data URL</strong>，作為 API 的圖片輸入送出；需要圖片專案允許外送，且模型端點支援圖片理解。<code>MAGE_TEXT_ONLY_MODE = true</code> 時仍可討論，但只送上述文字，不送圖片內容或圖片附件紀錄。</span>
           </li>
           <li><strong>創作草稿是什麼時候產生的？</strong>
-            <span>本輪圖片討論完成後，模型會回傳並保存「Agent 理解」、「參考圖片觀察」及<strong>候選完整提示詞</strong>，形成這一輪的創作草稿。</span>
+            <span>本輪圖片討論完成後，模型會回傳並保存「Agent 理解」、「參考圖片觀察」及<strong>候選完整提示詞</strong>，形成這一輪的創作草稿。文字模式下模型沒有收到圖片，「參考圖片觀察」不得當作已核對圖片內容。</span>
             <span>目前程式<strong>不會把上一輪的 <code>imageProjectDraft.prompt</code> 欄位直接固定帶入</strong>下一輪圖片討論。不過，如果上一輪的公開回答中包含提示詞，而該輪又被歷史篩選選中，模型仍可能透過公開回答間接看到那段文字。</span>
           </li>
         </ol>
@@ -374,37 +687,37 @@
     <details id="workflow-guide-image-creation">
       <summary id="workflow-guide-image-creation-title" title="id=&quot;image-create-mode-label&quot;"><i id="workflow-guide-image-creation-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>勾選「創作圖片」送出圖片創作</span></summary>
       <div id="workflow-guide-image-creation-content">
-        <span>勾選「創作圖片」後，系統會開啟確認視窗。確認後，圖片模型收到的是<strong>完整提示詞、圖片模型設定，以及實際選用的圖片材料</strong>。</span>
+        <span>勾選「創作圖片」後，系統會開啟確認視窗。按「開始創作」後，圖片模型會收到<strong>確認時的完整提示詞與圖片模型設定</strong>；只有圖片輸入模式且實際選用圖片材料時，才會另外收到圖片。</span>
         <ul>
           <li><strong>完整提示詞</strong>
             <ul>
-              <li>確認視窗會依情況組合<mark>本次要求</mark>、<mark>專案摘要</mark>、<mark>系列摘要</mark>、<mark>候選提示詞</mark>及<mark>上一版提示詞</mark>；你可以在送出前檢查與修改。</li>
-              <li>若有上一版提示詞可參考，系統會加入修改優先規則，並可能包含上述各項內容。</li>
-              <li>若沒有上一版，但選取了候選提示詞，目前會以候選提示詞作為完整提示詞；不會再自動另外加入本次要求和兩份摘要。</li>
-              <li>若沒有上一版，也沒有候選提示詞，則組合專案摘要、系列摘要與本次要求。</li>
-              <li>實際選用上一版圖片時，後端會確保提示詞包含修改優先規則；若確認視窗中的文字沒有這段，後端會補上。</li>
+              <li>預設不使用候選或上一版時，前端組合<mark>目前專案摘要</mark>、<mark>目前系列摘要</mark>與<mark>本次新增要求</mark>。</li>
+              <li>選<mark>候選提示詞</mark>時，前端組合該版候選提示詞與本次新增要求；不再另外附加兩份摘要，也不呼叫整合 LLM。</li>
+              <li>選「延續圖片 vN」並填入本次要求後，系統只追溯該版本的 <code>previousJobId</code> 祖先鏈，把各版要求與已保存提示詞、目前兩份摘要及本次要求交由文字 LLM 去重整合；不混入同系列其他分支。</li>
+              <li>版本整合會顯示執行中、完成或失敗，以及採用內容、衝突與無法從文字核對的項目。請檢查產出的完整提示詞；失敗時不會悄悄改用舊版層層嵌入的文字。</li>
+              <li>只有未使用整合紀錄、也未明確採用手動提示詞的舊式延續請求，後端才可能補上修改優先規則。使用新整合流程時，實際送出的文字與確認視窗一致。</li>
             </ul>
           </li>
           <li><strong>圖片材料</strong>
             <ul>
-              <li><strong>上一版圖片</strong>：選用時作為修改基礎，獨立於參考圖片清單。</li>
+              <li><strong>上一版圖片</strong>：圖片輸入模式下選用時作為修改基礎，獨立於參考圖片清單；文字模式下只在畫面預覽。</li>
               <li><strong>本次創作材料</strong>：確認視窗會列出選取的候選草稿所保存的參考圖，以及本輪貼入對話窗的草稿圖片。這些圖片會合併、依 ID 去重，預設不加入，需在確認視窗勾選。</li>
-              <li>系統最多接受 <strong>5 張勾選的參考圖片</strong>。若另有一張上一版圖片且尚未包含在參考清單中，會再加入上一版，因此一次圖片編輯請求<strong>最多可能有 6 張圖片</strong>。</li>
+              <li>圖片輸入模式最多接受 <strong>5 張勾選的參考圖片</strong>。若另有一張上一版圖片，會再加入上一版，因此一次圖片編輯請求<strong>最多可能有 6 張圖片</strong>。文字模式下都不能勾選或傳送。</li>
             </ul>
           </li>
           <li><strong>送出方式</strong>
             <ul>
-              <li>沒有上一版或參考圖片時，送出文字生成請求。</li>
-              <li>有圖片材料時，送出圖片編輯請求，使用 <code>multipart/form-data</code> 傳送圖片檔案內容，而不是 Base64 data URL。</li>
+              <li>沒有可傳送的上一版或參考圖片時，送出文字生成請求；<code>MAGE_TEXT_ONLY_MODE = true</code> 時即使選了延續版本也走文字生圖。</li>
+              <li>圖片輸入模式且有圖片材料時，送出圖片編輯請求，使用 <code>multipart/form-data</code> 傳送圖片檔案內容，而不是 Base64 data URL。</li>
               <li>圖片服務回傳生成結果後，系統會將回應中的 Base64 圖片解碼並保存為 PNG。</li>
             </ul>
           </li>
         </ul>
-        <span>這個流程<strong>不會先篩選同系列最近 6 筆圖片討論</strong>；那是未勾選「創作圖片」時的圖片討論流程。產圖時，請以確認視窗中的<strong>完整提示詞</strong>和實際勾選的材料為主要檢查依據；若選用上一版，後端可能再補上修改優先規則。</span>
+        <span>圖片創作<strong>不會先篩選同系列最近 6 筆圖片討論</strong>；那是圖片討論流程。選「延續圖片 vN」會另外呼叫文字 LLM 整合版本鏈，與圖片討論的歷史篩選不同。產圖前請檢查<strong>完整提示詞</strong>、無法核對項目及實際選用的材料；取消產圖後，已執行的整合紀錄仍可在系列中回查。</span>
       </div>
     </details>
     <details id="workflow-guide-image-text-only-mode">
-      <summary id="workflow-guide-image-text-only-mode-title" title="const MAGE_TEXT_ONLY_MODE = true;（BEoL；預設 false）"><i id="workflow-guide-image-text-only-mode-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span><code>MAGE_TEXT_ONLY_MODE = true</code>（BEoL；預設 false）</span></summary>
+      <summary id="workflow-guide-image-text-only-mode-title" title="server.js 中的 MAGE_TEXT_ONLY_MODE；以目前服務設定為準"><i id="workflow-guide-image-text-only-mode-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span><code>MAGE_TEXT_ONLY_MODE</code>（後端開關；目前 <strong id="workflow-guide-image-text-only-mode-status">載入中</strong>）</span></summary>
       <div id="workflow-guide-image-text-only-mode-content">
         <span><code>MAGE_TEXT_ONLY_MODE = true</code> 時，仍可討論圖片和創作圖片；差異是輸入圖片不會送進 LLM 或生圖 API。</span>
         <table id="workflow-guide-image-text-only-mode-table">
@@ -413,7 +726,7 @@
             <tr><th scope="row">一般專案</th><td>可選取圖片並隨任務送出</td><td>草稿圖片不能勾選或送出；LLM 只收到文字</td></tr>
             <tr><th scope="row">圖片討論</th><td>可將勾選的附件圖、最新系列圖送給 LLM</td><td>仍送出本次要求、專案／系列摘要與符合條件的歷史文字；不送圖片內容，也不把圖片記為該任務附件</td></tr>
             <tr><th scope="row">圖片創作</th><td>可把上一版圖片或參考圖交給生圖 API 編輯</td><td>仍可創作；完整文字提示詞照常送出，但上一版圖、參考圖及草稿圖都不會送出</td></tr>
-            <tr><th scope="row">延續上一版</th><td>生圖模型可以讀取上一版圖片</td><td>保留上一版的文字提示詞和版本關聯，依文字重新生成；模型看不到上一版圖片</td></tr>
+            <tr><th scope="row">延續上一版</th><td>生圖模型可以讀取上一版圖片</td><td>保留版本關聯；選延續版本時，由文字 LLM 整合祖先鏈與目前摘要及要求，再依文字重新生成，生圖模型看不到上一版圖片</td></tr>
             <tr><th scope="row">圖片選取介面</th><td>依流程勾選圖片材料</td><td>圖片仍可在畫面預覽，但圖片選項會取消勾選並停用；貼圖時會顯示自製提示窗</td></tr>
             <tr><th scope="row">生圖結果</th><td>收到圖片後保存</td><td>仍會接收並保存生圖結果為 PNG</td></tr>
           </tbody>
@@ -425,24 +738,125 @@
       <summary id="workflow-guide-image-draft-create-title" title="&lt;button id=&quot;image-draft-create&quot; type=&quot;button&quot;&gt;選擇來源並創作&lt;/button&gt;"><i id="workflow-guide-image-draft-create-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>選擇來源並創作</span></summary>
       <div id="workflow-guide-image-draft-create-content">
         <p>開啟圖片創作確認視窗後，明確選擇不使用候選、指定候選提示詞，或延續指定圖片版本。預設不選候選，也不會暗中取用最新版本。</p>
-        <p>視窗顯示來源需求與時間、各段字數、完整提示詞及圖片材料。選擇上一版時，文字模式只沿用提示詞，不傳送圖片；圖片輸入模式可用該圖片作為編輯基礎。按下此按鈕本身不會送出產圖請求。</p>
+        <p>視窗可按「查看原始提示詞」閱讀所選來源的完整原文、當時需求與時間，並檢查合併後完整提示詞及圖片材料。選擇延續版本並填入本次要求後會自動呼叫文字 LLM 整合祖先鏈；文字模式不傳送上一版圖片，圖片輸入模式可用該圖片作為編輯基礎。按下「選擇來源並創作」本身不會送出產圖請求，但選延續版本後會產生可回查的整合紀錄。</p>
       </div>
     </details>
     <details id="workflow-guide-image-summary">
       <summary id="workflow-guide-image-summary-title" title="id=&quot;image-summary-dialog&quot;"><i id="workflow-guide-image-summary-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>摘要更新</span></summary>
       <div id="workflow-guide-image-summary-content"><p>系統整理新增的圖片討論與創作紀錄，提出專案摘要及系列摘要候選。檢查候選內容後再選擇套用。</p></div>
     </details>
+    <details id="workflow-guide-image-full-prompt">
+      <summary id="workflow-guide-image-full-prompt-title" title="&lt;textarea id=&quot;image-create-full-prompt&quot; rows=&quot;8&quot;&gt;&lt;/textarea&gt;"><i id="workflow-guide-image-full-prompt-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>合併後完整提示詞</span></summary>
+      <div id="workflow-guide-image-full-prompt-content">
+        <p><code>#image-create-draft-select</code> 是<strong>提示詞來源選單</strong>。只有選「延續圖片 vN」時會在填入本次新增要求後呼叫 LLM 整合；其他選項仍直接用已保存的文字組裝 <code>#image-create-full-prompt</code>。</p>
+        <div class="workflow-guide-image-full-prompt-table-wrap">
+          <table id="workflow-guide-image-full-prompt-table">
+            <thead><tr><th scope="col">選單選項</th><th scope="col"><code>#image-create-full-prompt</code> 的組成</th></tr></thead>
+            <tbody>
+              <tr><td>不使用候選提詞或上一版（預設）</td><td>專案摘要＋系列摘要＋本次新增要求</td></tr>
+              <tr><td>候選提示詞版本</td><td>該次圖片討論保存的候選提示詞＋本次新增要求</td></tr>
+              <tr><td>延續圖片 vN</td><td>追溯所選 vN 的上一版關聯到初版，結合各版要求與提示詞、目前專案／系列摘要及本次要求，由 LLM 去重並處理衝突</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>選延續版本時只走該版本的祖先鏈，不混入同系列的其他分支。若子版完整提示詞中精確包含父版全文，系統先移除這段重複文字，再分批交給 LLM；原始全文仍保存在整合紀錄。優先順序是本次要求、目前專案／系列摘要、祖先鏈由新到舊。</p>
+        <p>選延續版本但本次要求空白時，系統會先提示填寫，不會啟動整合。確認視窗會顯示整合進度、採用與衝突說明，以及無法從文字核對的圖片要求；整合失敗時不會自動改用舊提示詞，可重新整理，或手動填寫並明確確認採用。</p>
+        <p>你可以修改 <code>#image-create-full-prompt</code>；若修改後又更改來源或本次要求，手動文字會保留但標示已過期，必須重新整理或按「確認採用目前手動文字」才可送出。送出的文字長度須為 1–15000 字，且與任務卡保存的實際提示詞一致。</p>
+        <p>整合來源、每批模型輸入與輸出、usage 及錯誤會保存在所屬系列的「提示詞整合紀錄」；若真的開始產圖，紀錄還會連結任務並保存最後送出的文字。取消產圖後，已有的整合紀錄仍可回查。整合過長時分批處理；結果超過 15000 字會再壓縮一次，仍超限則阻止送出。整合 LLM 無法看到圖片像素，文字模式下生圖 API 也不會收到圖片。</p>
+        <p>儲存上要分開看：</p>
+        <div class="workflow-guide-image-full-prompt-table-wrap">
+          <table id="workflow-guide-image-prompt-storage-table">
+            <thead><tr><th scope="col">資料</th><th scope="col">實際保存</th></tr></thead>
+            <tbody>
+              <tr><td>候選提示詞版本</td><td>該次討論的原始要求、Agent 理解、討論結果、<strong>候選提示詞</strong>等；它本身沒有獨立的「專案摘要＋系列摘要」快照欄位。</td></tr>
+              <tr><td>已產生的圖片版本 vN</td><td>該版<strong>實際送出的完整提示詞</strong>、本次要求、當時專案摘要與系列摘要的<strong>快照及版本號</strong>、上一版 ID 等，分欄保存。</td></tr>
+              <tr><td>提示詞整合紀錄</td><td>所選版本的祖先鏈、原始來源文字、目前摘要與要求、各批 LLM 輸入／輸出與錯誤；取消產圖後仍保留。若開始產圖，再記錄實際送出的文字，產圖任務卡可連到對應紀錄。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>每個圖片版本都有自己的摘要快照和本次要求，但實際完整提示詞可能經過 LLM 整合或手動修改。摘要快照留作追溯；新整合流程送出的文字以確認視窗為準，不會把快照另作一份文字重複附加。</p>
+      </div>
+    </details>
+  </section>
+  <section id="workflow-guide-styles" role="tabpanel" aria-labelledby="workflow-guide-tab-styles" hidden>
+    <details id="workflow-guide-scroll-y">
+      <summary id="workflow-guide-scroll-y-title" title="可複用的垂直捲動、hover 捲軸與底部留白範本"><i id="workflow-guide-scroll-y-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>scroll-y 客製化</span></summary>
+      <div id="workflow-guide-scroll-y-content">
+        <span>以下依 <code>#workflow-guide-conversation-tasks</code> 的實際調整整理，採用<strong>一行 CSS 配一句註解</strong>。將範本中的 <code>.scroll-y-panel</code> 與 <code>.scroll-y-content</code> 換成目標區塊的選擇器，即可供 Codex 套用。</span>
+        <strong>1. 外框與原生 details 內層的高度分配</strong>
+        <pre data-language="css"><code>.scroll-y-panel {
+  display: flex;             /* 讓標題與內容使用 Flex 分配高度。 */
+  flex-direction: column;    /* 將標題與內容由上往下排列。 */
+  flex: 1 1 auto;            /* 配合有高度限制的父層使用剩餘空間。 */
+  min-height: 0;             /* 允許外框縮小，避免內容把父層撐開。 */
+  padding: 4px 8px;          /* 在外框內預留上下 4px、左右 8px。 */
+  overflow: hidden;          /* 讓內容在自己的捲動區內顯示。 */
+}
+
+.scroll-y-panel &gt; summary {
+  flex: 0 0 auto;            /* 固定標題高度，讓內容使用其餘空間。 */
+}
+
+.scroll-y-panel[open]::details-content {
+  display: flex;             /* 讓原生 details 內層也參與 Flex 排版。 */
+  flex-direction: column;    /* 讓內層內容垂直排列。 */
+  flex: 1 1 auto;            /* 填滿剩餘空間，空間不足時可以縮小。 */
+  min-height: 0;             /* 避免捲動區超出外框底部而裁掉倒三角。 */
+  overflow: visible;         /* 避免裁掉向右延伸的捲軸。 */
+}</code></pre>
+        <strong>2. 內容區、thin 捲軸與底部留白</strong>
+        <pre data-language="css"><code>.scroll-y-content {
+  display: flex;                         /* 讓內容採用可控制的排列方式。 */
+  flex-direction: column;                /* 由上往下排列內容。 */
+  gap: 6px;                             /* 設定內容項目之間的距離。 */
+  flex: 1 1 auto;                        /* 使用標題下方的剩餘高度。 */
+  min-height: 0;                         /* 允許內容區縮小並產生內部捲動。 */
+  max-height: calc(100dvh - 170px);       /* 依實際頁首與操作列高度調整上限。 */
+  overflow-y: auto;                      /* 內容超過高度時才提供垂直捲動。 */
+  overscroll-behavior: contain;          /* 捲到底時避免繼續帶動外層頁面。 */
+  scrollbar-width: thin;                 /* 使用較細的捲軸。 */
+  scrollbar-color: transparent transparent; /* 平常隱藏捲軸顏色，仍可捲動。 */
+  margin-right: -8px;                    /* 將捲軸移到外框右側的 padding 區域。 */
+  padding-right: 8px;                    /* 保留文字與右側捲軸之間的距離。 */
+  margin-bottom: 3px;                    /* 在整個捲動區下方預留倒三角的空間。 */
+}
+
+.scroll-y-content &gt; * {
+  flex-shrink: 0;                        /* 避免內容被壓縮，保留正確捲動高度。 */
+}</code></pre>
+        <strong>3. 滑鼠移入或內部取得焦點時顯示捲軸</strong>
+        <pre data-language="css"><code>.scroll-y-content:hover,
+.scroll-y-content:focus-within {
+  scrollbar-color:
+    var(--hover-scrollbar-thumb, rgba(92, 111, 134, .34))
+    var(--hover-scrollbar-track, transparent);
+  /* 顯示滑塊，未設定變數時使用預設色。 */
+}</code></pre>
+        <span><mark><strong>底部倒三角能完整顯示的關鍵</strong></mark>，是 <code>::details-content</code> 的 <code>flex</code> 與 <code>min-height: 0</code> 先修正高度，再由 <code>margin-bottom: 3px</code> 預留外側空間；只增加 margin、沒有修正高度分配，仍可能被裁切。</span>
+        <strong>快速套用步驟</strong>
+        <ul>
+          <li><strong>對應結構：</strong>外框為 <code>&lt;details class="scroll-y-panel"&gt;</code>，內含 <code>&lt;summary&gt;</code> 與 <code>&lt;div class="scroll-y-content"&gt;</code>。一般 div 容器可略過 summary 及 <code>::details-content</code> 規則。</li>
+          <li><strong>確認父層高度：</strong>父層必須有可用高度限制；位於 Flex／Grid 佈局時，也要確認中間各層的 <code>min-height: 0</code>，讓剩餘高度能傳遞至捲動區。</li>
+          <li><strong>同步尺寸：</strong>外框右側 padding、內容的負 margin 與右側 padding 使用同一數值；範例為 <code>8px</code>。高度扣除值 <code>170px</code> 應依目標畫面調整。</li>
+          <li><strong>底端顯示完整：</strong>先修正原生 details 內層的高度分配，再用 <code>margin-bottom: 3px</code> 留出捲動區外側空間；單純增加 margin 無法修復高度溢出。</li>
+          <li><strong>避免右側裁切：</strong><code>::details-content</code> 保留 <code>overflow: visible</code>；若改為 hidden，可能裁掉負 margin 所延伸的捲軸。</li>
+          <li><strong>檢查結果：</strong>展開長內容、滑至底部，確認最後一行及捲軸底端完整顯示，再檢查 hover／焦點時滑塊會出現。倒三角是否存在由瀏覽器與作業系統決定。</li>
+        </ul>
+        <span><strong>參考實作：</strong><code>public/styles.css</code> 中的 <code>#workflow-guide-conversation-tasks</code>、<code>[open]::details-content</code> 與 <code>#workflow-guide-conversation-tasks-content</code>；目前不需要額外的 <code>::after</code> 空白。</span>
+      </div>
+    </details>
   </section>
 </dialog>
 <dialog id="context-filter-guide-dialog" aria-labelledby="context-filter-guide-dialog-title">
-  <div class="dialog-heading"><h2 id="context-filter-guide-dialog-title">歷史內容篩選與追蹤</h2><button id="context-filter-guide-close" type="button">關閉</button></div>
+  <div class="dialog-heading"><h2 id="context-filter-guide-dialog-title">歷史內容篩選與追蹤</h2><button id="context-filter-guide-close" type="button" aria-label="關閉歷史內容篩選與追蹤" title="關閉歷史內容篩選與追蹤"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div>
   <div id="context-filter-guide-tabs" role="tablist" aria-label="優化構想主題">
+    <button id="context-filter-guide-tab-deployment" type="button" role="tab" aria-controls="context-filter-guide-deployment-panel" aria-selected="false" tabindex="-1">部署</button>
     <button id="context-filter-guide-tab-general" type="button" role="tab" aria-controls="context-filter-guide-general" aria-selected="true">一般專案</button>
     <button id="context-filter-guide-tab-image" type="button" role="tab" aria-controls="context-filter-guide-image" aria-selected="false">圖片創作</button>
   </div>
   <section id="context-filter-guide-general" role="tabpanel" aria-labelledby="context-filter-guide-tab-general">
-    <details id="workflow-guide-context-filter" open>
-      <summary id="workflow-guide-context-filter-title"><i id="workflow-guide-context-filter-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>歷史內容篩選與 LLM 請求組裝</span></summary>
+    <details id="workflow-guide-context-filter">
+      <summary id="workflow-guide-context-filter-title"><i id="workflow-guide-context-filter-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>歷史內容篩選與 LLM 請求組裝</span></summary>
       <div id="workflow-guide-context-filter-content">
         <p>可以把提示詞交給 LangChain 編排，但 LangChain 本身不會自動減少雜訊。要改善歷史內容與本次需求不相關的問題，仍要明確設計「依本次需求篩選歷史」的步驟。</p>
         <p>原本的組裝方式已有部分篩選：歷史只來自同一對話且符合外送條件的任務，但仍可能納入與本次需求無關的內容。因此現在先建立有限候選，再逐筆篩選與記錄結果。</p>
@@ -471,6 +885,89 @@
         <p>候選範圍限制在最近 6 筆，能控制成本並讓預覽清楚，但可能漏掉更早的重要決定；固定保留的確認需求與明確限制可降低風險。</p>
       </div>
     </details>
+    <details id="context-filter-guide-cli">
+      <summary id="context-filter-guide-cli-title" title="PowerShell CLI 的操作範圍、共用架構與開發估算"><i id="context-filter-guide-cli-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>CLI 操作介面，共用目前的後端與 Harness</span></summary>
+      <div id="context-filter-guide-cli-content">
+        <span><strong>規劃提案：</strong>新增一個 <strong>CLI 操作介面，共用目前的後端與 Harness</strong>，讓使用者在 PowerShell 中選專案、持續對話、Edit、查看差異，以及確認修改或建立檔案。此主題記錄開發規劃，CLI 尚未實作。</span>
+        <pre data-language="text"><code>PowerShell
+→ CLI 入口
+→ 同一個本機後端
+→ 專案授權／對話記憶／Engine／工具
+→ 終端顯示結果與等待操作確認</code></pre>
+        <span>目前 <code>server.js</code> 已提供大部分操作 API，<code>src/engine.js</code> 也可重用；主要工作是補上終端操作、身分與狀態整合。</span>
+        <span>一般專案可實際操作的第一版 CLI，開發工作量粗估為 <strong>31,000～51,000 tokens</strong>，包含閱讀、實作與驗證；CLI 日後每次向模型提問的 token 另計。</span>
+        <div class="context-filter-guide-cli-table-wrap">
+          <table id="context-filter-guide-cli-plan-table">
+            <thead><tr><th scope="col">步驟</th><th scope="col">計畫與完成結果</th><th scope="col">約需 tokens</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">1. 定義 CLI 操作</th><td>決定命令、多行輸入、專案與對話選擇方式，以及輸出格式。</td><td>3,000～5,000</td></tr>
+              <tr><th scope="row">2. 建立啟動入口</th><td>增加 PowerShell 腳本與 Node CLI；讀取既有模型設定，連接本機後端，處理啟動失敗與退出。</td><td>4,000～7,000</td></tr>
+              <tr><th scope="row">3. 整合身分與授權</th><td>處理 session、CSRF、專案授權及管理碼；設計與 Web 身分配對，讓既有對話能正確讀取。</td><td>4,000～7,000</td></tr>
+              <tr><th scope="row">4. 終端對話與執行狀態</th><td>支援連續提問、多行文字、執行進度、結果、錯誤與取消操作。</td><td>4,000～6,000</td></tr>
+              <tr><th scope="row">5. 對話歷史與 Edit</th><td>支援建立／切換對話、查看任務 ID、需求版本及 Edit；沿用首次建立時間排序。</td><td>4,000～7,000</td></tr>
+              <tr><th scope="row">6. 檔案修改與確認</th><td>終端顯示差異、新檔內容與驗證結果，提供套用、逐檔建立／略過及還原操作。</td><td>5,000～8,000</td></tr>
+              <tr><th scope="row">7. 驗證完整流程</th><td>驗證中文、空白路徑、拒絕授權、取消、Edit、多版本、重新啟動及 Web／CLI 同時操作。</td><td>5,000～8,000</td></tr>
+              <tr><th scope="row">8. 文件與使用範例</th><td>補上啟動方式、命令說明、常見問題及模組分支文件。</td><td>2,000～3,000</td></tr>
+            </tbody>
+            <tfoot><tr><th scope="row">合計</th><td><strong>一般專案可實際操作的第一版 CLI</strong></td><td><strong>31,000～51,000</strong></td></tr></tfoot>
+          </table>
+        </div>
+        <strong>現有設計中需要處理的兩個重點</strong>
+        <ul>
+          <li><strong>對話目前綁定瀏覽器 session：</strong>CLI 新建 session 後，不能直接假設能看到原本 Web 的對話，因此需要身分配對。</li>
+          <li><strong>狀態保存在同一份 JSON：</strong>CLI 應連接同一個後端程序，避免兩個程序各自載入、寫回狀態而互相覆蓋。</li>
+        </ul>
+        <strong>後續擴充範圍與追加估算</strong>
+        <div class="context-filter-guide-cli-table-wrap">
+          <table id="context-filter-guide-cli-extension-table">
+            <thead><tr><th scope="col">額外範圍</th><th scope="col">內容</th><th scope="col">約增加 tokens</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">服務管理與 API 驗證</th><td>選入口、Port、外部依賴、啟動／停止、API 驗證及結果回查。</td><td>8,000～15,000</td></tr>
+              <tr><th scope="row">圖片專案操作</th><td>系列選擇、提示詞整合、文字生圖及版本回查。</td><td>12,000～25,000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span><strong>建議實作順序：</strong>先完成一般專案 CLI，處理「修改程式、建立 Markdown、略過後 Edit 重送」流程，再擴充服務管理與圖片操作。以上為粗估，實際工作量依身分整合與驗證結果調整。</span>
+      </div>
+    </details>
+  </section>
+  <section id="context-filter-guide-deployment-panel" role="tabpanel" aria-labelledby="context-filter-guide-tab-deployment" hidden>
+    <details id="context-filter-guide-deployment">
+      <summary id="context-filter-guide-deployment-title" title="一般專案與圖片專案的保存位置、搬移限制及唯讀排查"><i id="context-filter-guide-deployment-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>部署搬移與資料保存</span></summary>
+      <div id="context-filter-guide-deployment-content">
+        <span>已搬移整個 <code>ReAct</code>，但一般專案與圖片專案的側欄清單都空白時，<strong>不能只用絕對路徑失效解釋，也還不能判定資料被刪除了</strong>。</span>
+        <span>目前程式的保存方式如下：</span>
+        <div id="context-filter-guide-deployment-table-wrap">
+          <table id="context-filter-guide-deployment-table">
+            <thead><tr><th scope="col">資料</th><th scope="col">保存位置／方式</th><th scope="col">搬移後的影響</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">一般專案登錄</th><td><code>code_and_document_assistant/runtime/assistant-state/state.json</code> 的 <code>projects</code></td><td>保存的是<strong>絕對路徑</strong>；路徑變動不會自動更新，但通常仍會顯示專案名稱與待授權狀態。</td></tr>
+              <tr><th scope="row">圖片專案登錄、系列及摘要</th><td>同一份 <code>state.json</code> 的 <code>imageProjects</code></td><td>不會靠掃描圖片資料夾重新建立清單。</td></tr>
+              <tr><th scope="row">圖片專案的 PNG、JSON、附件</th><td><code>ReAct/image-creation/&lt;folderName&gt;/</code></td><td>路徑從助手程式位置推算；保留整個 ReAct 的相對結構時，應能找到。</td></tr>
+              <tr><th scope="row">對話與任務</th><td><code>state.json</code> 的 <code>conversations</code></td><td>另外綁定瀏覽器工作階段；換公司電腦後，即使資料存在，舊對話也可能不顯示。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span>本次排查時，原電腦的 <code>state.json</code> 仍有 <strong>4 個一般專案、3 個圖片專案、11 個對話</strong>。這是 2026-10-26 的查核快照，實際數量應以搬移前的狀態檔為準。</span>
+        <span>公司端優先區分兩種情況：</span>
+        <ul>
+          <li><strong>狀態檔沒有原資料：</strong>可能搬到另一個位置、執行了另一份助手，或複製時帶入的是空白狀態檔。</li>
+          <li><strong>狀態檔有原資料，但畫面空白：</strong>可能是前端初始化中斷。目前初始化依序載入工作階段、模型設定、圖片專案，再載入一般專案；前面任一步失敗，都可能讓後面的清單沒有顯示。尤其 <code>/api/session</code> 會寫入狀態檔，若公司環境出現 <code>EPERM</code>／權限問題，就可能在這裡中斷。初始化流程見 <code>public/app.js</code>。</li>
+        </ul>
+        <span>請在<strong>公司正在使用的 <code>code_and_document_assistant</code> 資料夾</strong>開啟 PowerShell，執行以下唯讀檢查：</span>
+        <pre data-language="powershell"><code>$taskStatePath = Join-Path (Get-Location) 'runtime\assistant-state\state.json'
+Get-Item -LiteralPath $taskStatePath |
+  Select-Object FullName, Length, LastWriteTime
+
+$taskStateData = Get-Content -LiteralPath $taskStatePath -Raw | ConvertFrom-Json
+[pscustomobject]@{
+  GeneralProjects = @($taskStateData.projects).Count
+  ImageProjects   = @($taskStateData.imageProjects).Count
+  Conversations   = @($taskStateData.conversations).Count
+}</code></pre>
+        <span>提供<strong>三個數量及 F12 Console 最上方第一個錯誤</strong>即可，不需要貼整份狀態檔。這能確認問題是在「資料搬移／讀取」還是「畫面載入」；之後才處理一般專案路徑與舊對話工作階段的移轉。</span>
+      </div>
+    </details>
   </section>
   <section id="context-filter-guide-image" role="tabpanel" aria-labelledby="context-filter-guide-tab-image" hidden>
     <details id="context-filter-guide-image-flow">
@@ -478,9 +975,9 @@
       <div id="context-filter-guide-image-flow-content">
         <ul>
           <li>第一階段依本次需求、專案摘要、系列摘要及同系列最近 6 筆討論文字，篩選出相關的歷史任務；不讀取或分析圖片內容。</li>
-          <li>第二階段才把選出的歷史文字、本次需求、專案與系列摘要，以及本次勾選的圖片交給圖片理解模型。</li>
-          <li>若歷史篩選逾時或格式錯誤，第二階段仍會使用本次需求、兩種摘要與選取圖片繼續，並顯示「歷史內容篩選失敗，已改用當前對話窗中的內容」。</li>
-          <li>沒有候選歷史時會略過第一階段請求；圖片創作則依確認視窗中選取的提示詞、摘要與參考圖直接進行，不套用圖片討論的歷史篩選。</li>
+          <li>第二階段把選出的歷史文字、本次需求及專案／系列摘要送給主模型；只有圖片輸入模式才會另外送出本次選取的圖片供模型理解。</li>
+          <li>若歷史篩選逾時或格式錯誤，第二階段仍會使用本次需求與兩種摘要繼續；圖片輸入模式會加上選取圖片，並顯示「歷史內容篩選失敗，已改用當前對話窗中的內容」。</li>
+          <li>沒有候選歷史時會略過第一階段請求。圖片創作不套用這項歷史篩選；選「延續圖片 vN」時，另由文字 LLM 整合所選版本的祖先鏈、目前摘要與本次要求，確認後再依完整提示詞及實際可傳送的圖片材料創作。</li>
         </ul>
       </div>
     </details>
@@ -496,35 +993,78 @@
               <tr><td>這一組圖片的方向</td><th scope="row">系列摘要</th><td>主題、構圖、已決定的版本方向與待調整事項</td></tr>
               <tr><td>本輪想改什麼</td><th scope="row">本次要求</th><td>例如「只改成藍色系，其他內容保留」</td></tr>
               <tr><td>討論形成的提案</td><th scope="row">候選提示詞版本</th><td>圖片討論產出的創作草稿；可選用，但不會自動變成正式摘要</td></tr>
-              <tr><td>真正用來產圖的文字</td><th scope="row">完整提示詞</th><td>在創作確認視窗組合並可手動修改；這是送往生圖 API 的文字</td></tr>
+              <tr><td>真正用來產圖的文字</td><th scope="row">完整提示詞</th><td>預設或選候選時由前端組合；選延續版本時由文字 LLM 整合祖先鏈與目前摘要、要求；可在確認視窗手動修改，最後送往生圖 API</td></tr>
               <tr><td>視覺依據</td><th scope="row">上一版圖片、參考圖、草稿附件</th><td>依選取狀態使用；<code>MAGE_TEXT_ONLY_MODE = true</code> 時只供畫面查看，不送圖片內容</td></tr>
               <tr><td>產出與追溯</td><th scope="row">圖片 v1、v2…及任務紀錄</th><td>保存 PNG、實際完整提示詞、摘要版本快照及上一版關聯</td></tr>
             </tbody>
           </table>
         </div>
-        <p>如果目標是<strong>「保留圖二的內容與排版，只換配色」</strong>，最直接的對應是：選「延續圖片 v2」，在本次要求寫明只改配色，再檢查確認視窗的完整提示詞。只選系列摘要或早期候選提示詞，未必包含圖二每個區塊的細節。在文字模式下，即使選了 v2，模型仍只能依 <strong>v2 的提示詞文字</strong>重建，無法看到 v2 的像素，因此不能保證版面完全一致。</p>
+        <p>如果目標是<strong>「保留圖二的內容與排版，只換配色」</strong>，最直接的對應是：選「延續圖片 v2」，在本次要求寫明只改配色，再檢查版本鏈整合後的完整提示詞與無法核對項目。只選系列摘要或早期候選提示詞，未必包含圖二每個區塊的細節。在文字模式下，生圖模型仍只能依<strong>整合後的文字</strong>重建，無法看到 v2 的像素，因此不能保證版面完全一致。</p>
         <p>相關組裝方式見 <code>public/image-creation.js</code>。</p>
       </div>
     </details>
   </section>
 </dialog>
 <dialog id="image-create-dialog" aria-labelledby="image-create-title">
-    <div id="image-create-heading"><span id="image-create-title">圖片創作</span><span><span id="image-create-model"></span> · 第 <strong id="image-create-version">1</strong> 版</span><span>確認後使用下列摘要和提示詞產生圖片。</span></div>
-    <section id="image-create-source-panel" hidden><strong>提示詞來源</strong><p id="image-create-source-info"></p><p id="image-create-source-mode"></p></section>
-    <div id="image-create-prompt-count" role="status" aria-live="polite" hidden></div>
-<div id="image-create-memory"><section id="image-create-full-prompt-label" aria-labelledby="image-create-full-prompt-heading"><label id="image-create-full-prompt-heading" class="image-create-section-label" for="image-create-full-prompt">合併後完整提示詞</label><textarea id="image-create-full-prompt" rows="8"></textarea></section><section id="image-create-previous" hidden><span id="image-create-previous-label" class="image-create-section-label">圖一 · 上一版圖片（將作為修改基礎）</span><div id="image-create-previous-preview"></div></section><section id="image-create-references" hidden aria-labelledby="image-create-references-label"><div class="image-create-section-heading"><span id="image-create-references-label" class="image-create-section-label">本次創作材料</span><span id="image-create-reference-count" class="muted"></span></div><p class="image-create-section-hint">以下圖片會一併提供給圖片模型作為本次創作的參考材料；編號與圖片對話一致。</p><div id="image-create-reference-list"></div></section><section id="image-create-prompt-diff-panel" aria-labelledby="image-create-prompt-diff-label"><span id="image-create-prompt-diff-label" class="image-create-section-label">與上一版完整提示詞的差異</span><div id="image-create-prompt-diff" aria-label="與上一版完整提示詞的差異"></div></section><section id="image-create-request-label" aria-labelledby="image-create-request-heading"><label id="image-create-request-heading" class="image-create-section-label" for="image-create-request">本次新增要求</label><textarea id="image-create-request" rows="3"></textarea></section><section id="image-create-project-summary-panel"><span class="image-create-section-label">專案摘要</span><div id="image-create-project-summary"></div></section><section id="image-create-series-summary-panel"><span class="image-create-section-label">系列摘要</span><div id="image-create-series-summary"></div></section><section id="image-create-candidate" hidden aria-labelledby="image-create-candidate-label"><div id="image-create-candidate-heading" class="image-create-section-heading"><span id="image-create-candidate-label" class="image-create-section-label">候選提示詞</span><div id="image-create-draft-label" hidden><span class="image-create-section-label">候選提示詞版本</span><select id="image-create-draft-select" aria-label="選擇候選提示詞版本"></select></div></div><div id="image-create-candidate-prompt" tabindex="0" aria-label="選定候選提示詞"></div></section></div>
+    <div id="image-create-heading"><span id="image-create-title">圖片創作</span><span><span id="image-create-model"></span> · 第 <strong id="image-create-version">1</strong> 版</span><span>請確認完整提示詞與實際選用的圖片材料，再開始創作。</span></div>
+  <div id="image-create-scroll">
+    <section id="image-create-context-panel" hidden>
+      <div id="image-create-source-panel"><strong>提示詞來源</strong><span id="image-create-source-mode"></span><button id="image-create-source-info" type="button" hidden>查看原始提示詞</button><span id="image-create-prompt-count" role="status" aria-live="polite"></span></div>
+      <div id="image-create-composition"><div id="image-create-composition-status" role="status" aria-live="polite"></div><div class="image-create-composition-actions"><button id="image-create-composition-refresh" type="button">重新整理提示詞</button><button id="image-create-composition-accept" type="button" hidden>確認採用目前手動文字</button><button id="image-create-composition-review" type="button" hidden>查看整合紀錄</button></div><div id="image-create-composition-notes" hidden></div></div>
+    </section>
+<div id="image-create-memory" hidden>
+  <div class="image-create-segmented-tabs" role="tablist" aria-label="圖片創作內容">
+    <button id="image-create-tab-prompt" type="button" role="tab" aria-controls="image-create-panel-prompt" aria-selected="true" tabindex="0" data-image-create-tab="prompt">提示詞與要求</button>
+    <button id="image-create-tab-materials" type="button" role="tab" aria-controls="image-create-panel-materials" aria-selected="false" tabindex="-1" data-image-create-tab="materials">圖片材料</button>
+    <button id="image-create-tab-context" type="button" role="tab" aria-controls="image-create-panel-context" aria-selected="false" tabindex="-1" data-image-create-tab="context">摘要與候選</button>
+  </div>
+  <div class="image-create-segmented-panels">
+    <div id="image-create-panel-prompt" role="tabpanel" aria-labelledby="image-create-tab-prompt" data-image-create-panel="prompt">
+      <section id="image-create-full-prompt-label" aria-labelledby="image-create-full-prompt-heading"><label id="image-create-full-prompt-heading" class="image-create-section-label" for="image-create-full-prompt">合併後完整提示詞</label><textarea id="image-create-full-prompt" rows="8"></textarea></section>
+      <section id="image-create-request-label" aria-labelledby="image-create-request-heading"><label id="image-create-request-heading" class="image-create-section-label" for="image-create-request">本次新增要求</label><textarea id="image-create-request" rows="3"></textarea></section>
+      <section id="image-create-prompt-diff-panel" aria-labelledby="image-create-prompt-diff-label"><span id="image-create-prompt-diff-label" class="image-create-section-label">與上一版完整提示詞的差異</span><div id="image-create-prompt-diff" aria-label="與上一版完整提示詞的差異"></div></section>
+    </div>
+    <div id="image-create-panel-materials" role="tabpanel" aria-labelledby="image-create-tab-materials" data-image-create-panel="materials" hidden>
+      <p id="image-create-materials-empty" hidden>本次沒有可選的圖片材料。</p>
+      <section id="image-create-previous" hidden><span id="image-create-previous-label" class="image-create-section-label">圖一 · 上一版圖片（將作為修改基礎）</span><div id="image-create-previous-preview"></div></section>
+      <section id="image-create-references" hidden aria-labelledby="image-create-references-label"><div class="image-create-section-heading"><span id="image-create-references-label" class="image-create-section-label">本次創作材料</span><span id="image-create-reference-count" class="muted"></span></div><p class="image-create-section-hint">以下圖片會一併提供給圖片模型作為本次創作的參考材料；編號與圖片對話一致。</p><div id="image-create-reference-list"></div></section>
+    </div>
+    <div id="image-create-panel-context" role="tabpanel" aria-labelledby="image-create-tab-context" data-image-create-panel="context" hidden>
+      <div id="image-create-context-groups">
+        <select id="image-create-context-select" aria-label="選擇摘要與候選項目"><option value="project">專案摘要</option><option value="series">系列摘要</option><option value="candidate">候選提示詞</option></select>
+        <div id="image-create-context-content">
+          <section id="image-create-project-summary-panel" aria-labelledby="image-create-project-summary-label"><span id="image-create-project-summary-label" class="image-create-section-label">專案摘要</span><div id="image-create-project-summary"></div></section>
+          <section id="image-create-series-summary-panel" aria-labelledby="image-create-series-summary-label" hidden><span id="image-create-series-summary-label" class="image-create-section-label">系列摘要</span><div id="image-create-series-summary"></div></section>
+          <section id="image-create-candidate" aria-labelledby="image-create-candidate-label" hidden><div id="image-create-candidate-heading" class="image-create-section-heading"><span id="image-create-candidate-label" class="image-create-section-label">候選提示詞</span><div id="image-create-draft-label" hidden><span class="image-create-section-label">候選提示詞版本</span><select id="image-create-draft-select" aria-label="選擇候選提示詞版本"></select></div></div><div id="image-create-candidate-prompt" tabindex="0" aria-label="選定候選提示詞"></div></section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
   <div id="image-create-prompt" tabindex="0" aria-label="待確認的圖片提示詞" hidden></div>
   <p id="image-create-error" role="alert"></p>
+  </div>
   <div id="image-create-actions"><div id="image-create-model-picker"><span>圖片模型</span><select id="image-create-model-select" aria-label="選擇圖片模型"><option value="gpt-image-2.5-sunburst" selected>gpt-image-2.5-sunburst</option><option value="gpt-image-1">gpt-image-1</option></select></div><label id="image-create-admin-label" for="image-create-admin" hidden>6 碼管理碼<input id="image-create-admin" type="password" inputmode="text" maxlength="6" autocomplete="off"></label><div id="image-create-buttons"><button id="image-create-back" type="button">返回修改</button><button id="image-create-confirm" type="button">開始創作</button></div></div>
 </dialog>
+<dialog id="image-create-source-dialog" aria-labelledby="image-create-source-title"><div class="dialog-heading"><h2 id="image-create-source-title">原始提示詞</h2><button id="image-create-source-close" type="button">關閉</button></div><p id="image-create-source-meta"></p><p id="image-create-source-request"></p><pre id="image-create-source-prompt"></pre></dialog>
+<dialog id="image-prompt-compositions-dialog" aria-labelledby="image-prompt-compositions-title"><div class="dialog-heading"><h2 id="image-prompt-compositions-title">提示詞整合紀錄</h2><button id="image-prompt-compositions-close" type="button">關閉</button></div><div id="image-prompt-compositions-body"></div></dialog>
 <dialog id="image-summary-dialog" aria-labelledby="image-summary-title">
-  <div class="dialog-heading"><h2 id="image-summary-title">更新圖片摘要</h2><button id="image-summary-close" type="button">關閉</button></div>
-  <p>以下候選只整理自上次成功套用後的新內容，可分別套用或先修改。</p>
-  <div id="image-summary-loading" role="status" aria-live="polite" hidden><span class="image-summary-loading-indicator" aria-hidden="true"></span><span>正在確認專案內容並整理摘要，請稍候…</span></div>
-  <p id="image-summary-source-info" class="muted" hidden></p>
-  <section id="image-summary-project-section"><label><input id="image-summary-apply-project" type="checkbox" checked> 套用專案摘要候選</label><label class="image-summary-current-label" for="image-summary-project-current">目前專案摘要</label><textarea id="image-summary-project-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-project">新的專案摘要候選</label><textarea id="image-summary-project" rows="4"></textarea></section>
-  <section id="image-summary-series-section"><label><input id="image-summary-apply-series" type="checkbox" checked> 套用系列摘要候選</label><label class="image-summary-current-label" for="image-summary-series-current">目前系列摘要</label><textarea id="image-summary-series-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-series">新的系列摘要候選</label><textarea id="image-summary-series" rows="4"></textarea></section>
-  <p id="image-summary-error" role="alert"></p><div class="dialog-actions"><button id="image-summary-cancel" type="button">Cancel</button><button id="image-summary-modify" type="button">Enable Editing</button><button id="image-summary-apply" type="button">Apply Changes</button></div>
+  <div class="dialog-heading"><h2 id="image-summary-title">更新圖片摘要</h2><button id="image-summary-close" type="button" aria-label="關閉更新圖片摘要" title="關閉更新圖片摘要"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div>
+  <div id="image-summary-scroll">
+    <p>以下候選只整理自上次成功套用後的新內容，可分別套用或先修改。</p>
+    <div id="image-summary-loading" role="status" aria-live="polite" hidden><span class="image-summary-loading-indicator" aria-hidden="true"></span><span>正在確認專案內容並整理摘要，請稍候…</span></div>
+    <p id="image-summary-source-info" class="muted" hidden></p>
+    <section id="image-summary-project-section">
+      <div id="image-summary-project-heading" class="image-summary-section-heading"><label class="image-summary-current-label" for="image-summary-project-current">目前專案摘要</label><label id="image-summary-apply-project-label"><input id="image-summary-apply-project" type="checkbox" checked> 套用專案摘要候選</label></div>
+      <textarea id="image-summary-project-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-project">新的專案摘要候選</label><textarea id="image-summary-project" rows="4"></textarea>
+    </section>
+    <section id="image-summary-series-section">
+      <div id="image-summary-series-heading" class="image-summary-section-heading"><label class="image-summary-current-label" for="image-summary-series-current">目前系列摘要</label><label id="image-summary-apply-series-label"><input id="image-summary-apply-series" type="checkbox" checked> 套用系列摘要候選</label></div>
+      <textarea id="image-summary-series-current" rows="4" readonly></textarea><label class="image-summary-candidate-label" for="image-summary-series">新的系列摘要候選</label><textarea id="image-summary-series" rows="4"></textarea>
+    </section>
+    <p id="image-summary-error" role="alert"></p>
+  </div>
+  <div class="dialog-actions"><button id="image-summary-cancel" type="button">Cancel</button><button id="image-summary-modify" type="button">Enable Editing</button><button id="image-summary-apply" type="button">Apply Changes</button></div>
 </dialog>
 <dialog id="image-series-actions-dialog" aria-labelledby="image-series-actions-title">
   <div class="dialog-heading"><h2 id="image-series-actions-title">圖片系列操作</h2><button id="image-series-actions-close" type="button">關閉</button></div>
@@ -538,9 +1078,13 @@
   <p id="image-series-delete-message"></p><label for="image-series-delete-admin">本次服務的 6 碼主機管理碼<input id="image-series-delete-admin" type="password" maxlength="6" autocomplete="off"></label><p id="image-series-delete-error" role="alert"></p><div class="dialog-actions"><button id="image-series-delete-cancel" type="button">取消</button><button id="image-series-delete-confirm" type="button">永久刪除</button></div>
 </dialog>
 <dialog id="image-project-copy-dialog" aria-labelledby="image-project-copy-title"><div class="dialog-heading"><h2 id="image-project-copy-title">已複製圖片專案名稱</h2><button id="image-project-copy-close" type="button">Close</button></div><p id="image-project-copy-message"></p></dialog>
-<dialog id="project-actions-dialog" aria-labelledby="project-actions-title"><div class="dialog-heading"><h2 id="project-actions-title">專案管理</h2><button id="close-project-actions">關閉</button></div><p id="project-actions-path"></p><p id="project-expiry" role="status"></p><div class="dialog-actions"><button id="project-open">Open</button><button id="quick-renew">重新授權／延長授權</button><button id="project-reindex">更新此專案索引</button><button id="project-revoke">撤銷授權</button></div><p id="project-actions-status" role="status"></p></dialog>
+<div id="image-project-actions-menu" popover="manual" role="group" aria-label="圖片專案操作"><button id="image-project-action-copy" class="image-project-copy" type="button" aria-label="複製圖片專案名稱" data-tooltip="複製圖片專案名稱"><i class="fi fi-br-window-restore" aria-hidden="true"></i></button><button id="image-project-action-rename" class="image-project-rename" type="button" aria-label="重新命名圖片專案" data-tooltip="重新命名圖片專案"><i class="fi fi-rr-file-edit" aria-hidden="true"></i></button><button id="image-project-action-delete" class="image-project-delete" type="button" aria-label="刪除圖片創作專案" data-tooltip="刪除圖片創作專案"><i class="fi fi-rc-trash" aria-hidden="true"></i></button></div>
+<dialog id="image-project-delete-dialog" aria-labelledby="image-project-delete-title"><div class="dialog-heading"><h2 id="image-project-delete-title">確認刪除圖片創作專案</h2></div><p id="image-project-delete-message"></p><p id="image-project-delete-impact"></p><p id="image-project-delete-status" role="alert"></p><div class="dialog-actions"><button id="image-project-delete-cancel" type="button">取消</button><button id="image-project-delete-confirm" type="button">確認刪除</button></div></dialog>
+<dialog id="project-actions-dialog" aria-labelledby="project-actions-title"><div class="dialog-heading"><h2 id="project-actions-title">專案管理</h2><button id="close-project-actions" type="button" aria-label="關閉專案管理" title="關閉專案管理"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div><p id="project-actions-path"></p><p id="project-expiry" role="status"></p><div class="dialog-actions"><button id="project-open">Open</button><button id="quick-renew">重新授權／延長授權</button><button id="project-reindex">更新此專案索引</button><button id="project-revoke">撤銷授權</button><button id="project-delete" type="button">刪除專案</button></div><p id="project-actions-status" role="status"></p></dialog>
+<dialog id="project-delete-dialog" aria-labelledby="project-delete-title"><div class="dialog-heading"><h2 id="project-delete-title">確認刪除專案</h2></div><p id="project-delete-message"></p><p id="project-delete-impact"></p><p id="project-delete-status" role="alert"></p><div class="dialog-actions"><button id="project-delete-cancel" type="button">取消</button><button id="project-delete-confirm" type="button">確認刪除</button></div></dialog>
 <dialog id="quick-grant-dialog" aria-labelledby="quick-grant-title"><div class="dialog-heading"><h2 id="quick-grant-title">快速重新授權</h2><button id="close-quick-grant">關閉</button></div><p id="quick-grant-path"></p><p id="quick-grant-settings"></p><label for="quick-grant-code">本次服務的 6 碼管理碼<input id="quick-grant-code" type="password" maxlength="6" autocomplete="off"></label><button id="quick-grant-confirm">確認授權</button><p id="quick-grant-status" role="status"></p></dialog>
 <dialog id="verification-rules-dialog" aria-labelledby="verification-rules-title"><div class="dialog-heading"><h2 id="verification-rules-title">驗證規則管理</h2><button id="close-verification-rules" type="button">關閉</button></div><p>規則全服務共用。只能啟用或停用系統內建的唯讀驗證器，不能輸入命令或參數。</p><label for="verification-rules-admin">本次服務的 6 碼管理碼<input id="verification-rules-admin" type="password" inputmode="text" maxlength="6" autocomplete="off"></label><div id="verification-rules-editor"></div><p id="verification-rules-status" role="status"></p></dialog>
 <dialog id="force-apply-dialog" aria-labelledby="force-apply-title"><div class="dialog-heading"><h2 id="force-apply-title">確認強制套用</h2><button id="cancel-force-apply" type="button">取消</button></div><p id="force-apply-message"></p><label for="force-apply-confirm"><input id="force-apply-confirm" type="checkbox"> 我了解預檢失敗，仍要建立備份後強制套用此修改。</label><div class="dialog-actions"><button id="confirm-force-apply" type="button" disabled>強制套用</button></div></dialog>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script><script src="vendor/photoswipe-5.4.4/photoswipe.umd.min.js"></script><script src="image-viewer.js"></script><script src="diff-viewer.js"></script><script src="task-timeline.js"></script><script src="attachments.js"></script><script src="new-files-ui.js"></script><script src="app.js"></script><script src="image-creation.js"></script><script src="sidebar.js"></script>
+<dialog id="sidebar-create-dialog" aria-labelledby="sidebar-create-title"><h2 id="sidebar-create-title"></h2><p id="sidebar-create-message"></p><div class="dialog-actions"><button id="sidebar-create-cancel" type="button">取消</button><button id="sidebar-create-confirm" type="button">確認建立</button></div></dialog>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script><script src="vendor/photoswipe-5.4.4/photoswipe.umd.min.js"></script><script src="image-viewer.js"></script><script src="diff-viewer.js"></script><script src="task-timeline.js"></script><script src="attachments.js"></script><script src="new-files-ui.js"></script><script src="text-models-ui.js"></script><script src="app.js"></script><script src="project-services-ui.js"></script><script src="image-creation.js"></script><script src="sidebar.js"></script>
 </body></html>

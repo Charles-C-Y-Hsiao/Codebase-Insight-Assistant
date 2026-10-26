@@ -1,0 +1,74 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const os=require('node:os');
+const path=require('node:path');
+const {createApp}=require('../server.js');
+
+async function main(){
+  const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-services-browser-'));let server,browser;
+  try{
+    const instance=await createApp({runtime:path.join(base,'runtime')});
+    server=instance.app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+    browser=await require('puppeteer').launch({executablePath:process.env.CDA_BROWSER||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,userDataDir:path.join(base,'chrome'),args:['--no-sandbox']});
+    const page=await browser.newPage();await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>state.conversation&&typeof openProjectServiceStart==='function');
+    await page.click('#workflow-guide-button');
+    assert.equal(await page.$eval('#workflow-guide-dialog',element=>element.open),true);
+    await page.click('#workflow-guide-tab-common');
+    assert.equal(await page.$eval('#workflow-guide-tab-common',element=>element.getAttribute('aria-selected')), 'true');
+    assert.equal(await page.$eval('#workflow-guide-general',element=>element.hidden),true);
+    assert.equal(await page.$eval('#workflow-guide-common',element=>element.hidden),false);
+    await page.click('#workflow-guide-harness-title');
+    assert.equal(await page.$eval('#workflow-guide-harness',element=>element.open),true);
+    assert.equal(await page.$$eval('#workflow-guide-harness-content > ol > li',items=>items.length),8);
+    assert.ok(await page.$('#workflow-guide-harness-content li ul li'));
+    assert.equal(await page.$eval('#workflow-guide-harness-toggle-icon',element=>element.classList.contains('fi-br-angle-small-down')),true);
+    await page.click('#workflow-guide-close');
+    await page.evaluate(()=>show({id:'service-ui-check',projectId:state.project,conversationId:state.conversation,question:'啟動 Node 服務',status:'awaiting_approval',progress:'等待確認服務啟動',startedAt:Date.now(),archived:false,allowEdits:true,plan:[],tools:[],events:[],evidence:[],result:{conclusions:['已提出啟動計畫'],facts:[],inferences:[],unknown:[]},servicePlan:{candidates:[{entry:'api.js',port:3015,command:'node api.js'},{entry:'server.js',port:3000,command:'node server.js'}]}}));
+    await page.waitForFunction(()=>document.getElementById('project-service-start-dialog').open);
+    assert.equal(await page.$eval('#project-service-entry',element=>element.options.length),2);
+    assert.equal(await page.$eval('#project-service-port',element=>element.value),'3015');
+    await page.select('#project-service-entry','server.js');
+    assert.equal(await page.$eval('#project-service-port',element=>element.value),'3000');
+    assert.ok(await page.$('#task-service-start-service-ui-check'));
+    assert.equal(await page.$$eval('#task-service-record-service-ui-check p',elements=>elements.length),0);
+    assert.ok(await page.$('#task-service-record-service-ui-check .task-service-record-line'));
+    await page.click('#project-service-start-close');
+    assert.equal(await page.$eval('#task-service-record-service-ui-check > summary > .task-toggle-icon',element=>element.classList.contains('fi-br-angle-small-right')),true);
+    await page.$eval('#task-service-record-service-ui-check > summary',element=>element.click());
+    assert.equal(await page.$eval('#task-service-record-service-ui-check',element=>element.open),true);
+    await page.waitForFunction(()=>document.querySelector('#task-service-record-service-ui-check > summary > .task-toggle-icon')?.classList.contains('fi-br-angle-small-down'));
+    assert.equal(await page.$eval('#task-service-record-service-ui-check > summary > .task-toggle-icon',element=>element.classList.contains('fi-br-angle-small-down')),true);
+    await page.evaluate(()=>openProjectServiceVerify({id:'one',entry:'server.js',port:3000,status:'running',verificationSetup:{method:'POST',path:'/api/test',expectedStatus:201,hadQuery:true,jsonPath:'status'}}));
+    assert.equal(await page.$eval('#project-service-verify-dialog',element=>element.open),true);
+    assert.equal(await page.$eval('#project-service-verify-method',element=>element.value),'POST');
+    assert.equal(await page.$eval('#project-service-verify-path',element=>element.value),'/api/test');
+    assert.equal(await page.$eval('#project-service-verify-body',element=>element.value),'');
+    assert.match(await page.$eval('#project-service-verify-service',element=>element.textContent),/查詢參數未保存/);
+    await page.click('#project-service-verify-close');
+    await page.evaluate(()=>{serviceUi.services=[{id:'one',entry:'server.js',port:3000,pid:123,status:'running',output:'ready'}];window.refreshProjectServices=async()=>{};document.getElementById('project-services-stop').hidden=false;});
+    await page.click('#project-services-settings');
+    assert.equal(await page.$eval('#project-services-floating',element=>element.hidden),false);
+    await page.click('#project-services-settings-close');
+    await page.evaluate(()=>{
+      state.imageWorkspaceActive=false;state.imageCreationMode=false;state.activeSkill=null;state.editingTask=null;state.draftImages=[];
+      window.api=async(url)=>url==='/api/project-services'?{services:[{id:'one',entry:'server.js',port:3000,status:'running'}]}:{serviceId:'one',serviceEntry:'server.js',serviceStatus:'running',changedTaskId:'change-task',changedQuestion:'更新 API',routes:[{method:'GET',path:'/api/items/:id',params:['id'],bodySchema:null,source:'routes/items.js'},{method:'POST',path:'/api/items',params:[],bodySchema:{name:''},source:'routes/items.js'}],warnings:[]};
+      document.getElementById('question').value='幫我驗證';
+    });
+    await page.click('#send');
+    await page.waitForFunction(()=>document.getElementById('project-service-change-verify-dialog').open);
+    assert.equal(await page.$$('.service-route-case').then(cards=>cards.length),2);
+    assert.match(await page.$eval('.service-route-case strong',element=>element.textContent),/GET \/api\/items\/:id/);
+    assert.equal(await page.$eval('.service-route-case [data-route-field="selected"]',element=>element.checked),true);
+    assert.equal(await page.$eval('.service-route-case:nth-child(2) [data-route-field="selected"]',element=>element.checked),false);
+    assert.equal(await page.$eval('[data-route-field="param:id"]',element=>element.value),'');
+    assert.match(await page.$eval('.service-route-case textarea[data-route-field="body"]',element=>element.value),/name/);
+    assert.match(await page.$eval('.service-route-case textarea[data-route-field="headers"]',element=>element.value),/application\/json/);
+    await page.click('#project-service-change-verify-close');
+    await page.click('#project-services-stop');
+    assert.equal(await page.$eval('#project-service-stop-dialog',element=>element.open),true);
+    assert.match(await page.$eval('#project-service-stop-message',element=>element.textContent),/Port 3000/);
+    console.log('PASS: service plan dialog, floating settings, natural-language API scan, route confirmation and stop confirmation');
+  }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));await fs.rm(base,{recursive:true,force:true});}
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

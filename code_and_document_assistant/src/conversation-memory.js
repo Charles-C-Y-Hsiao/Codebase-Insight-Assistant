@@ -61,7 +61,7 @@ class ConversationMemory {
     const newJobs=priorUsable&&!memory.rebuildAfterDeletion?jobs.filter(j=>!memory.sources?.some(s=>s.id===j.id&&s.fingerprint===fingerprint(j))):jobs;
     const estimated=estimateTokens({question,turns:jobs.map(turn)}),budget=this.model.config?.memoryBudgetTokens||8000;
     const reason=estimated>=Math.floor(budget*0.75)?'context_budget':'conversation_update';
-    const event={version:memory.summaryVersion+1,reason,status:'running',startedAt:new Date().toISOString(),model:this.model.config.omitModel?'由公司端點指定':this.model.config.model,estimatedTokens:estimated,tokenEstimateMethod:'utf8-estimate',budgetTokens:budget,requests:0,usage:[],sourceJobIds:sources.map(s=>s.id)};
+    const event={version:memory.summaryVersion+1,reason,status:'running',startedAt:new Date().toISOString(),model:this.model.config.omitModel?'由公司端點指定':this.model.config.model,modelSelection:this.model.activeSelection?.(),estimatedTokens:estimated,tokenEstimateMethod:'utf8-estimate',budgetTokens:budget,requests:0,usage:[],sourceJobIds:sources.map(s=>s.id)};
     memory.lastUpdate=event;
     const log=job?{name:'ai.memory_summary',status:'running',mode:'real',startedAt:Date.now(),purpose:reason==='context_budget'?'上下文達摘要預算門檻，壓縮對話記憶':'整理本次對話的目標、決定與待辦',target:'目前專案／目前對話',reason}:null;
     if(log)job.tools.push(log);

@@ -1,0 +1,24 @@
+{
+  "project": {
+    "summary": "",
+    "version": 0,
+    "versions": [],
+    "lastAppliedJobId": null,
+    "sourceJobIds": [],
+    "updatedAt": null
+  },
+  "series": [
+    {
+      "id": "beb4c93e-d257-4d7f-8631-a011b2cb9071",
+      "name": "新圖片系列",
+      "memory": {
+        "summary": "",
+        "version": 0,
+        "versions": [],
+        "lastAppliedJobId": null,
+        "sourceJobIds": [],
+        "updatedAt": null
+      }
+    }
+  ]
+}

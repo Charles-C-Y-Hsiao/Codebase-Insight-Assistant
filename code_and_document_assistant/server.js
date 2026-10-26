@@ -8,9 +8,15 @@ const {registry}=require('./src/tools.js');
 const config=require('./config/example.json');
 const {ProjectScope}=require('./src/project-scope.js');
 const {AppState}=require('./src/app-state.js');
+const {projectActivity}=require('./src/project-activity.js');
+const {TextModels}=require('./src/text-models.js');
 const {ConversationMemory,estimateTokens,turn}=require('./src/conversation-memory.js');
 const {generalHistoryPreview,generalHistoryContext}=require('./src/history-selection.js');
 const {excerpt,summaryTurn,orderedSummaryJobs,summaryBatches}=require('./src/image-summary-context.js');
+const {composeImagePrompt}=require('./src/image-prompt-composition.js');
+const {ProjectServices}=require('./src/project-services.js');
+const {configuredProjectRemoval,writeConfiguredProjectRemoval,archiveImageProjectJob,archiveImageDiscussionJob,pruneImageProjectIndexes}=require('./src/project-deletion.js');
+const {belongsTo,planImageProjectDeletion,archiveImageProjectDeletion,removeImageProjectRecords}=require('./src/image-project-deletion.js');
 const sessionLifetime=30*86400000;
 // 公司圖片 API 尚無圖片解析能力。
 // false：維持目前流程，圖片可依既有流程送往 LLM／生圖 API。
@@ -20,10 +26,16 @@ const MAGE_TEXT_ONLY_MODE = true;
 async function createApp({runtime=path.join(__dirname,'runtime'),limits={...config.limits},adminToken=crypto.randomBytes(3).toString('hex'),projectConfig=process.env.CDA_PROJECTS_CONFIG,aiOptions={},imageProjectRoot=path.join(__dirname,'..','image-creation')}={}) {
   const workspace=new Workspace(runtime,limits);await workspace.init(path.join(__dirname,'examples'),[path.join(__dirname,'docs','example_data')]);
   const saved=await new AppState(runtime).init();
+  let interruptedServices=false;
+  for(const conversation of saved.data.conversations)for(const job of conversation.jobs)if(job.serviceRun&&['running','starting'].includes(job.serviceRun.status)){
+    job.serviceRun.status='stopped';job.serviceRun.stoppedAt=new Date().toISOString();job.serviceRun.stopReason='助手服務已重新啟動';if(job.serviceRun.initialMonitor?.status==='monitoring'){job.serviceRun.initialMonitor.status='interrupted';job.serviceRun.initialMonitor.completedAt=job.serviceRun.stoppedAt;job.serviceRun.initialMonitor.errors||=[];job.serviceRun.initialMonitor.errors.push({checkedAt:job.serviceRun.stoppedAt,message:'助手服務重新啟動，初始監測提前中止'});}interruptedServices=true;
+  }
+  if(interruptedServices)await saved.save();
   let interruptedImages=false;
   for(const conversation of saved.data.conversations)for(const job of conversation.jobs)if(job.kind==='image'&&job.status==='running'){
     job.status='partial';job.progress='圖片創作因服務重啟而中斷';job.finishedAt=Date.now();job.result={conclusions:[],facts:[],inferences:[],unknown:['服務重啟前尚未完成圖片創作，請重新送出提示詞'],mock:false};interruptedImages=true;
   }
+  for(const trace of saved.data.imagePromptCompositions)if(trace.status==='running'){trace.status='failed';trace.error={code:'INTERRUPTED',message:'服務重啟前提示詞整合尚未完成'};trace.finishedAt=new Date().toISOString();interruptedImages=true;}
   if(interruptedImages)await saved.save();
   if(projectConfig) {
     const entries=JSON.parse(await require('node:fs/promises').readFile(projectConfig,'utf8')).projects;
@@ -35,10 +47,13 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     }
   }
   for(const p of saved.data.projects)workspace.roots.push({...p,generation:0,writable:false,permissions:{read:false,write:false,verify:false,ai:false},expiresAt:1});
-  const engine=new Engine(workspace,limits,require('./src/connections.js').createModel(aiOptions));const app=express();const sessions=new Map(saved.data.sessions.filter(s=>Date.now()-s.created<sessionLifetime).map(s=>[s.id,s]));const requests=new Map(),deletingConversations=new Set(),persistenceTasks=new WeakMap(),activeConversationOperations=new Map();
+  const engine=new Engine(workspace,limits,require('./src/connections.js').createModel(aiOptions));const services=new ProjectServices(workspace);engine.services=services;const app=express();const sessions=new Map(saved.data.sessions.filter(s=>Date.now()-s.created<sessionLifetime).map(s=>[s.id,s]));const requests=new Map(),deletingConversations=new Set(),deletingProjects=new Set(),deletingImageProjects=new Set(),persistenceTasks=new WeakMap(),activeConversationOperations=new Map();
+  engine.persistServiceJob=job=>saved.record(job);
+  services.onChange=(service,change={})=>{const job=engine.jobs.get(service.jobId);if(job&&job.owner===service.owner){job.serviceRun=services.public(service);if(change.type==='stopped')engine.event(job,'服務已停止');else if(change.type==='process-ended')engine.event(job,'服務程序已結束');else if(change.type==='initial-monitor-check'&&service.initialMonitor?.checks?.at(-1)?.error)engine.event(job,'初始服務監測錯誤：'+service.initialMonitor.checks.at(-1).error);saved.record(job).catch(()=>{});}};
   // Successful local confirmations remain only in memory for this browser session and root grant.
   const projectApprovals=new Map();
   const memories=new ConversationMemory(saved,engine.model);
+  const textModels=new TextModels(saved,engine.model);
   const recordAndSummarize=job=>{
     const pending=persistenceTasks.get(job);if(pending)return pending;
     const task=(async()=>{
@@ -162,9 +177,25 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   const assertConversationNotDeleting=(owner,projectId,conversationId)=>{if(deletingConversations.has(conversationKey(owner,projectId,conversationId)))throw new Error('此對話正在刪除，不能繼續操作');};
   const route=fn=>(req,res,next)=>{
     const projectId=target(req),conversationId=req.headers['x-cda-conversation'],key=conversationId?conversationKey(req.owner,projectId,conversationId):null;
+    let referenceIds=[];try{referenceIds=JSON.parse(req.headers['x-cda-references']||'[]');}catch{}
+    if((deletingProjects.has(projectId)&&!/^\/api\/roots\/[^/]+(?:\/delete-preview)?$/.test(req.path))||(Array.isArray(referenceIds)&&referenceIds.some(id=>deletingProjects.has(id))))return next(new Error('此專案正在刪除，不能繼續操作'));
+    const imageProjectIds=[req.params.id,req.body?.imageProjectId,req.body?.destinationProjectId,req.query?.imageProjectId];
+    if(imageProjectIds.some(id=>deletingImageProjects.has(id))&&!/^\/api\/image-projects\/[^/]+(?:\/delete-preview)?$/.test(req.path))return next(new Error('此圖片專案正在刪除，不能繼續操作'));
     if(req.method==='POST'&&key){if(deletingConversations.has(key))return next(new Error('此對話正在刪除，不能繼續操作'));activeConversationOperations.set(key,(activeConversationOperations.get(key)||0)+1);}
     const release=()=>{if(req.method==='POST'&&key){const count=(activeConversationOperations.get(key)||1)-1;if(count>0)activeConversationOperations.set(key,count);else activeConversationOperations.delete(key);}};
-    Promise.resolve().then(()=>fn(req,res)).catch(next).finally(release);
+    Promise.resolve().then(()=>{
+      let selection=null;
+      const textOperation=req.method==='POST'&&(/^\/api\/(jobs|image-project-chat|image-project-prompt-compositions|ai\/test)$/.test(req.path)||/^\/api\/image-projects\/[^/]+\/series\/[^/]+\/summary-candidate$/.test(req.path));
+      if(textOperation&&engine.model.mode==='real'){
+        if(!workspace.roots.some(root=>root.id===projectId))throw new Error('找不到專案');
+        selection=textModels.resolve(req.owner,saved.conversation(req.owner,projectId,conversationId));
+      }else{
+        const jobId=req.path.match(/^\/api\/jobs\/([^/]+)(?:\/|$)/)?.[1],job=jobId&&engine.jobs.get(jobId);
+        if(job&&job.owner===req.owner&&job.projectId===projectId&&(!conversationId||job.conversationId===conversationId))selection=job.modelSelection||null;
+      }
+      req.modelSelection=selection;
+      return selection&&engine.model.withSelection?engine.model.withSelection(selection,()=>fn(req,res)):fn(req,res);
+    }).catch(next).finally(release);
   };
   const scope=req=>new ProjectScope(workspace,target(req),JSON.parse(req.headers['x-cda-references']||'[]'));
   const context=req=>{
@@ -172,8 +203,13 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     const c=saved.conversation(req.owner,projectId,req.headers['x-cda-conversation']);
     assertConversationNotDeleting(req.owner,projectId,c.id);
     if(c.jobs.length>=100)throw new Error('此對話已達 100 個任務，請建立新對話；舊紀錄保留');
-    return {projectId,conversationId:c.id,referenceProjectIds:scope(req).referenceProjectIds};
+    return {projectId,conversationId:c.id,referenceProjectIds:scope(req).referenceProjectIds,...(req.modelSelection?{modelSelection:req.modelSelection}:{})};
   };
+  const modelConversation=req=>{if(!req.headers['x-cda-conversation']||!workspace.roots.some(root=>root.id===target(req)))throw new Error('請先開啟專案對話');return saved.conversation(req.owner,target(req),req.headers['x-cda-conversation']);};
+  app.get('/api/text-models',route(async(req,res)=>{const previousRevision=saved.data.textModelPreferences?.find(item=>item.owner===req.owner)?.revision;const settings=textModels.public(req.owner);if(previousRevision!==settings.revision)await saved.save();res.json(settings);}));
+  app.post('/api/text-models',route(async(req,res)=>res.json(await textModels.save(req.owner,req.body))));
+  app.get('/api/text-model-selection',route(async(req,res)=>{const conversation=modelConversation(req),hadSelection=!!conversation.modelSelection,previousRevision=saved.data.textModelPreferences?.find(item=>item.owner===req.owner)?.revision;const selection=textModels.selection(req.owner,conversation);if(!hadSelection||previousRevision!==saved.data.textModelPreferences?.find(item=>item.owner===req.owner)?.revision)await saved.save();res.json(selection);}));
+  app.post('/api/text-model-selection',route(async(req,res)=>res.json(await textModels.choose(req.owner,modelConversation(req),req.body))));
   app.get('/api/verification-rules',(req,res)=>res.json({scope:'service',rules:workspace.verificationRules()}));
   app.post('/api/verification-rules/:id',requireAdmin,route(async(req,res)=>{
     if(typeof req.body.enabled!=='boolean')throw new Error('驗證規則 enabled 必須為布林值');
@@ -194,7 +230,7 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   const independentImageContext=req=>{
     const projectId=target(req);if(!workspace.roots.some(root=>root.id===projectId)||!req.headers['x-cda-conversation'])throw new Error('請先開啟對話');
     const conversation=saved.conversation(req.owner,projectId,req.headers['x-cda-conversation']);assertConversationNotDeleting(req.owner,projectId,conversation.id);if(conversation.jobs.length>=100)throw new Error('此對話已達 100 個任務，請建立新對話；舊紀錄保留');
-    return {projectId,conversationId:conversation.id,referenceProjectIds:[]};
+    return {projectId,conversationId:conversation.id,referenceProjectIds:[],...(req.modelSelection?{modelSelection:req.modelSelection}:{})};
   };
   const imageDiscussionCandidates=(owner,projectId,seriesId)=>saved.data.conversations.filter(item=>item.owner===owner).flatMap(item=>item.jobs).filter(item=>item.imageProjectChat?.projectId===projectId&&item.imageProjectChat?.seriesId===seriesId&&item.result&&!['running','applying','awaiting_approval'].includes(item.status)).sort((a,b)=>String(a.startedAt||a.finishedAt||'').localeCompare(String(b.startedAt||b.finishedAt||''))).slice(-6);
   app.get('/api/image-settings',(req,res)=>res.json({maxImageMB:images.limit(req.owner),maxImages:5,supportsImages:!MAGE_TEXT_ONLY_MODE&&engine.model.mode==='real'&&engine.model.config.supportsImages===true,textOnlyMode:MAGE_TEXT_ONLY_MODE}));
@@ -217,7 +253,33 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     if(conversation.jobs.some(item=>item.id===job.id))return res.json({restored:false,conversationId:conversation.id,jobId:job.id});
     await saved.record(job);res.json({restored:true,conversationId:conversation.id,jobId:job.id});
   }));
-  app.get('/api/image-projects',(req,res)=>res.json({projects:imageProjects.list()}));
+  app.get('/api/image-projects',(req,res)=>{const activity=projectActivity(saved.data.conversations,req.owner);res.json({projects:imageProjects.list().map(project=>({...project,lastActivityAt:activity.image(project.id)}))});});
+  app.get('/api/image-projects/:id/series/:seriesId/prompt-compositions',route(async(req,res)=>{
+    independentImageContext(req);imageProjects.series(req.params.id,req.params.seriesId);
+    const records=saved.data.imagePromptCompositions.filter(item=>item.owner===req.owner&&item.projectId===req.params.id&&item.seriesId===req.params.seriesId).map(({id,createdAt,finishedAt,status,selectedJobId,currentRequest,result,error,usedJobId})=>({id,createdAt,finishedAt,status,selectedJobId,currentRequest,result:result?{promptLength:result.prompt.length,decisions:result.decisions,conflicts:result.conflicts,unverified:result.unverified,usage:result.usage}:null,error,usedJobId})).reverse();
+    res.json({records});
+  }));
+  app.get('/api/image-project-prompt-compositions/:id',route(async(req,res)=>{
+    independentImageContext(req);const record=saved.data.imagePromptCompositions.find(item=>item.id===req.params.id&&item.owner===req.owner);
+    if(!record)throw new Error('找不到提示詞整合紀錄');res.json({record});
+  }));
+  app.post('/api/image-project-prompt-compositions',route(async(req,res)=>{
+    const ctx=independentImageContext(req),project=imageProjects.find(req.body.imageProjectId),series=imageProjects.series(project.id,req.body.seriesId);
+    if(project.aiAllowed===false)throw new Error('AI_PERMISSION：目前圖片專案未允許內容送往 AI');
+    if(engine.model.mode!=='real'||typeof engine.model.composeImagePrompt!=='function')throw new Error('提示詞整合需要 real AI 模式');
+    const currentRequest=typeof req.body.currentRequest==='string'?req.body.currentRequest.trim():'';
+    if(!currentRequest||currentRequest.length>15000)throw new Error('請先輸入 1–15000 字的本次新增要求');
+    const selectedJobId=typeof req.body.previousJobId==='string'?req.body.previousJobId:'';
+    if(!selectedJobId)throw new Error('請先選擇要延續的圖片版本');
+    const jobs=saved.data.conversations.filter(item=>item.owner===req.owner).flatMap(item=>item.jobs||[]);
+    const trace={id:crypto.randomUUID(),owner:req.owner,projectId:project.id,seriesId:series.id,conversationId:ctx.conversationId,modelSelection:req.modelSelection,selectedJobId,currentRequest,status:'running',createdAt:new Date().toISOString(),finishedAt:null,batches:[],result:null,error:null,usedJobId:null};
+    saved.data.imagePromptCompositions.push(trace);await saved.save();
+    try{
+      const result=await composeImagePrompt({jobs,project,series,previousJobId:selectedJobId,currentRequest,imageTextOnlyMode:MAGE_TEXT_ONLY_MODE,model:engine.model,checkPermission:()=>{if(imageProjects.find(project.id).aiAllowed===false)throw new Error('AI_PERMISSION：圖片專案外送授權已變更');},trace,onProgress:()=>saved.save()});
+      trace.result=result;trace.status='completed';trace.finishedAt=new Date().toISOString();await saved.save();
+      res.json({id:trace.id,status:trace.status,result});
+    }catch(error){trace.status='failed';trace.error={code:error.code||'COMPOSITION_FAILED',message:error.message,usage:error.usage||null,rawOutput:error.rawOutput||null};trace.finishedAt=new Date().toISOString();await saved.save();res.status(400).json({error:error.message,traceId:trace.id});}
+  }));
   app.get('/api/image-project-history',route(async(req,res)=>{
     const projectId=typeof req.query.imageProjectId==='string'?req.query.imageProjectId:'';
     imageProjects.find(projectId);
@@ -226,6 +288,46 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }));
   app.post('/api/image-projects',route(async(req,res)=>res.status(201).json({project:await imageProjects.create({id:req.body.id,name:req.body.name})})));
   app.patch('/api/image-projects/:id',route(async(req,res)=>res.json({project:await imageProjects.rename(req.params.id,req.body.name)})));
+  const imageProjectDeletionPreview=id=>{
+    const project=imageProjects.find(id),plan=planImageProjectDeletion(saved.data,id),blockers=[...plan.blockers];
+    if(deletingImageProjects.has(id))blockers.push('此圖片專案正在刪除');
+    if(plan.records.some(({job})=>['running','applying','awaiting_approval'].includes(job.status)||job.imageDraftUpdating||job.memoryUpdating))blockers.push('圖片討論或創作任務仍在執行，請先完成或取消');
+    if([...engine.jobs.values(),...creations.jobs.values()].some(job=>belongsTo(job,id)&&(['running','applying','awaiting_approval'].includes(job.status)||job.imageDraftUpdating||job.memoryUpdating)))blockers.push('圖片討論或創作任務仍在執行，請先完成或取消');
+    if(plan.compositions.some(item=>item.status==='running'))blockers.push('提示詞整合仍在執行，請先完成或取消');
+    if([...activeConversationOperations].some(([key,count])=>count>0&&plan.records.some(({conversation})=>{const [owner,projectId,conversationId]=JSON.parse(key);return owner===conversation.owner&&projectId===conversation.projectId&&conversationId===conversation.id;})))blockers.push('相關對話仍有送出中的操作');
+    if([...plan.records].some(({job})=>persistenceTasks.has(job)))blockers.push('圖片任務紀錄仍在保存，請稍後重試');
+    return {project,plan,blockers:[...new Set(blockers)]};
+  };
+  app.get('/api/image-projects/:id/delete-preview',route(async(req,res)=>{
+    if(!isLocal(req))return res.status(403).json({error:'只能從主機本機刪除圖片專案'});
+    const {project,plan,blockers}=imageProjectDeletionPreview(req.params.id);
+    res.json({projectId:project.id,name:project.name,folderName:project.folderName,directory:project.directory,jobCount:plan.jobs.length,conversationCount:new Set(plan.records.map(({conversation})=>conversation.id)).size,compositionCount:plan.compositions.length,blockers});
+  }));
+  app.delete('/api/image-projects/:id',route(async(req,res)=>{
+    if(!isLocal(req))return res.status(403).json({error:'只能從主機本機刪除圖片專案'});
+    if(req.body?.confirm!==true)return res.status(400).json({error:'請在圖片專案確認視窗再次確認刪除'});
+    const id=req.params.id,initial=imageProjectDeletionPreview(id);
+    if(initial.blockers.length)return res.status(409).json({error:initial.blockers.join('；')});
+    deletingImageProjects.add(id);
+    try{
+      const {project,plan,blockers}=imageProjectDeletionPreview(id);
+      const remaining=blockers.filter(message=>message!=='此圖片專案正在刪除');
+      if(remaining.length)return res.status(409).json({error:remaining.join('；')});
+      const archive=await archiveImageProjectDeletion({project,root:imageProjects.root,plan});
+      const before={conversations:saved.data.conversations,imageProjects:saved.data.imageProjects,imagePromptCompositions:saved.data.imagePromptCompositions};
+      try{
+        saved.data.conversations=structuredClone(before.conversations);
+        saved.data.imageProjects=structuredClone(before.imageProjects);
+        saved.data.imagePromptCompositions=structuredClone(before.imagePromptCompositions);
+        removeImageProjectRecords(saved.data,id,plan);
+        await saved.save();
+      }catch(error){Object.assign(saved.data,before);throw error;}
+      for(const [jobId,job] of engine.jobs)if(belongsTo(job,id))engine.jobs.delete(jobId);
+      for(const [jobId,job] of creations.jobs)if(belongsTo(job,id))creations.jobs.delete(jobId);
+      const warnings=[];try{await workspace.audit('delete-image-project',{projectId:id,jobCount:plan.jobs.length,archive:archive.directory});}catch(error){warnings.push('稽核紀錄未能寫入：'+error.message);}
+      res.json({deleted:true,projectId:id,jobCount:plan.jobs.length,archiveDirectory:archive.directory,warnings});
+    }finally{deletingImageProjects.delete(id);}
+  }));
   app.post('/api/image-projects/:id/series',route(async(req,res)=>{
     const project=imageProjects.find(req.params.id);if(req.body.name!==undefined&&typeof req.body.name!=='string')throw new Error('圖片系列名稱格式不合法');
     const series=await imageProjects.createSeries(project.id,{name:req.body.name||'新圖片系列'});res.status(201).json({project:imageProjects.list().find(item=>item.id===project.id),series});
@@ -246,7 +348,7 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
       const result=await engine.model.summarizeImageProject({project:{name:project.name,previousSummary:excerpt(projectSummary,1500)},series:{name:series.name,previousSummary:excerpt(seriesSummary,1500)},materialNote:'長文字只保留前後摘錄；中段省略的內容不可推測。每批依時間順序接續前一批摘要。',turns:batch.map(summaryTurn)},AbortSignal.timeout(engine.model.config.overallTimeoutMs),()=>{if(imageProjects.find(project.id).aiAllowed===false)throw new Error('AI_PERMISSION：圖片專案外送授權已變更');});
       projectSummary=result.projectSummary;seriesSummary=result.seriesSummary;usage.requests++;usage.inputTokens+=result.usage?.inputTokens||0;usage.outputTokens+=result.usage?.outputTokens||0;
     }
-    res.json({candidate:{projectSummary,seriesSummary,sourceJobIds:selected.map(job=>job.id),remainingCount:pending.length-selected.length,usage},current:{projectSummary:project.memory.summary,seriesSummary:series.memory.summary}});
+    res.json({candidate:{projectSummary,seriesSummary,sourceJobIds:selected.map(job=>job.id),remainingCount:pending.length-selected.length,usage,modelSelection:req.modelSelection},current:{projectSummary:project.memory.summary,seriesSummary:series.memory.summary}});
   }));
   app.post('/api/image-projects/:id/series/:seriesId/apply-summary',route(async(req,res)=>{
     const sourceJobIds=Array.isArray(req.body.sourceJobIds)?req.body.sourceJobIds.filter(value=>typeof value==='string').slice(0,100):[];
@@ -307,13 +409,22 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     if(requestedReferenceIds.some(id=>!currentById.has(id)&&!seriesById.has(id)))throw new Error('選取的參考圖片不屬於目前圖片系列或目前對話');
     const referenceImages=await Promise.all(requestedReferenceIds.map(id=>currentById.get(id)||imageProjectReferenceInput(req.owner,imageProject,seriesById.get(id))));
     if(referenceImages.length>5)throw new Error('本次圖片創作最多 5 張參考圖');
+    const promptCompositionId=typeof req.body.promptCompositionId==='string'?req.body.promptCompositionId:null;
+    const promptComposition=promptCompositionId?saved.data.imagePromptCompositions.find(item=>item.id===promptCompositionId&&item.owner===req.owner&&item.projectId===imageProject.id&&item.seriesId===series.id):null;
+    if(promptCompositionId&&!promptComposition)throw new Error('找不到此圖片系列的提示詞整合紀錄');
+    const manualPromptAccepted=req.body.manualPromptAccepted===true,staleManualAccepted=req.body.staleManualAccepted===true;
+    if(promptComposition&&promptComposition.selectedJobId!==req.body.previousJobId&&!staleManualAccepted)throw new Error('提示詞整合來源已變更，請重新整理或明確確認手動文字');
     const requestedPrompt=typeof req.body.prompt==='string'&&req.body.prompt.trim()?req.body.prompt:[imageProject.memory.summary,series.memory.summary,currentRequest].filter(Boolean).join('\n\n');
+    if(promptComposition&&!staleManualAccepted&&(promptComposition.status!=='completed'||promptComposition.currentRequest!==currentRequest||promptComposition.projectSummaryVersion!==imageProject.memory.version||promptComposition.seriesSummaryVersion!==series.memory.version))throw new Error('提示詞整合結果已過期，請重新整理或明確確認手動文字');
+    if(promptComposition&&!manualPromptAccepted&&promptComposition.result?.prompt!==requestedPrompt)throw new Error('完整提示詞與整合結果不同，請重新檢查手動修改');
     const editGuard=previous?(MAGE_TEXT_ONLY_MODE?'文字模式：上一版圖片及其他圖片材料不會傳入圖片模型。只能依本次完整提示詞與上一版提示詞中的文字資訊延續；不得假裝看過上一版圖片。':'修改優先規則（最高優先）：以目前選定的上一版圖片作為唯一的主題、內容與版面基礎。保留上一版的文字、流程、編號、構圖、物件與資訊層級；本次新增參考圖片只作為指定項目的參考，不得自行替換上一版的主題或整體內容。只有在本次新增要求明確指定時，才修改或移除指定項目；其餘內容維持上一版。'):'';
-    const fullPrompt=previous&&!(MAGE_TEXT_ONLY_MODE?requestedPrompt.includes('文字模式：上一版圖片及其他圖片材料不會傳入圖片模型'):requestedPrompt.includes('修改優先規則（最高優先）'))?[editGuard,requestedPrompt].filter(Boolean).join('\n\n'):requestedPrompt;
+    const fullPrompt=previous&&!promptComposition&&!manualPromptAccepted&&!(MAGE_TEXT_ONLY_MODE?requestedPrompt.includes('文字模式：上一版圖片及其他圖片材料不會傳入圖片模型'):requestedPrompt.includes('修改優先規則（最高優先）'))?[editGuard,requestedPrompt].filter(Boolean).join('\n\n'):requestedPrompt;
+    if(!fullPrompt.trim()||fullPrompt.length>15000)throw new Error('圖片提示詞需為 1–15000 字');
     if(!MAGE_TEXT_ONLY_MODE&&!referenceImages.length&&!previous&&/(?:圖\s*[一二三四五六七八九十\d]+|第\s*[一二三四五六七八九十\d]+\s*張|參考圖|參考圖片|附圖|如圖|圖片風格)/u.test([currentRequest,fullPrompt].filter(Boolean).join('\n')))throw new Error('目前沒有收到提到的參考圖片，無法進行圖片觀察或產圖；已保留本輪圖片草稿');
     const responseAnswer=draft?.imageProjectDraft?[draft.imageProjectDraft.agentUnderstanding,draft.imageProjectDraft.discussion].filter(Boolean).join('\n\n'):'已依據本次新增要求與目前圖片系列記憶開始創作。';
-    const job=creations.start({owner:req.owner,projectId:ctx.projectId,conversationId:ctx.conversationId,prompt:fullPrompt,currentRequest,imageModel:req.body.imageModel,previous,allowDefaultModel:true,imageProject,series,referenceImages,response:{answer:responseAnswer,source:'image-discussion'},memorySnapshot:{projectSummary:imageProject.memory.summary,projectSummaryVersion:imageProject.memory.version,seriesSummary:series.memory.summary,seriesSummaryVersion:series.memory.version,draftJobId,referenceJobIds:referenceImages.map(item=>item.generatedJobId).filter(Boolean)}});
+    const job=creations.start({owner:req.owner,projectId:ctx.projectId,conversationId:ctx.conversationId,prompt:fullPrompt,currentRequest,imageModel:req.body.imageModel,previous,allowDefaultModel:true,imageProject,series,referenceImages,response:{answer:responseAnswer,source:'image-discussion'},memorySnapshot:{projectSummary:imageProject.memory.summary,projectSummaryVersion:imageProject.memory.version,seriesSummary:series.memory.summary,seriesSummaryVersion:series.memory.version,draftJobId,referenceJobIds:referenceImages.map(item=>item.generatedJobId).filter(Boolean),promptCompositionId,promptSource:promptComposition?'llm-composed':manualPromptAccepted?'manual':'legacy'}});
     const live=creations.jobs.get(job.id);
+    if(promptComposition){promptComposition.usedJobId=job.id;const submission={jobId:job.id,prompt:fullPrompt,currentRequest,selectedJobId:req.body.previousJobId||null,manualPromptAccepted,staleManualAccepted,submittedAt:new Date().toISOString()};promptComposition.submissions=[...(promptComposition.submissions||[]),submission];promptComposition.finalSubmission=submission;}
     await saved.record(live);
     await imageProjects.touchSeries(imageProject.id,series.id);
     creations.launch(live,MAGE_TEXT_ONLY_MODE?null:previous);
@@ -389,7 +500,7 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     const fs=require('node:fs/promises');
     for(const job of jobs)for(const attachment of [...(job.attachments||[]),...(job.imageCreation?.references||[])])if(attachment.persistedFileName){const file=path.resolve(project.directory,attachment.persistedFileName);if(path.dirname(file).toLowerCase()===project.directory.toLowerCase())await fs.rm(file,{force:true}).catch(()=>{});}
     for(const {conversation,job} of records.filter(item=>item.job.kind==='image')){const image=job.imageCreation;if(image?.fileName)await fs.rm(path.join(creations.base,conversation.projectId,conversation.id,series.id,image.fileName),{force:true}).catch(()=>{});if(image?.fileName)await fs.rm(path.join(creations.base,conversation.projectId,conversation.id,series.id,image.fileName.replace(/\.png$/,'.json')),{force:true}).catch(()=>{});if(image?.outputFileName)await fs.rm(path.join(project.directory,image.outputFileName),{force:true}).catch(()=>{});if(image?.outputFileName)await fs.rm(path.join(project.directory,image.outputFileName.replace(/\.png$/,'.json')),{force:true}).catch(()=>{});creations.jobs.delete(job.id);}
-    const affected=new Map(records.map(({conversation})=>[conversation.id,conversation]));for(const conversation of affected.values())conversation.jobs=conversation.jobs.filter(job=>!matches(job));for(const [id,job] of engine.jobs)if(job.owner===req.owner&&matches(job))engine.jobs.delete(id);await imageProjects.removeSeries(project.id,series.id);for(const conversation of affected.values())await fs.rm(path.join(creations.base,conversation.projectId,conversation.id,series.id),{recursive:true,force:true}).catch(()=>{});await workspace.audit('delete-image-series',{seriesId:series.id,deletedAt:new Date().toISOString(),jobs:jobs.length,images:jobs.filter(job=>job.kind==='image').length});await saved.save();
+    const affected=new Map(records.map(({conversation})=>[conversation.id,conversation]));for(const conversation of affected.values())conversation.jobs=conversation.jobs.filter(job=>!matches(job));for(const [id,job] of engine.jobs)if(job.owner===req.owner&&matches(job))engine.jobs.delete(id);saved.data.imagePromptCompositions=saved.data.imagePromptCompositions.filter(item=>!(item.owner===req.owner&&item.projectId===project.id&&item.seriesId===series.id));await imageProjects.removeSeries(project.id,series.id);for(const conversation of affected.values())await fs.rm(path.join(creations.base,conversation.projectId,conversation.id,series.id),{recursive:true,force:true}).catch(()=>{});await workspace.audit('delete-image-series',{seriesId:series.id,deletedAt:new Date().toISOString(),jobs:jobs.length,images:jobs.filter(job=>job.kind==='image').length});await saved.save();
     res.json({deleted:true,counts:{jobs:jobs.length,images:jobs.filter(job=>job.kind==='image').length},project:imageProjects.list().find(item=>item.id===project.id)});
   }));
   app.get('/generated-images/:jobId',route(async(req,res)=>{
@@ -424,7 +535,8 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     return {...data,files:s.files.map(({content,segments,...f})=>({...f,projectName:workspace.roots.find(r=>r.id===f.rootId).label})),roots:data.roots.filter(r=>allowed.includes(r.id)),issues:data.issues.filter(i=>allowed.some(id=>{const rel=path.relative(workspace.roots.find(r=>r.id===id).path,i.path);return !rel.startsWith('..')&&!path.isAbsolute(rel);} ))};
   };
   app.get('/api/catalog',(req,res)=>{
-    const roots=workspace.roots.map(r=>({id:r.id,kind:r.kind||'project',name:r.label,path:r.path,active:!!workspace.active(r),permissions:r.permissions,expiresAt:r.expiresAt,grantDefaults:r.grantDefaults||{write:false,verify:false,ai:false,minutes:60}}));
+    const activity=projectActivity(saved.data.conversations,req.owner);
+    const roots=workspace.roots.map(r=>({id:r.id,kind:r.kind||'project',name:r.label,path:r.path,lastActivityAt:activity.project(r.id),active:!!workspace.active(r),permissions:r.permissions,expiresAt:r.expiresAt,grantDefaults:r.grantDefaults||{write:false,verify:false,ai:false,minutes:60}}));
     res.json({projects:roots.filter(r=>r.kind==='project'),globalReferences:roots.filter(r=>r.kind==='global-reference')});
   });
   app.post('/api/projects/:id/open',route(async(req,res)=>{
@@ -438,20 +550,24 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }));
   app.get('/api/conversations',route(async(req,res)=>{
     if(!workspace.roots.some(r=>r.id===target(req)))throw new Error('找不到專案');
-    const c=saved.conversation(req.owner,target(req),req.headers['x-cda-conversation']);await saved.save();
-    const chronological=[...c.jobs].sort((a,b)=>(Number(a.startedAt)||Number(a.finishedAt)||0)-(Number(b.startedAt)||Number(b.finishedAt)||0));
-    res.json({id:c.id,memory:saved.publicMemory(c),conversations:saved.data.conversations.filter(x=>x.owner===req.owner&&x.projectId===target(req)).map(x=>({id:x.id,createdAt:x.createdAt})),jobs:chronological.map(j=>{
+    const existing=saved.data.conversations.find(c=>c.owner===req.owner&&c.projectId===target(req)&&(!req.headers['x-cda-conversation']||c.id===req.headers['x-cda-conversation'])),hadSelection=!!existing?.modelSelection,previousRevision=saved.data.textModelPreferences?.find(item=>item.owner===req.owner)?.revision;
+    const c=saved.conversation(req.owner,target(req),req.headers['x-cda-conversation']),modelPreferences=textModels.selection(req.owner,c);
+    if(!existing||!hadSelection||previousRevision!==saved.data.textModelPreferences?.find(item=>item.owner===req.owner)?.revision)await saved.save();
+    const firstStartedAt=job=>{const times=[job,...(job.versions||[])].map(version=>Number(version.startedAt)||Number(version.finishedAt)||0).filter(time=>time>0);return times.length?Math.min(...times):0;};
+    const chronological=[...c.jobs].sort((a,b)=>firstStartedAt(a)-firstStartedAt(b));
+    res.json({id:c.id,memory:saved.publicMemory(c),modelPreferences,conversations:saved.data.conversations.filter(x=>x.owner===req.owner&&x.projectId===target(req)).map(x=>({id:x.id,createdAt:x.createdAt})),jobs:chronological.map(j=>{
       const live=engine.jobs.get(j.id);return publicJob(req.owner,live?engine.public(live):j);
     })});
   }));
   app.get('/api/conversation-list',route(async(req,res)=>{
     if(!workspace.roots.some(r=>r.id===target(req)))throw new Error('找不到專案');
-    res.json({conversations:saved.data.conversations.filter(c=>c.owner===req.owner&&c.projectId===target(req)).map(c=>({id:c.id,createdAt:c.createdAt,updatedAt:c.updatedAt||c.createdAt,title:c.jobs[0]?.question||'新對話'})).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))});
+    res.json({lastActivityAt:projectActivity(saved.data.conversations,req.owner).project(target(req)),conversations:saved.data.conversations.filter(c=>c.owner===req.owner&&c.projectId===target(req)).map(c=>({id:c.id,createdAt:c.createdAt,updatedAt:c.updatedAt||c.createdAt,title:c.jobs[0]?.question||'新對話'})).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))});
   }));
   app.post('/api/conversations',route(async(req,res)=>{
     if(!workspace.roots.some(r=>r.id===target(req)))throw new Error('找不到專案');
     if(saved.data.conversations.length>=500)throw new Error('對話保存數量已達上限');
     const id=crypto.randomUUID();saved.data.conversations.unshift({id,owner:req.owner,projectId:target(req),createdAt:new Date().toISOString(),jobs:[],memory:{version:1,confirmed:[],summary:'',compressedAt:null,sourceJobCount:0}});
+    textModels.selection(req.owner,saved.data.conversations[0]);
     await saved.save();res.json({id});
   }));
   app.post('/api/skills/suggest',route(async(req,res)=>{
@@ -559,6 +675,80 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     await persistProjects();request.status='approved';res.json({status:'approved',access:root.permissions.write?'write':'readonly',created:!!createdPath,root});
   }));
   app.post('/api/roots/:id/revoke',requireAdmin,route(async(req,res)=>{projectApprovals.delete(projectApprovalKey(req,req.params.id));await workspace.revoke(req.params.id);res.json({status:'revoked'});}));
+  const projectDeletionPreview=async projectId=>{
+    const root=workspace.roots.find(item=>item.id===projectId);
+    if(!root||root.id==='demo'||(root.kind||'project')!=='project')throw new Error('找不到可刪除的一般專案');
+    const conversations=saved.data.conversations.filter(item=>item.projectId===projectId),jobs=conversations.flatMap(item=>item.jobs||[]),removedIds=new Set(jobs.map(job=>job.id));
+    const blockers=[];
+    if(deletingProjects.has(projectId))blockers.push('此專案已在刪除流程中');
+    if(services.projectLocked(projectId))blockers.push('專案服務仍在執行，請先停止');
+    if(workspace.writing||workspace.indexing||engine.applying)blockers.push('檔案寫入或索引仍在進行，請稍後重試');
+    if([...activeConversationOperations].some(([key,count])=>count>0&&JSON.parse(key)[1]===projectId))blockers.push('專案對話仍有送出中的操作');
+    const active=job=>['running','applying','awaiting_approval'].includes(job.status)||job.memoryUpdating||job.imageDraftUpdating||['queued','running'].includes(job.activitySummary?.status);
+    if([...engine.jobs.values(),...creations.jobs.values()].some(job=>(job.projectId===projectId||job.scope?.referenceProjectIds?.includes(projectId)||job.referenceProjectIds?.includes(projectId))&&active(job)))blockers.push('專案任務仍在執行或等待確認，請先完成或取消');
+    if([...projects.proposals.values()].some(item=>item.rootId===projectId&&['awaiting_approval','applying'].includes(item.status)))blockers.push('此專案有待確認的新資料夾提案，請先完成或取消');
+    const otherJobs=saved.data.conversations.filter(item=>item.projectId!==projectId).flatMap(item=>item.jobs||[]);
+    if(otherJobs.some(job=>removedIds.has(job.imageCreation?.previousJobId)||removedIds.has(job.imageCreation?.draftJobId)||(job.imageCreation?.referenceJobIds||[]).some(id=>removedIds.has(id))))blockers.push('其他專案的圖片版本仍依賴此專案任務；請先解除版本關聯');
+    if(saved.data.imagePromptCompositions.some(item=>!removedIds.has(item.usedJobId)&&removedIds.has(item.selectedJobId)&&item.usedJobId))blockers.push('其他專案的提示詞整合紀錄仍引用此專案圖片版本');
+    let configUpdate=null;
+    try{configUpdate=await configuredProjectRemoval(projectConfig,root.path);}
+    catch(error){blockers.push('無法安全更新 CDA_PROJECTS_CONFIG：'+error.message);}
+    return {root,conversations,jobs,removedIds,configUpdate,blockers};
+  };
+  app.get('/api/roots/:id/delete-preview',route(async(req,res)=>{
+    if(!isLocal(req))return res.status(403).json({error:'只能從主機本機刪除專案'});
+    const plan=await projectDeletionPreview(req.params.id);
+    res.json({projectId:plan.root.id,name:plan.root.label,conversationCount:plan.conversations.length,jobCount:plan.jobs.length,imageJobCount:plan.jobs.filter(item=>item.kind==='image'||item.imageProjectChat?.projectId).length,configuredProjectsRemoved:plan.configUpdate?.removed||0,blockers:plan.blockers});
+  }));
+  app.delete('/api/roots/:id',route(async(req,res)=>{
+    if(!isLocal(req))return res.status(403).json({error:'只能從主機本機刪除專案'});
+    if(req.body?.confirm!==true||target(req)!==req.params.id)return res.status(400).json({error:'請從專案管理確認刪除目前專案'});
+    const projectId=req.params.id,initial=await projectDeletionPreview(projectId);
+    if(initial.blockers.length)return res.status(409).json({error:initial.blockers.join('；')});
+    deletingProjects.add(projectId);
+    try{
+      const plan=await projectDeletionPreview(projectId),{root,conversations,jobs,removedIds,configUpdate}=plan;
+      const blockers=plan.blockers.filter(item=>item!=='此專案已在刪除流程中');
+      if(blockers.length)return res.status(409).json({error:blockers.join('；')});
+      const stat=await fs.lstat(root.path).catch(error=>error.code==='ENOENT'?null:Promise.reject(error));
+      if(stat){const real=await fs.realpath(root.path);if(stat.isSymbolicLink()||!stat.isDirectory()||path.resolve(real).toLowerCase()!==path.resolve(root.path).toLowerCase())throw new Error('專案資料夾已被替換，停止刪除');}
+      else if(jobs.some(item=>item.kind==='image'||item.imageProjectChat?.projectId))throw new Error('專案資料夾已不存在，無法封存圖片與任務紀錄，已保留登錄');
+      if(stat)await creations.migrateProjectImages(projectId,root.path);
+      for(const job of jobs.filter(item=>item.kind==='image'&&item.imageCreation?.imageProject?.id))await archiveImageProjectJob(job,creations,imageProjects);
+      for(const job of jobs.filter(item=>item.imageProjectChat?.projectId))await archiveImageDiscussionJob(job,creations);
+      for(const job of jobs.filter(item=>item.kind==='image'&&!item.imageCreation?.imageProject?.id))if(!await creations.hasProjectTaskArchive(job))throw new Error('圖片與任務紀錄未能完整封存到專案資料夾，已保留專案登錄與對話');
+      const old={projects:saved.data.projects,conversations:saved.data.conversations,projectServiceSettings:saved.data.projectServiceSettings,imageProjects:saved.data.imageProjects,imagePromptCompositions:saved.data.imagePromptCompositions};
+      let configWritten=false;
+      try{
+        if(configUpdate){await writeConfiguredProjectRemoval(configUpdate);configWritten=true;}
+        saved.data.projects=old.projects.filter(item=>item.id!==projectId);
+        saved.data.conversations=old.conversations.filter(item=>item.projectId!==projectId);
+        saved.data.projectServiceSettings=old.projectServiceSettings.filter(item=>item.projectId!==projectId);
+        saved.data.imageProjects=structuredClone(old.imageProjects);pruneImageProjectIndexes(saved.data.imageProjects,removedIds);
+        saved.data.imagePromptCompositions=old.imagePromptCompositions.filter(item=>!removedIds.has(item.selectedJobId)&&!removedIds.has(item.usedJobId));
+        await saved.save();
+      }catch(error){
+        Object.assign(saved.data,old);
+        if(configWritten)try{await writeConfiguredProjectRemoval(configUpdate,configUpdate.original);}catch(restoreError){throw new Error('專案刪除未完成，且設定檔回復失敗：'+restoreError.message+'；原始錯誤：'+error.message);}
+        throw error;
+      }
+      workspace.roots=workspace.roots.filter(item=>item.id!==projectId);
+      workspace.files=workspace.files.filter(item=>item.rootId!==projectId);
+      workspace.issues=workspace.issues.filter(item=>{const relative=path.relative(root.path,item.path||'');return relative.startsWith('..')||path.isAbsolute(relative);});
+      for(const [id,item] of workspace.proposals)if(item.rootId===projectId)workspace.proposals.delete(id);
+      for(const [id,item] of projects.proposals)if(item.rootId===projectId)projects.proposals.delete(id);
+      for(const [key] of projectApprovals)if(key.endsWith(':'+projectId))projectApprovals.delete(key);
+      for(const [id,job] of engine.jobs)if(job.projectId===projectId)engine.jobs.delete(id);
+      for(const [id,job] of creations.jobs)if(job.projectId===projectId)creations.jobs.delete(id);
+      for(const conversation of conversations)images.clearConversation(conversation.owner,projectId,conversation.id);
+      const warnings=[];
+      const generatedRoot=path.resolve(creations.base),generatedDirectory=path.resolve(generatedRoot,projectId);
+      if(path.dirname(generatedDirectory).toLowerCase()!==generatedRoot.toLowerCase())warnings.push('內部圖片快取路徑不合法，未清理快取');
+      else try{await fs.rm(generatedDirectory,{recursive:true,force:true});}catch(error){warnings.push('內部圖片快取清理未完成：'+error.message);}
+      try{await workspace.audit('delete-project',{projectId,conversationCount:conversations.length,jobCount:jobs.length,configuredProjectsRemoved:configUpdate?.removed||0});}catch(error){warnings.push('稽核紀錄未能寫入：'+error.message);}
+      res.json({status:'deleted',conversationCount:conversations.length,jobCount:jobs.length,archivedImageJobs:jobs.filter(item=>item.kind==='image').length,warnings});
+    }finally{deletingProjects.delete(projectId);}
+  }));
   app.post('/api/proposals',route(async(req,res)=>{
     if(typeof req.body.fileId!=='string'||typeof req.body.version!=='string')throw new Error('需要已索引的檔案 ID 與版本');
     const s=scope(req),f=await s.read(req.body.fileId);s.check(f,true);if(f.hash!==req.body.version)throw new Error('編輯器版本已過期，請重新載入');
@@ -678,6 +868,88 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     try{await operation;}finally{if(job.writeOperation===operation)job.writeOperation=null;job.memoryUpdating=job.autoMemory===true;recordAndSummarize(job).catch(e=>{job.memoryUpdating=false;job.persistenceError='對話保存失敗：'+e.message;});}
     res.json({...publicJob(req.owner,engine.public(job)),memory:saved.publicMemory(saved.conversation(req.owner,job.projectId,job.conversationId))});
   }));
+  app.get('/api/project-services',route(async(req,res)=>{scope(req);const projectId=target(req),items=services.list(req.owner,projectId),setting=saved.data.projectServiceSettings.find(item=>item.projectId===projectId);res.json({services:items,moduleDirectory:setting?.moduleDirectory||'',moduleDirectoryLocked:services.projectLocked(projectId)});}));
+  app.post('/api/project-services/settings',route(async(req,res)=>{
+    const serviceScope=scope(req),projectId=target(req),moduleDirectory=String(req.body.moduleDirectory||'').trim();
+    if(moduleDirectory.length>2048)throw new Error('外部 node_modules 路徑過長');
+    const active=services.projectLocked(projectId);
+    const settings=saved.data.projectServiceSettings,previous=settings.find(item=>item.projectId===projectId);
+    if(active&&moduleDirectory!==(previous?.moduleDirectory||''))throw new Error('服務執行中，外部 node_modules 路徑已鎖定；停止所有服務後才能更改');
+    if(moduleDirectory)await services.dependencies(serviceScope,moduleDirectory);
+    if(previous)previous.moduleDirectory=moduleDirectory;else settings.push({projectId,moduleDirectory});
+    await saved.save();res.json({moduleDirectory,moduleDirectoryLocked:active});
+  }));
+  app.post('/api/project-services/scan-changes',route(async(req,res)=>{
+    const currentScope=scope(req),ctx=context(req),conversation=saved.conversation(req.owner,ctx.projectId,ctx.conversationId);
+    const changedJob=[...conversation.jobs].reverse().find(job=>(job.tools||[]).some(tool=>tool.name==='apply_edit'&&tool.status==='ok'));
+    if(!changedJob)return res.json({routes:[],warnings:['目前對話找不到已套用完成的程式修改任務'],reason:'no-applied-change'});
+    const changedPaths=[...new Set((changedJob.tools||[]).filter(tool=>['propose_edit','apply_edit'].includes(tool.name)&&tool.path).map(tool=>tool.path))];
+    if(!changedPaths.length)return res.json({routes:[],warnings:['修改任務沒有保存可追蹤的檔案路徑'],reason:'no-changed-paths',changedTaskId:changedJob.id});
+    const history=conversation.jobs.find(job=>job.id===req.body.serviceJobId)?.serviceRun;
+    const available=services.list(req.owner,ctx.projectId),selected=available.find(item=>item.id===req.body.serviceId)||available.toSorted((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt)))[0];
+    const storedService=selected||history||[...conversation.jobs].reverse().find(job=>job.serviceRun)?.serviceRun;
+    if(!storedService?.entry)return res.json({routes:[],warnings:['找不到已選定的服務入口；請先開啟服務啟動設定並選擇入口'],reason:'no-service-entry',changedTaskId:changedJob.id});
+    const result=await services.scanChangedRoutes(currentScope,storedService.entry,changedPaths);
+    res.json({...result,changedTaskId:changedJob.id,changedQuestion:changedJob.question,serviceId:selected?.id||null,serviceEntry:storedService.entry,serviceStatus:selected?.status||'not-running'});
+  }));
+  app.get('/api/jobs/:id/service-dependencies',route(async(req,res)=>{
+    const job=jobFor(req);
+    if(job.status!=='awaiting_approval'||!job.servicePlan)throw new Error('目前沒有待確認的服務啟動計畫');
+    res.json(await services.dependencies(job.scope,req.query.moduleDirectory,{includeDev:req.query.includeDev==='1'}));
+  }));
+  app.post('/api/jobs/:id/service-install',route(async(req,res)=>{
+    const job=jobFor(req);
+    if(job.status!=='awaiting_approval'||!job.servicePlan)throw new Error('目前沒有待確認的服務啟動計畫');
+    if(!isAdmin(req))return res.status(403).json({error:'每次安裝外部依賴都需要本機管理碼確認'});
+    const result=await services.install(job.scope,req.body.moduleDirectory,{includeDev:req.body.includeDev===true});
+    job.serviceInstall={directory:result.directory,category:result.category,packages:result.missing,status:'completed',output:result.output.slice(-4000)};
+    engine.event(job,'外部依賴安裝完成');await saved.record(job);res.json({install:job.serviceInstall});
+  }));
+  app.post('/api/jobs/:id/service-start',route(async(req,res)=>{
+    const job=jobFor(req);
+    if(job.status!=='awaiting_approval'||!job.servicePlan)throw new Error('目前沒有待確認的服務啟動計畫');
+    if(!isAdmin(req))return res.status(403).json({error:'每次啟動服務都需要本機管理碼確認'});
+    const moduleDirectory=String(req.body.moduleDirectory||'').trim(),result=await services.start(job.scope,req.owner,job.id,{entry:req.body.entry,port:Number(req.body.port),moduleDirectory,verification:req.body.verification});
+    let serviceSetting=saved.data.projectServiceSettings.find(item=>item.projectId===job.projectId);if(serviceSetting)serviceSetting.moduleDirectory=moduleDirectory;else saved.data.projectServiceSettings.push({projectId:job.projectId,moduleDirectory});
+    await saved.save();
+    job.serviceRun=result;job.status=result.status==='running'&&result.apiVerification?.passed!==false?'completed':'partial';job.finishedAt=Date.now();
+    const serviceReady=result.status==='running',apiResult=result.apiVerification;
+    job.result={conclusions:[!serviceReady?'服務未能正常啟動':apiResult?.passed===false?`服務已啟動，但 ${apiResult.method} ${apiResult.path} 的 API 驗證失敗`:apiResult?.passed?`服務已啟動，${apiResult.method} ${apiResult.path} 的 API 驗證通過`:`服務已啟動，127.0.0.1:${result.port} 可連線；尚未設定 API 驗證`],facts:[],inferences:[],unknown:serviceReady?[]:[result.output.slice(-2000)],mock:false,origin:'service'};
+    engine.event(job,!serviceReady?'服務啟動或 Port 驗證失敗':apiResult?.passed===false?'服務已啟動，但 API 驗證失敗':apiResult?.passed?'服務與 API 驗證通過':'服務已啟動並完成 Port 驗證');await saved.record(job);
+    res.json({...publicJob(req.owner,engine.public(job)),memory:saved.publicMemory(saved.conversation(req.owner,job.projectId,job.conversationId))});
+  }));
+  app.post('/api/project-services/:id/stop',route(async(req,res)=>{
+    scope(req);
+    const service=await services.stop(req.owner,target(req),req.params.id),job=engine.jobs.get(service.jobId);
+    if(job&&job.owner===req.owner){job.serviceRun=service;engine.event(job,'服務已由使用者停止');await saved.record(job);}
+    res.json({service});
+  }));
+  app.post('/api/project-services/:id/verify',route(async(req,res)=>{
+    scope(req);if(!isAdmin(req))return res.status(403).json({error:'每次 API 重測都需要本機管理碼確認'});
+    const service=await services.verify(req.owner,target(req),req.params.id,req.body.verification),job=engine.jobs.get(service.jobId);
+    if(job&&job.owner===req.owner){
+      job.serviceRun=service;job.status=service.apiVerification.passed?'completed':'partial';job.finishedAt=Date.now();
+      job.result={conclusions:[service.apiVerification.passed?`API 驗證通過：${service.apiVerification.method} ${service.apiVerification.path}`:`API 驗證失敗：${service.apiVerification.method} ${service.apiVerification.path}`],facts:[],inferences:[],unknown:[],mock:false,origin:'service'};
+      engine.event(job,service.apiVerification.passed?'API 手動重測通過':'API 手動重測失敗');await saved.record(job);
+    }
+    res.json({service,job:job&&job.owner===req.owner?publicJob(req.owner,engine.public(job)):null});
+  }));
+  app.post('/api/project-services/:id/verify-batch',route(async(req,res)=>{
+    scope(req);if(!isAdmin(req))return res.status(403).json({error:'每次 API 批次驗證都需要本機管理碼確認'});
+    if(!Array.isArray(req.body.verifications)||!req.body.verifications.length||req.body.verifications.length>20)throw new Error('請選擇 1–20 個 API 路由');
+    const results=[];let service;
+    for(const verification of req.body.verifications){
+      try{service=await services.verify(req.owner,target(req),req.params.id,verification);results.push({passed:service.apiVerification.passed,verification:service.apiVerification});}
+      catch(error){results.push({passed:false,error:error.message,method:verification.method,path:String(verification.path||'').split('?')[0]});}
+    }
+    const job=engine.jobs.get(service?.jobId);
+    if(job&&job.owner===req.owner){
+      job.serviceRun=service;job.status=results.every(item=>item.passed)?'completed':'partial';job.finishedAt=Date.now();
+      job.result={conclusions:[`API 路由驗證 ${results.filter(item=>item.passed).length}/${results.length} 通過`],facts:[],inferences:[],unknown:results.filter(item=>!item.passed).map(item=>item.error||`${item.verification.method} ${item.verification.path} 驗證失敗`),mock:false,origin:'service'};
+      engine.event(job,`API 路由驗證完成 · ${results.filter(item=>item.passed).length}/${results.length} 通過`);await saved.record(job);
+    }
+    res.json({results,service,job:job&&job.owner===req.owner?publicJob(req.owner,engine.public(job)):null});
+  }));
   app.post('/api/jobs/:id/restore',route(async(req,res)=>{
     const job=jobFor(req);if(!job.applied||job.restored)throw new Error('沒有可還原的修改');
     if(!requireProjectAdmin(req,res,job.proposal.rootId))return;
@@ -688,7 +960,7 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }));
   app.use(express.static(path.join(__dirname,'public')));
   app.use((err,req,res,next)=>res.status(400).json({error:err.message||'操作失敗'}));
-  return {app,engine,workspace,projects,adminToken,saved,images,creations};
+  return {app,engine,workspace,projects,adminToken,saved,images,creations,services};
 }
 if(require.main===module)createApp().then(({app,adminToken,engine})=>{
   const host=process.env.CDA_HOST||config.host,port=Number(process.env.CDA_PORT||config.port);
