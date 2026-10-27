@@ -86,8 +86,45 @@ async function main(){
     assert.match(await page.$eval('#task-outcome-completed-current-check',el=>el.textContent),/已建立 docs\/second.md/);assert.match(await page.$eval('#task-outcome-pending-current-check',el=>el.textContent),/已略過，未建立：docs\/skipped.md/);assert.match(await page.$eval('#task-outcome-verification-current-check',el=>el.textContent),/靜態驗證：通過.*瀏覽器功能驗證：未執行/s);
     assert.equal(await page.$eval('#task-current-check',el=>!!(el.querySelector('.task-rich-answer').compareDocumentPosition(el.querySelector('.task-outcome'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'最終回答位於結果整理之前');
     assert.equal(await page.$eval('#task-current-check',el=>!!(el.querySelector('.task-activity').compareDocumentPosition(el.querySelector('.task-rich-answer'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'完整修改結果放在執行區下方');
-    assert.equal(await page.evaluate(()=>{const activity=renderTaskActivity({...state.taskJobs.get('current-check'),id:'image-unchanged',imageProjectChat:{projectId:'image'}});return !!activity.querySelector('.task-current-iteration');}),false,'圖片討論沿用原版型');
-    assert.deepEqual(errors,[]);console.log('PASS: latest section only, retain previous while waiting for Decide, wrapping purpose above steps, progressive stages, manual state, pending controls, final results below activity, complete timeline and image scope');
+    await page.evaluate(()=>{
+      const startedAt=Date.now();
+      show({id:'image-discussion-check',projectId:state.project,conversationId:state.conversation,question:'保留流程圖構圖，只調整為藍色系',status:'running',progress:'AI 規劃與核對 · 第 1 輪',startedAt,archived:false,plan:[],events:[],evidence:[],iterations:[{index:1,startedAt,status:'running',decision:null}],tools:[{name:'ai.request',iterationIndex:1,status:'running',startedAt}],result:null,imageProjectChat:{projectId:'image-project-check',seriesId:'image-series-check'},imageProjectDraft:{status:'pending'}});
+    });
+    assert.equal(await page.$eval('#task-activity-image-discussion-check',el=>el.open),true,'圖片討論執行中展開活動區');
+    assert.equal(await page.$$eval('#task-current-iteration-image-discussion-check .agent-stage',els=>els.length),0,'等待圖片討論模型時不預填步驟');
+    assert.match(await page.$eval('#task-current-iteration-image-discussion-check',el=>el.textContent),/正在取得下一步操作/);
+    await page.evaluate(()=>{
+      const job=state.taskJobs.get('image-discussion-check'),iteration={...job.iterations[0],purpose:'核對本次構圖與系列需求',target:'系列構圖資料',decision:{tool:'read_file'},action:{tool:'read_file',status:'ok'},observation:'已取得系列構圖資料',status:'repeat',next:'整理圖片候選提示詞'};
+      show({...job,iterations:[iteration],tools:[{name:'read_file',iterationIndex:1,status:'ok',startedAt:iteration.startedAt,path:'layout.md',result:'已取得系列構圖資料'}]});
+    });
+    assert.equal(await page.$eval('#task-execution-purpose-image-discussion-check',el=>el.textContent),'核對本次構圖與系列需求');
+    assert.equal(await page.$eval('#task-current-iteration-image-discussion-check',el=>el.previousElementSibling.id),'task-execution-purpose-image-discussion-check');
+    assert.deepEqual(await page.$$eval('#task-current-iteration-image-discussion-check .agent-stage-label',els=>els.map(el=>el.textContent)),['Decide','Act','Observe','Repeat']);
+    await page.$eval('#task-current-iteration-image-discussion-check .agent-stage > summary',el=>el.click());
+    assert.equal(await page.$eval('#task-current-iteration-image-discussion-check .agent-stage',el=>el.open),true,'圖片討論可展開步驟細節');
+    assert.match(await page.$eval('#task-current-iteration-image-discussion-check .agent-stage-full',el=>el.textContent),/核對本次構圖/);
+    await page.evaluate(()=>{const job=state.taskJobs.get('image-discussion-check');show({...job,iterations:[...job.iterations,{index:2,startedAt:Date.now(),status:'running',decision:null}]});});
+    assert.equal(await page.$eval('#task-current-iteration-image-discussion-check',el=>el.dataset.iterationIndex),'1','下一輪沒有實際方向前保留上一輪');
+    assert.match(await page.$eval('#task-current-iteration-image-discussion-check',el=>el.textContent),/正在取得下一步操作/);
+    await page.evaluate(()=>{
+      const job=state.taskJobs.get('image-discussion-check'),iteration={...job.iterations[1],purpose:'整理藍色系流程圖的候選提示詞',target:'本輪圖片討論',decision:{tool:'finish_image_discussion'},action:{tool:'finish_image_discussion',status:'ok'},observation:'候選提示詞已整理',status:'stop',next:'完成圖片討論'};
+      show({...job,iterations:[job.iterations[0],iteration]});
+    });
+    assert.equal(await page.$$eval('#task-current-iteration-image-discussion-check > section',els=>els.length),1,'圖片討論只顯示最新執行方向');
+    assert.equal(await page.$eval('#task-current-iteration-image-discussion-check',el=>el.dataset.iterationIndex),'2');
+    assert.match(await page.$eval('#task-execution-purpose-image-discussion-check',el=>el.textContent),/整理藍色系流程圖/);
+    assert.deepEqual(await page.$$eval('#task-current-iteration-image-discussion-check .agent-stage-label',els=>els.map(el=>el.textContent)),['Decide','Act','Observe','Stop']);
+    assert.equal(await page.$$eval('#timeline-image-discussion-check .agent-iteration',els=>els.length),2,'完整 timeline 保留圖片討論的所有輪次');
+    await page.evaluate(()=>{
+      const job=state.taskJobs.get('image-discussion-check');
+      show({...job,status:'completed',progress:'圖片討論完成',finishedAt:Date.now(),result:{answer:'已保留流程圖構圖，整理藍色系配色。',conclusions:['已完成圖片討論'],facts:[],inferences:[],unknown:[]},imageProjectDraft:{status:'completed',agentUnderstanding:'保留構圖並改用藍色系',discussion:'系列構圖不變',prompt:'藍色系流程圖候選提示詞'}});
+    });
+    assert.equal(await page.$eval('#task-activity-image-discussion-check',el=>el.open),false,'圖片討論完成後自動收合');
+    assert.match(await page.$eval('#task-image-discussion-check .task-rich-answer',el=>el.textContent),/已保留流程圖構圖/);
+    assert.match(await page.$eval('#image-project-draft-image-discussion-check',el=>el.textContent),/保留構圖並改用藍色系.*系列構圖不變/s,'原候選提示詞資訊仍顯示');
+    assert.equal(await page.$eval('#task-image-discussion-check',el=>!!(el.querySelector('.task-activity').compareDocumentPosition(el.querySelector('.task-rich-answer'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'圖片討論結果在執行區下方');
+    assert.equal(await page.evaluate(()=>{const activity=renderTaskActivity({...state.taskJobs.get('current-check'),id:'image-generation-unchanged',kind:'image'});return !!activity.querySelector('.task-current-iteration');}),false,'圖片生成不套用文字討論步驟');
+    assert.deepEqual(errors,[]);console.log('PASS: latest iteration, progressive stages, retained direction while waiting, expandable image discussion, final collapse, preserved discussion/draft, full timeline and unchanged image generation');
   }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));if(instance)await instance.saved.queue;await fs.rm(base,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

@@ -519,11 +519,24 @@ function showImageJob(job){
   const image=job.imageCreation;
   const heading=node('div',undefined,'task-card-heading');heading.dataset.status=job.status;
   heading.append(node('strong',taskHeadline(job),'task-card-status'),node('span',' · '+taskDuration(job),'task-duration'));
-  const headingActions=node('div',undefined,'task-heading-actions'),deleteButton=node('button','Delete','task-question-delete');deleteButton.type='button';deleteButton.id='task-delete-'+job.id;deleteButton.onclick=()=>deleteTaskCard(job);headingActions.append(deleteButton);heading.append(headingActions);
-  const question=node('p',undefined,'question task-card-question');question.title=job.question;
+  const questionExpanded=state.questionExpanded.has(job.id);
+  const question=node('p',undefined,'question task-card-question');question.id='task-question-'+job.id;
   question.append(node('span',job.question,'task-card-question-text'));
-  article.replaceChildren(heading,question,node('p',undefined,'image-task-summary'));
-  article.querySelector('.image-task-summary').textContent=typeof taskActivityPreview==='function'?taskActivityPreview(job):job.progress||'正在處理';
+  question.classList.toggle('is-expanded',questionExpanded);
+  const summary=node('p',undefined,'image-task-summary');summary.id='task-image-summary-'+job.id;
+  summary.append(node('span',typeof taskActivityPreview==='function'?taskActivityPreview(job):job.progress||'正在處理','image-task-summary-text'));
+  const appendTextView=(target,id,label,expanded,save)=>{
+    const button=node('button',undefined,'task-question-view');button.id=id;button.type='button';button.setAttribute('aria-controls',target.id);
+    const sync=open=>{target.classList.toggle('is-expanded',open);button.textContent=open?'Hide':'View';button.setAttribute('aria-label',(open?'收合':'檢視')+label);button.setAttribute('aria-expanded',String(open));};
+    sync(expanded);
+    button.onclick=()=>{const open=!target.classList.contains('is-expanded');save(open);sync(open);};
+    target.append(button);
+  };
+  appendTextView(question,'task-question-view-'+job.id,'完整需求',questionExpanded,expanded=>{if(expanded)state.questionExpanded.add(job.id);else state.questionExpanded.delete(job.id);});
+  const summaryKey=job.id+':image-summary-expanded';
+  appendTextView(summary,'task-image-summary-view-'+job.id,'完整執行摘要',state.detailOpen.get(summaryKey)===true,expanded=>state.detailOpen.set(summaryKey,expanded));
+  const headingActions=node('div',undefined,'task-heading-actions'),deleteButton=node('button','Delete','task-question-delete');deleteButton.type='button';deleteButton.id='task-delete-'+job.id;deleteButton.onclick=()=>deleteTaskCard(job);headingActions.append(deleteButton);heading.append(headingActions);
+  article.replaceChildren(heading,question,summary);
   const detail=taskDetails(job.id+':main','詳細資訊',job.status==='running'&&!job.archived);
   detail.classList.add('task-main-details');detail.id='task-more-'+job.id;
   detail.firstChild.setAttribute('aria-controls','task-more-content-'+job.id);

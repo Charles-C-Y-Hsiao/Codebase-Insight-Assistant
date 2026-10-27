@@ -168,7 +168,7 @@
           <span class="composer-service-action-slot"><button id="project-services-settings" type="button" aria-label="服務設定" title="服務設定" aria-expanded="false"><i class="fi fi-rr-toggle-off" aria-hidden="true"></i></button></span>
           <span class="composer-service-action-slot"><button id="project-services-stop" type="button" hidden aria-label="停止專案服務" title="停止專案服務"><i class="fi fi-sr-power" aria-hidden="true"></i></button></span>
         <button id="cancel" type="button" disabled aria-label="停止任務" title="停止任務"><i class="fi fi-sr-stop-circle" aria-hidden="true"></i></button>
-        <button id="send" aria-label="送出問題" title="送出問題"><i class="fi fi-ss-arrow-circle-up" aria-hidden="true"></i></button>
+        <button id="send" aria-label="送出問題" aria-keyshortcuts="Control+Enter" title="送出問題（Ctrl+Enter）"><i class="fi fi-ss-arrow-circle-up" aria-hidden="true"></i></button>
       </div>
     </div>
     <div id="composer-menu" class="composer-menu" hidden>
@@ -240,7 +240,7 @@
   <div id="task-update-overlay-content"><span id="task-update-overlay-spinner" aria-hidden="true"></span><strong>正在修改程式</strong><span>套用完成前暫停其他操作</span></div>
 </div>
 <dialog id="permission-dialog" aria-labelledby="permission-title">
-  <div class="dialog-heading"><h2 id="permission-title">新增專案／管理授權</h2><button id="close-permission" type="button" aria-label="關閉授權視窗">關閉</button></div>
+  <div class="dialog-heading"><h2 id="permission-title">新增專案／管理授權</h2><button id="close-permission" type="button" aria-label="關閉授權視窗" title="關閉授權視窗"><i class="fi fi-bs-cross-circle" aria-hidden="true"></i></button></div>
   <label id="root-kind-label" for="root-kind">授權類型<select id="root-kind"><option value="project">個別專案（可另授權修改）</option><option value="global-reference">全域唯讀參考根目錄</option></select></label>
   <details id="root-permission-panel" open><summary id="root-permission-summary"><i id="root-permission-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>指定新資料夾與權限</span></summary><div id="permission-fields"><p id="root-permission-help">這是主機路徑，非客戶端上傳。授權後文件可被本服務使用者搜尋；實際寫入仍需主機管理碼確認。</p><label id="folder-label" for="folder">完整路徑<input id="folder" placeholder="C:\Company\Docs"></label><div id="permission-options"><label id="create-folder-label" for="create-folder"><input type="checkbox" id="create-folder"> 路徑不存在時建立新的空資料夾 <small>父資料夾必須已存在；不建立多層路徑，也不覆寫既有資料夾。</small></label><label id="write-label" for="allow-write"><input type="checkbox" id="allow-write" checked> 允許修改</label><label id="verify-label" for="allow-verify"><input type="checkbox" id="allow-verify" checked> 允許靜態驗證（不執行程式）</label><label id="ai-label" for="allow-ai"><input type="checkbox" id="allow-ai" checked> 允許內容送往核准 AI（尚未接入）</label></div><label id="minutes-label" for="grant-minutes">授權分鐘（1–1440）<input id="grant-minutes" type="number" value="120" min="1" max="1440"></label></div><div id="permission-actions"><button id="request-root">提出授權請求</button><p id="root-status" role="status"></p><label id="admin-label" for="admin">本機資料夾授權管理碼（6 碼十六進位，僅本分頁使用）<input type="password" id="admin" inputmode="text" maxlength="6" autocomplete="off"></label><button id="approve-root">主機端確認授權</button></div></details><div id="roots"></div>
   <button id="open-granted-project" type="button" class="primary" hidden>開啟此專案</button>
@@ -473,6 +473,30 @@
     </details>
   </section>
   <section id="workflow-guide-common" role="tabpanel" aria-labelledby="workflow-guide-tab-common" hidden>
+    <details id="workflow-guide-harness-modules">
+      <summary id="workflow-guide-harness-modules-title" title="Harness 能力與專案模組分支的對應關係"><i id="workflow-guide-harness-modules-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>Harness 與專案模組對照</span></summary>
+      <div id="workflow-guide-harness-modules-content">
+        <span><code>docs/project_module_blocks.md</code> 是整體功能分類索引；Harness 從工具與執行控制的角度整理能力。兩者為<strong>多對多關係</strong>，目前由人工維護，沒有自動同步。</span>
+        <span>同名模組分支使用固定顏色的小色塊，方便辨識不同 Harness 主題共用的模組。</span>
+        <div id="workflow-guide-harness-modules-table-wrap">
+          <table id="workflow-guide-harness-modules-table">
+            <thead><tr><th scope="col">Harness 主題</th><th scope="col">模組文件對應分支</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">模型與工具協作</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="context">AI 請求與上下文</span><span class="workflow-module-branch" data-module="tasks">對話與任務執行</span></div></td></tr>
+              <tr><th scope="row">專案授權與資料範圍</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="projects">一般專案管理</span><span class="workflow-module-branch" data-module="access">授權與存取控制</span></div></td></tr>
+              <tr><th scope="row">檔案提案與受控修改</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="tasks">對話與任務執行</span><span class="workflow-module-branch" data-module="access">授權與存取控制</span><span class="workflow-module-branch" data-module="storage">附件與檔案保存</span></div></td></tr>
+              <tr><th scope="row">對話歷史與記憶</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="tasks">對話與任務執行</span><span class="workflow-module-branch" data-module="context">AI 請求與上下文</span><span class="workflow-module-branch" data-module="memory">摘要與記憶管理</span></div></td></tr>
+              <tr><th scope="row">圖片討論與圖片創作</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="image-projects">圖片專案與系列管理</span><span class="workflow-module-branch" data-module="images">圖片討論與創作</span><span class="workflow-module-branch" data-module="storage">附件與檔案保存</span></div></td></tr>
+              <tr><th scope="row">服務啟動與 API 驗證</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="services">服務啟動與 API 驗證</span><span class="workflow-module-branch" data-module="tasks">對話與任務執行</span><span class="workflow-module-branch" data-module="access">授權與存取控制</span></div></td></tr>
+              <tr><th scope="row">資料刪除與完整性</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="deletion">資料刪除與完整性</span><span class="workflow-module-branch" data-module="storage">附件與檔案保存</span><span class="workflow-module-branch" data-module="memory">摘要與記憶管理</span></div></td></tr>
+              <tr><th scope="row">安全與操作確認</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="access">授權與存取控制</span><span class="workflow-module-branch" data-module="deletion">資料刪除與完整性</span></div></td></tr>
+              <tr><th scope="row">操作介面與結果回查</th><td><div class="workflow-module-branches"><span class="workflow-module-branch" data-module="interface">前端介面與互動</span><span class="workflow-module-branch" data-module="tasks">對話與任務執行</span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span>已補上模組文件的<strong>「服務啟動與 API 驗證」</strong>分支，並在下方 Harness 總覽補上<strong>專案刪除、封存與索引清理</strong>能力；詳細操作仍可查看「服務啟動與 API 驗證」及「資料刪除與完整性」主題。</span>
+      </div>
+    </details>
     <details id="workflow-guide-harness">
       <summary id="workflow-guide-harness-title" title="目前專案 harness 功能總覽"><i id="workflow-guide-harness-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>目前專案的 Harness 功能</span></summary>
       <div id="workflow-guide-harness-content">
@@ -517,6 +541,23 @@
               <li><strong>目前模式：</strong><code>server.js</code> 中的 <code>MAGE_TEXT_ONLY_MODE</code> 設為 <code>true</code>；圖片像素不送進 LLM 或生圖 API，仍可進行文字討論與文字提示詞生圖。</li>
             </ul>
             <span><strong>參考：</strong> <code>server.js</code>（line 21、322、377）</span>
+          </li>
+          <li><strong>服務啟動與 API 驗證</strong>
+            <ul>
+              <li><strong>受控啟動與停止：</strong>掃描 Node 入口，確認命令、Port 與外部依賴路徑後啟動並追蹤程序；可停止目前專案中由系統啟動的服務。</li>
+              <li><strong>初始監測：</strong>驗證程序與 <code>127.0.0.1</code> Port，之後每 30 秒檢查一次，最多五分鐘；保存初始結果、錯誤及截斷輸出。</li>
+              <li><strong>API 驗證：</strong>可設定請求與預期回應，或掃描最近修改影響的 Express 路由，確認後驗證並保存遮罩結果；失敗可保留服務繼續運行並手動重測。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>src/project-services.js</code>、<code>public/project-services-ui.js</code>、<code>server.js</code>；詳細流程見「服務啟動與 API 驗證」。</span>
+          </li>
+          <li><strong>資料刪除與完整性</strong>
+            <ul>
+              <li><strong>刪除邊界：</strong>分別處理任務卡、整個對話、一般專案、圖片系列與整個圖片專案；各操作的刪除範圍、檔案保留與確認條件不同。</li>
+              <li><strong>先封存再刪登錄：</strong>刪除整個一般專案或圖片專案前，先完成所需的圖片與任務紀錄封存；整個圖片專案另在 <code>.cda/deletion-archive/</code> 保存清單、摘要與提示詞整合紀錄。封存失敗會阻止刪除，磁碟專案資料夾與已產出檔案保留。</li>
+              <li><strong>索引與來源清理：</strong>整個專案刪除會盤點所有工作階段，清理相關任務、登錄與索引，處理受影響的記憶來源與版本引用；執行中操作或跨專案直接依賴會阻止刪除，獨立複製品保留並標記來源已移除。</li>
+              <li><strong>系列刪除限制：</strong>單一圖片系列目前只清理提出刪除的工作階段，且會刪除找到的系列圖片及附件，與整個圖片專案保留產出檔案的方式不同。</li>
+            </ul>
+            <span><strong>參考：</strong> <code>src/project-deletion.js</code>、<code>src/image-project-deletion.js</code>、<code>src/app-state.js</code>、<code>server.js</code>；詳細邊界見「資料刪除與完整性」。</span>
           </li>
           <li><strong>安全與操作確認</strong>
             <ul>
@@ -928,6 +969,66 @@
           </table>
         </div>
         <span><strong>建議實作順序：</strong>先完成一般專案 CLI，處理「修改程式、建立 Markdown、略過後 Edit 重送」流程，再擴充服務管理與圖片操作。以上為粗估，實際工作量依身分整合與驗證結果調整。</span>
+      </div>
+    </details>
+    <details id="context-filter-guide-cli-api">
+      <summary id="context-filter-guide-cli-api-title" title="CLI 與 HTTP API 的共用架構、文字圖片討論、權限與開發估算"><i id="context-filter-guide-cli-api-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>CLI 與 HTTP API 整合方案</span></summary>
+      <div id="context-filter-guide-cli-api-content">
+        <span><strong>整合規劃，尚未實作：</strong>在原有 PowerShell CLI 規劃上，增加可供其他程式呼叫的 HTTP API。Web、CLI 與 API 共用同一個後端、對話記憶與 Harness，支援一般專案的<strong>文字＋圖片討論</strong>，並依範圍與確認規則執行工具。</span>
+        <pre data-language="text"><code>Web ／ PowerShell CLI ／ 公司內網 HTTP API
+→ 固定使用者身分與 API 憑證
+→ 本機讀取範圍／內網憑證範圍／免確認修改清單
+→ 同一個後端：對話記憶／Engine／Harness 工具
+→ 任務 ID ＋ SSE 公開進度 ＋ 輪詢查詢
+→ 需要確認的操作由 Web 或本機 CLI 核准
+→ 保存回答、圖片附件、版本及執行結果</code></pre>
+        <span>目前 <code>server.js</code> 已有一般對話、圖片上傳、任務查詢與取消等介面，<code>src/engine.js</code> 可重用。新增入口仍需補上固定身分、API 憑證、跨入口確認、SSE 與圖片持久保存。本主題的 HTTP API 是<strong>本助手的一般專案對話介面</strong>；Harness 的「服務啟動與 API 驗證」則是對專案服務的操作能力。</span>
+        <strong>已確認的整合規格</strong>
+        <div class="context-filter-guide-cli-api-table-wrap">
+          <table id="context-filter-guide-cli-api-spec-table">
+            <thead><tr><th scope="col">項目</th><th scope="col">設計內容</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">使用入口與共用後端</th><td>Web、PowerShell CLI、HTTP API 共用同一個後端程序，沿用現有模型設定、對話記憶與工具流程；由同一後端管理狀態寫入。</td></tr>
+              <tr><th scope="row">身分與對話歷史</th><td>使用<strong>固定使用者 ID</strong>，明確配對後共用對話與任務。IP 用作來源標示或連線限制；操作權限由 API 憑證決定。</td></tr>
+              <tr><th scope="row">本機閱讀</th><td>本機 CLI／本機 API 可指定任意本機資料夾作為本次範圍，不需逐次跳出讀取授權視窗。這項能力限定本機入口。</td></tr>
+              <tr><th scope="row">公司內網範圍</th><td>每個 API 憑證各有允許的專案／資料夾清單；對話歷史、任務結果及附件也受該憑證範圍限制。</td></tr>
+              <tr><th scope="row">內容送往 LLM</th><td>CLI／API 指定範圍並送出請求，即表示同意將本次文字、圖片及回答所需的檔案內容送給設定的 LLM，不再額外跳授權視窗。</td></tr>
+              <tr><th scope="row">圖片傳入與保存</th><td>CLI 指定圖片檔路徑；HTTP API 使用 <code>multipart</code> 上傳。圖片與任務一併持久保存，服務重啟後仍可回查，刪除時沿用對應清理規則。</td></tr>
+              <tr><th scope="row">圖片能力限制</th><td><code>MAGE_TEXT_ONLY_MODE = true</code> 或模型／端點不支援圖片時，<strong>明確拒絕帶圖片的請求並說明原因</strong>，由呼叫端決定是否改送純文字。</td></tr>
+              <tr><th scope="row">修改與新建確認</th><td>預先列入清單的<strong>既有檔案</strong>可免逐次確認套用；其他修改及新建檔案回傳待確認狀態，由 Web 或本機 CLI 核准。API 呼叫端不直接核准待確認提案。</td></tr>
+              <tr><th scope="row">版本與預檢</th><td>免確認修改仍須核對檔案版本、路徑與預檢；失敗時不直接套用。CLI 顯示差異、新檔內容與結果，沿用逐檔建立／略過及還原流程。</td></tr>
+              <tr><th scope="row">執行進度與取消</th><td>回傳任務 ID，提供 SSE 公開操作進度、輪詢查詢及取消功能，讓 CLI 與其他程式取得執行方向、結果、錯誤及待確認狀態。</td></tr>
+              <tr><th scope="row">本機管理介面</th><td>新增本機 Web 管理介面，可建立、撤銷 API 憑證，調整允許讀取範圍、IP 限制及免確認修改清單。</td></tr>
+              <tr><th scope="row">CLI 操作能力</th><td>提供啟動與退出、選專案／資料夾、建立與切換對話、多行文字、圖片檔、連續追問、查看任務 ID、Edit、差異與確認操作；輸出格式在實作時一併定義。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <strong>需要補強的既有設計</strong>
+        <ul>
+          <li><strong>固定身分與舊歷史遷移：</strong>目前對話綁定瀏覽器 session，需要新增配對與遷移流程，讓 Web、CLI 與 API 找到同一份歷史。</li>
+          <li><strong>一般對話圖片的持久保存：</strong>目前上傳圖片主要放在記憶體，需要補上磁碟保存、重啟讀取及刪除清理。</li>
+          <li><strong>共用狀態寫入：</strong>CLI 與 API 連接同一個後端程序，由後端統一寫入 <code>state.json</code>，避免多個程序各自載入與回寫。</li>
+          <li><strong>不同入口的工具與確認規則：</strong>依憑證範圍及本次操作核對工具權限；免確認修改僅適用清單內既有檔案，其他操作沿用對應確認流程。</li>
+        </ul>
+        <strong>實作階段與開發估算</strong>
+        <div class="context-filter-guide-cli-table-wrap">
+          <table id="context-filter-guide-cli-api-plan-table">
+            <thead><tr><th scope="col">階段</th><th scope="col">工作內容</th><th scope="col">約需 tokens</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">1. 共用流程與入口設計</th><td>整理既有後端介面、任務流程與狀態寫入，定義 CLI 命令、API 請求／結果格式及共用調度方式。</td><td>6,000～10,000</td></tr>
+              <tr><th scope="row">2. 身分與歷史整合</th><td>建立固定使用者 ID、Web／CLI／API 配對及舊 session 對話遷移，保留原任務與版本關係。</td><td>8,000～14,000</td></tr>
+              <tr><th scope="row">3. 憑證與範圍管理</th><td>新增本機 Web 管理介面，管理 API 憑證、可讀資料夾、IP 限制與免確認修改清單。</td><td>8,000～14,000</td></tr>
+              <tr><th scope="row">4. 對話與圖片 API</th><td>整合一般對話、multipart 上傳、範圍檢查、圖片能力拒絕、附件保存與重啟回查。</td><td>8,000～13,000</td></tr>
+              <tr><th scope="row">5. 進度與任務查詢</th><td>提供任務 ID、SSE 公開進度、輪詢、取消及錯誤回傳，讓不同入口追蹤同一筆任務。</td><td>5,000～8,000</td></tr>
+              <tr><th scope="row">6. 修改與確認整合</th><td>核對自動套用清單、版本及預檢，串接 Web／本機 CLI 的待確認操作與逐檔建立／略過流程。</td><td>8,000～14,000</td></tr>
+              <tr><th scope="row">7. PowerShell CLI</th><td>建立啟動入口，支援多行與圖片輸入、對話選擇、Edit、進度、差異、確認及退出。</td><td>8,000～13,000</td></tr>
+              <tr><th scope="row">8. 驗證與文件</th><td>驗證中文與空白路徑、跨入口歷史、範圍與撤銷、圖片拒絕及保存、取消、版本衝突、重新啟動與同時操作，補齊文件。</td><td>9,000～14,000</td></tr>
+            </tbody>
+            <tfoot><tr><th scope="row">整合估算</th><td><strong>CLI＋一般專案 HTTP API，包含閱讀、實作與驗證</strong></td><td><strong>60,000～100,000</strong></td></tr></tfoot>
+          </table>
+        </div>
+        <span>整合估算<strong>已包含原 CLI 規劃的工作量</strong>，實際量依舊資料遷移與驗證結果調整；日後每次向模型提問的 token 另計。建議順序為<strong>身分與權限 → 對話／圖片 API → SSE 與修改確認 → CLI → 整合驗證</strong>。</span>
+        <span><strong>後續擴充：</strong>原 CLI 規劃中的服務管理與專案 API 驗證，可沿用 Harness 再完善終端操作；圖片創作專案的系列、提示詞整合、文字生圖與版本回查，也可另列擴充階段。此方案目前仍是規劃，尚未新增 CLI 或對外 HTTP API 程式。</span>
       </div>
     </details>
   </section>
