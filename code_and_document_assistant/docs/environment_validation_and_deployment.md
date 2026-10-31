@@ -90,10 +90,6 @@ node .\code_and_document_assistant\tests\ai-browser-smoke.js
 ```
 
 ```powershell
-node .\code_and_document_assistant\tests\project-browser-smoke.js
-```
-
-```powershell
 node .\code_and_document_assistant\tests\task-card-browser.js
 ```
 

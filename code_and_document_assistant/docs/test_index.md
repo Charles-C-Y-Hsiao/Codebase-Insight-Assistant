@@ -35,7 +35,7 @@
   - global-reference.test.js：1，全域唯讀參考。
   - project-http.test.js：2，專案 HTTP 授權與工作階段。
   - project-scope.test.js：1，專案範圍與跨專案隔離。
-  - projects.test.js：1，固定 Mock 專案建立。
+  - projects.test.js：1，建立資料夾的授權確認，以及已移除的 Select2 固定示範入口不再可用。
 - 介面與版面靜態檢查
   - composer-condensed-layout.test.js：1，輸入區精簡版面。
   - conversation-memory-layout.test.js：10，記憶與技能面板版面。
@@ -65,7 +65,6 @@
 - create-images-browser.js：貼圖輸入、草稿隔離、授權與重啟清除。
 - ai-browser-smoke.js：real AI 介面、工具執行、任務時間線與響應版面。
 - browser-smoke.js：查詢、引用、專案切換、人工修改與手機版。
-- project-browser-smoke.js：授權、建立專案、索引、Select2 預覽與 CDN 失敗。
 - context-skills-browser.js：上下文、技能建議與模式切換。
 - diff-preview-browser.js：Diff2Html 行號與差異預覽。
 - review-viewers-browser.js：程式差異、圖片預覽、複製與鍵盤操作。

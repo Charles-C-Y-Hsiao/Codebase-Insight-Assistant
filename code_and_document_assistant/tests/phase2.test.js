@@ -18,7 +18,7 @@ before(async()=>{
 });
 after(async()=>{if(root&&path.dirname(root)===require('node:os').tmpdir()&&path.basename(root).startsWith('phase2-test-'))await fs.rm(root,{recursive:true,force:true});});
 const document=async name=>parse(await fs.readFile(path.join(documents,name)),path.extname(name));
-async function setup(t){const folder=await fs.mkdtemp(path.join(root,'workspace-'));const ws=new Workspace(folder,limits);await ws.init(path.resolve(__dirname,'../examples'),[path.resolve(__dirname,'../docs/example_data')]);return ws;}
+async function setup(t){const folder=await fs.mkdtemp(path.join(root,'workspace-'));const ws=new Workspace(folder,limits);await ws.init(path.resolve(__dirname,'fixtures/code-edit'),[path.resolve(__dirname,'../docs/example_data')]);return ws;}
 test('PDF 文字實際解析，來源頁碼正確；空白頁明示 OCR 需求',async()=>{
   const result=await document('sample.pdf');assert.equal(result.segments.length,2);assert.equal(result.segments[1].locator.page,2);assert.match(result.segments[1].text,/Page two/);await assert.rejects(()=>document('blank.pdf'),/OCR/);
 });

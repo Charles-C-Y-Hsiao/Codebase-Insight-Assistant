@@ -23,7 +23,6 @@
    │  ├─ task_workbench_flow.md
    │  ├─ task_version_flow.md
    │  ├─ project_workspace_flow.md
-   │  ├─ select2_project_flow.md
    │  └─ image_project_memory_flow.md
    │
    ├─ 大分支四：Harness 層
@@ -180,7 +179,6 @@ Harness：輸入框內容不能直接改變已保存版本。 重新送出前必
 - [雙層授權流程](backup/archive/dual_layer_authorization_flow.md)：全域唯讀參考、個別專案寫入與權限邊界（封存流程說明）。
 - [差異與圖片預覽](backup/archive/diff_and_image_preview_flow.md)：程式差異比較、圖片預覽與逐版檢視（封存流程說明）。
 - [LLM 工具執行流程](backup/archive/llm_tool_execution_flow.md)：模型如何選擇受控工具、取得證據與回報結果（歷史流程說明）。
-- [Select2 專案流程](select2_project_flow.md)：固定 Mock 範例的建立、索引與預覽。
 
 2026-09-16 AI 增量：已實作官方 OpenAI／公司 OpenAI 相容連線與受控搜尋、讀檔、單檔提案。以假端點測試通過；實際帳號與公司端點待連線驗收。啟動方式見 [AI 連線流程](ai_connection_flow.md)，PowerShell 執行 `./start_ai.ps1`。
 
@@ -260,15 +258,7 @@ node .\code_and_document_assistant\server.js
 5. 如要復原，按「確認還原這次修改」。只有現況仍等於該次套用結果才會還原；若又被編輯會拒絕覆蓋。
 6. 「僅靜態驗證」檢查的是磁碟上目前已索引的版本，不是尚未套用的編輯器內容。
 
-demo 的三個固定 Mock 修改仍可用。既有檔案修改每次處理一份；real AI 另可在目前已授權的可寫專案提出最多 20 份新檔，逐份預覽並確認建立或略過，也適用空專案。不覆寫既有檔案、不建立子資料夾；尚無刪除檔案、多檔交易或 AI 自動修復。下方 Select2 固定範本仍是獨立 Mock 展示入口。
-
-### 建立 Select2 小功能（已跑通的模擬需求）
-
-先點左側已授權且允許修改的父專案，再展開「展示與測試」內的「建立新專案 · Select2 模擬需求」。父資料夾清單只提供目前目標；填寫新專案名稱，按「模擬需求並預覽新增內容」，檢視完整 index.html，再用本機管理碼確認建立。此固定生成器建立的是目標內子資料夾，不會自動登錄成獨立專案。
-
-建立後自動更新索引、封存新增內容，依授權執行 HTML 靜態檢查。「開啟 Select2 功能預覽」會載入固定 CDN；也可以直接雙擊生成的 index.html。預览僅提供這次建立且內容未變更的固定範本，重啟服務、授權失效或手動修改後不能沿用該預覽連結。新增檔案沒有被覆蓋的舊版本，封存是生成內容快照，沒有自動刪除／撤銷建立功能。
-
-已實測 jQuery 3.7.1、Select2 4.0.13 CDN 與 SRI 完整性、搜尋、多選、清除、空結果、手機寬度、CDN 失敗提示。內容與產品資料為固定 Mock，沒有透過對話理解任意需求。操作步驟、生成檔案位置與重跑命令見 [select2_project_flow.md](select2_project_flow.md)。專案載入、授權、索引與 `@file` 流程見 [project_workspace_flow.md](project_workspace_flow.md)。不需要 npm 安裝；CDN 需要網路。
+原 `examples/` 三份程式示範與前端快捷入口已移除，服務不再自動複製到 `runtime/demo/`；相關測試資料僅保留在 `tests/fixtures/code-edit/`。既有檔案修改每次處理一份；real AI 另可在目前已授權的可寫專案提出最多 20 份新檔，逐份預覽並確認建立或略過，也適用空專案。不覆寫既有檔案、不建立子資料夾；尚無刪除檔案、多檔交易或 AI 自動修復。Select2 固定範本生成示範已移除；新檔請使用一般專案的 AI 提案與逐檔確認流程。
 
 ## 真實解析範圍
 

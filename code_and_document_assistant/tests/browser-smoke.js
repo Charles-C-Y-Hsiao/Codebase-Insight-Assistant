@@ -6,6 +6,8 @@ const {click,checked}=require('./browser-controls');
 async function main(){
   const parent=require('node:os').tmpdir();
   const root=await fs.mkdtemp(path.join(parent,'browser-test-'));
+  await fs.mkdir(path.join(root,'state','demo'),{recursive:true});
+  for(const name of await fs.readdir(path.join(__dirname,'fixtures/code-edit')))await fs.copyFile(path.join(__dirname,'fixtures/code-edit',name),path.join(root,'state','demo',name));
   const {app,adminToken}=await createApp({runtime:path.join(root,'state')});
   const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
   let browser;
@@ -41,7 +43,7 @@ async function main(){
     await click(page,'.citation');
     await page.waitForFunction(id=>document.getElementById(id)?.open, {timeout:5000}, 'evidence-'+queryTaskId+'-'+citation);
     await page.click('#inspectorToggle');
-    await page.locator('#demo-edit').click();await page.locator('#send').click();
+    await page.evaluate(()=>{setMode('query');state.selected.clear();const file=state.files.find(file=>file.name==='discount.js');state.selected.add(file.id);renderFiles();document.getElementById('question').value='請修正 @discount.js 的折扣計算';});await page.locator('#send').click();
     await page.waitForSelector('#history article .task-workbench');
     assert.equal(await page.$eval('#history article .task-workbench',e=>!e.hidden),true,'修改差異應顯示於中間工作台');
     const firstDiff=await page.$eval('#history article .task-diff',e=>e.id);

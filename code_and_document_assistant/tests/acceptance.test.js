@@ -12,7 +12,7 @@ async function fixture(t,overrides={}){
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'cda-test-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const limits={...baseLimits,toolTimeoutMs:150,...overrides};
-  const ws=new Workspace(root,limits);await ws.init(path.join(__dirname,'../examples'),[path.join(__dirname,'../docs/example_data')]);
+  const ws=new Workspace(root,limits);await ws.init(path.join(__dirname,'fixtures/code-edit'),[path.join(__dirname,'../docs/example_data')]);
   return {ws,engine:new Engine(ws,limits),root};
 }
 async function ask(engine,question,ids=[]){const j=engine.start(question,ids,'test');await engine.jobs.get(j.id).finished;return engine.jobs.get(j.id);}

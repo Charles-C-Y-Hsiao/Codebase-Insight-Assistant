@@ -248,7 +248,6 @@ Test Data：查詢、單檔修改、空白初始檔、外部 hash 變更、未�
 相關文件：
 
 - [backup/archive/authorization-confirmation-flow.md](backup/archive/authorization-confirmation-flow.md)：管理碼產生與授權確認細節。
-- [select2_project_flow.md](select2_project_flow.md)：在目前目標內建立子資料夾，不自動登錄為獨立專案。
 - [backup/archive/project_isolation_and_cross_reference.md](backup/archive/project_isolation_and_cross_reference.md)：專案隔離、跨專案參考與後續版本規格。
 - [version_history.md](version_history.md)：目前版本與驗證摘要。
 - [backup/archive/test_report.md](backup/archive/test_report.md)：完整歷史測試報告。

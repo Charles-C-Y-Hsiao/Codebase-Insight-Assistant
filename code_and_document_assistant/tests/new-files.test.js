@@ -10,7 +10,7 @@ const newFiles=require('../src/new-files');
 const limits=require('../config/example.json').limits;
 async function setup(t){
   const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-new-files-'));t.after(()=>fs.rm(base,{recursive:true,force:true}));
-  const ws=new Workspace(path.join(base,'state'),limits);await ws.init(path.join(__dirname,'../examples'));
+  const ws=new Workspace(path.join(base,'state'),limits);await ws.init(path.join(__dirname,'fixtures/code-edit'));
   const dir=path.join(base,'project');await fs.mkdir(dir);const root=await ws.authorize(dir,{write:true,ai:true,verify:true});
   return {ws,dir,root,scope:new ProjectScope(ws,root.id)};
 }

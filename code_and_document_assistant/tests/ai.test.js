@@ -15,7 +15,7 @@ async function setup(t,settings={},permissions={}){
   const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-ai-'));t.after(()=>fs.rm(base,{recursive:true,force:true}));
   const file=path.join(base,'ai.json');await fs.writeFile(file,JSON.stringify({provider:'openai-compatible',protocol:'responses',endpoint:'http://127.0.0.1:1/v1/responses',model:'test-model',...settings}));
   const env={CDA_MODEL_MODE:'real',CDA_AI_CONFIG:file,CDA_AI_KEY:'FAKE_TEST_KEY_NOT_REAL'};
-  const ws=new Workspace(path.join(base,'state'),limits);await ws.init(path.join(__dirname,'../examples'));
+  const ws=new Workspace(path.join(base,'state'),limits);await ws.init(path.join(__dirname,'fixtures/code-edit'));
   const tree=path.join(base,'projects'),dir=path.join(tree,'a');await fs.mkdir(dir,{recursive:true});await fs.writeFile(path.join(dir,'main.js'),'const marker=1;');
   const root=await ws.authorize(dir,{write:true,ai:true,...permissions}),scope=new ProjectScope(ws,root.id),f=scope.files[0];
   return {base,file,env,ws,root,scope,f,tree};

@@ -105,16 +105,7 @@
     <button data-question="查詢薪資">能力缺口</button>
     <button data-question="產品 A 2026 Q1 API 失敗">API 失敗</button>
     <button data-question="產品 A 2026 Q1 API 逾時">API 逾時</button>
-    <button id="demo-edit">修改 JavaScript 範例</button>
   </div>
-  <details id="project-builder"><summary><i id="project-builder-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>建立新專案 · Select2 模擬需求</span></summary><div id="project-builder-content">
-    <span>MOCK 固定範本：使用 jQuery + Select2 CDN 建立產品名稱搜尋、多選、清除與選取摘要。確認後建立真實 index.html；其他需求仍需 AI 串接。</span>
-    <label for="project-root">已授權的父資料夾</label><select id="project-root"></select>
-    <span>新位置請先按「新增專案／管理授權」授權既有父資料夾，勾選允許修改，再開啟該專案。專案子資料夾會在確認後建立。</span>
-    <label for="project-name">新專案名稱</label><input id="project-name" value="select2_product_picker" maxlength="64">
-    <button id="project-propose" type="button">模擬需求並預覽新增內容</button>
-    <div id="project-output" aria-live="polite"></div></div>
-  </details>
   </details>
   </div>
   <details id="manual-editor" open hidden><summary><i id="manual-editor-toggle-icon" class="fi fi-br-angle-small-down" aria-hidden="true"></i><span>實際程式檔案修改與驗證</span></summary><div id="manual-editor-content"><p id="manual-editor-help">選取已授權程式檔，載入後人工編輯候選內容。AI 修改請在 real 模式的對話區勾選「允許 AI 提出單檔修改」。</p><button id="load-edit" type="button">載入選取檔案</button><p id="editor-file"></p><label id="edit-content-label">修改後內容<textarea id="edit-content" rows="12" spellcheck="false"></textarea></label><details id="edit-result-panel"><summary><i id="edit-result-toggle-icon" class="fi fi-br-angle-small-right" aria-hidden="true"></i><span>建立差異提案，或不寫入檔案地進行靜態驗證</span></summary><div id="edit-result-content"><div id="edit-actions"><button id="propose-edit" type="button">產生差異提案</button><button id="verify-file" type="button">僅靜態驗證</button></div><pre id="verification"></pre></div></details></div></details>

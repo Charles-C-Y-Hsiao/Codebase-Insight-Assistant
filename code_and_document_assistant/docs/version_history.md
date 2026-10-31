@@ -196,7 +196,7 @@
 - 搜尋改善：完整詞邊界、檔名命中、中文詞組權重、大小寫／全半形正規化；未新增 embedding 或網路服務。
 - 效能記錄：平均 1.63ms、中位數 1.17ms、最大 5.57ms；小型資料且含檔案 I/O，不作正式效能保證。
 - 限制：內容是固定 Mock，沒有透過對話理解任意需求；不代表公司真實整合。
-- 詳細流程見 [Select2 專案流程](select2_project_flow.md) 與 [封存評估報告](backup/archive/evaluation_report.md)。
+- 當時流程見 [封存評估報告](backup/archive/evaluation_report.md)；Select2 固定範本生成示範已於後續版本移除。
 
 ## 收尾驗收與下一階段條件（2026-09-13）
 

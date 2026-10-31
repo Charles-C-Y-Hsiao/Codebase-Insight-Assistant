@@ -12,7 +12,7 @@ async function main(){
   try {
     const docs=path.join(root,'corpus');await fs.mkdir(docs);
     for(const d of dataset.documents)await fs.writeFile(path.join(docs,d.name),d.text);
-    const ws=new Workspace(path.join(root,'state'),limits);await ws.init(path.resolve(__dirname,'../examples'),[path.resolve(__dirname,'../docs/example_data')]);await ws.authorize(docs);
+    const ws=new Workspace(path.join(root,'state'),limits);await ws.init(path.resolve(__dirname,'../tests/fixtures/code-edit'),[path.resolve(__dirname,'../docs/example_data')]);await ws.authorize(docs);
     // Use only the fixed evaluation corpus, never company files or mutable demo.
     ws.files=ws.files.filter(f=>f.rootId!=='demo');
     const results=[];

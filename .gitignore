@@ -9,3 +9,8 @@
 /tools/calc.js
 /tools/index.js
 /tools/time.js
+
+# Disposable test and browser output
+/test-run/
+/test-tmp/
+/tmp-test/

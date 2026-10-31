@@ -24,7 +24,7 @@ const sessionLifetime=30*86400000;
 // const MAGE_TEXT_ONLY_MODE = false;
 const MAGE_TEXT_ONLY_MODE = true;
 async function createApp({runtime=path.join(__dirname,'runtime'),limits={...config.limits},adminToken=crypto.randomBytes(3).toString('hex'),projectConfig=process.env.CDA_PROJECTS_CONFIG,aiOptions={},imageProjectRoot=path.join(__dirname,'..','image-creation')}={}) {
-  const workspace=new Workspace(runtime,limits);await workspace.init(path.join(__dirname,'examples'),[path.join(__dirname,'docs','example_data')]);
+  const workspace=new Workspace(runtime,limits);await workspace.init(null,[path.join(__dirname,'docs','example_data')]);
   const saved=await new AppState(runtime).init();
   let interruptedServices=false;
   for(const conversation of saved.data.conversations)for(const job of conversation.jobs)if(job.serviceRun&&['running','starting'].includes(job.serviceRun.status)){
@@ -71,7 +71,6 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   };
   const persistProjects=async()=>{saved.data.projects=workspace.roots.filter(r=>r.id!=='demo').map(({id,path,label,kind,grantDefaults})=>({id,path,label,kind:kind||'project',grantDefaults}));await saved.save();};
   await persistProjects();
-  const projects=new (require('./src/projects.js').Projects)(workspace);
   const images=new (require('./src/image-store.js').ImageStore)();
   const creations=new (require('./src/image-creation.js').ImageCreationService)({runtime,model:engine.model,fetchImpl:aiOptions.fetchImpl||fetch,saved,projectRootForId:id=>workspace.roots.find(root=>root.id===id)?.path||null});
   const imageProjects=new (require('./src/image-projects.js').ImageProjects)({root:imageProjectRoot,saved});
@@ -626,17 +625,6 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
       res.json({status:'deleted',nextConversationId:next?.id||null,generatedImageDirectoryRemoved:true,orphanGeneratedImageDirectoriesRemoved:orphanDirectoriesRemoved,...(auditWarning?{warning:auditWarning}:{})});
     }finally{deletingConversations.delete(key);}
   }));
-  app.get('/project-preview/:id',route(async(req,res)=>{
-    const owner=req.headers.cookie?.match(/(?:^|; )cda_session=([a-f0-9]+)/)?.[1];
-    if(!sessions.has(owner))return res.status(403).send('請先由助手開啟專案預覽');
-    const html=await projects.preview(req.params.id,owner);
-    res.set('Content-Security-Policy',"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'none'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
-    res.set('Referrer-Policy','no-referrer');res.type('html').send(html);
-  }));
-  const checkProject=req=>{const p=projects.get(req.params.id,req.owner);if(p.rootId!==target(req))throw new Error('建立提案不屬於目前專案');scope(req).root(p.rootId);return p;};
-  app.post('/api/projects',requireAdmin,route(async(req,res)=>{if(req.body.rootId!==target(req))throw new Error('請先切換到欲建立內容的目標專案');scope(req);res.status(202).json(await projects.propose(req.body,req.owner));}));
-  app.post('/api/projects/:id/apply',requireAdmin,route(async(req,res)=>{checkProject(req);res.json(await projects.apply(req.params.id,req.owner));}));
-  app.post('/api/projects/:id/cancel',requireAdmin,route(async(req,res)=>{checkProject(req);res.json(projects.cancel(req.params.id,req.owner));}));
   app.get('/api/files',route(async(req,res)=>res.json(inventory(req))));
   app.get('/api/connections',(req,res)=>res.json(require('./src/connections.js').status(engine.model)));
   app.post('/api/ai/test',requireAdmin,route(async(req,res)=>{
@@ -686,7 +674,6 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
     if([...activeConversationOperations].some(([key,count])=>count>0&&JSON.parse(key)[1]===projectId))blockers.push('專案對話仍有送出中的操作');
     const active=job=>['running','applying','awaiting_approval'].includes(job.status)||job.memoryUpdating||job.imageDraftUpdating||['queued','running'].includes(job.activitySummary?.status);
     if([...engine.jobs.values(),...creations.jobs.values()].some(job=>(job.projectId===projectId||job.scope?.referenceProjectIds?.includes(projectId)||job.referenceProjectIds?.includes(projectId))&&active(job)))blockers.push('專案任務仍在執行或等待確認，請先完成或取消');
-    if([...projects.proposals.values()].some(item=>item.rootId===projectId&&['awaiting_approval','applying'].includes(item.status)))blockers.push('此專案有待確認的新資料夾提案，請先完成或取消');
     const otherJobs=saved.data.conversations.filter(item=>item.projectId!==projectId).flatMap(item=>item.jobs||[]);
     if(otherJobs.some(job=>removedIds.has(job.imageCreation?.previousJobId)||removedIds.has(job.imageCreation?.draftJobId)||(job.imageCreation?.referenceJobIds||[]).some(id=>removedIds.has(id))))blockers.push('其他專案的圖片版本仍依賴此專案任務；請先解除版本關聯');
     if(saved.data.imagePromptCompositions.some(item=>!removedIds.has(item.usedJobId)&&removedIds.has(item.selectedJobId)&&item.usedJobId))blockers.push('其他專案的提示詞整合紀錄仍引用此專案圖片版本');
@@ -736,7 +723,6 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
       workspace.files=workspace.files.filter(item=>item.rootId!==projectId);
       workspace.issues=workspace.issues.filter(item=>{const relative=path.relative(root.path,item.path||'');return relative.startsWith('..')||path.isAbsolute(relative);});
       for(const [id,item] of workspace.proposals)if(item.rootId===projectId)workspace.proposals.delete(id);
-      for(const [id,item] of projects.proposals)if(item.rootId===projectId)projects.proposals.delete(id);
       for(const [key] of projectApprovals)if(key.endsWith(':'+projectId))projectApprovals.delete(key);
       for(const [id,job] of engine.jobs)if(job.projectId===projectId)engine.jobs.delete(id);
       for(const [id,job] of creations.jobs)if(job.projectId===projectId)creations.jobs.delete(id);
@@ -960,7 +946,7 @@ async function createApp({runtime=path.join(__dirname,'runtime'),limits={...conf
   }));
   app.use(express.static(path.join(__dirname,'public')));
   app.use((err,req,res,next)=>res.status(400).json({error:err.message||'操作失敗'}));
-  return {app,engine,workspace,projects,adminToken,saved,images,creations,services};
+  return {app,engine,workspace,adminToken,saved,images,creations,services};
 }
 if(require.main===module)createApp().then(({app,adminToken,engine})=>{
   const host=process.env.CDA_HOST||config.host,port=Number(process.env.CDA_PORT||config.port);

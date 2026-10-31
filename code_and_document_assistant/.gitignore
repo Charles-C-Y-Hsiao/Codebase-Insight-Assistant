@@ -4,3 +4,9 @@ runtime/
 config/ai.local.json
 config/local.json
 *.log
+
+# Disposable test and browser output (tests recreate these when needed)
+/test-run/
+/test-tmp/
+/tmp-test/
+/.test-tmp/

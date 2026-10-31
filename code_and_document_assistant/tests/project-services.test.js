@@ -15,7 +15,7 @@ test('服務候選需確認後才啟動，依指定 Port 於 127.0.0.1 驗證並
   const project=path.join(base,'project'),external=path.join(base,'external');
   await fs.mkdir(project);await fs.mkdir(external);
   await fs.writeFile(path.join(project,'api.js'),"const http=require('node:http');const port=Number(process.env.PORT)||3000;http.createServer((req,res)=>res.end('ok')).listen(port,'127.0.0.1');");
-  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'../examples'));
+  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'fixtures/code-edit'));
   const root=await workspace.authorize(project,{write:true,ai:true}),scope=new ProjectScope(workspace,root.id),services=new ProjectServices(workspace);
   const candidates=await services.candidates(scope);
   assert.deepEqual(candidates.map(item=>item.entry),['api.js']);assert.equal(candidates[0].port,3000);
@@ -42,7 +42,7 @@ test('從已選服務入口追蹤被修改的 Express 字串路由與本機掛�
   const entry=path.join(project,'server.js'),route=path.join(project,'routes','api.js');
   await fs.writeFile(entry,"const express=require('express');const api=require('./routes/api');const app=express();app.use('/api',api);app.listen(3000);");
   await fs.writeFile(route,"const express=require('express');const router=express.Router();router.get('/items/:id',(req,res)=>res.json({id:req.params.id}));router.post('/items',(req,res)=>res.json({name:req.body.name,active:req.body.active}));module.exports=router;");
-  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'../examples'));
+  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'fixtures/code-edit'));
   const root=await workspace.authorize(project,{write:true,ai:true}),scope=new ProjectScope(workspace,root.id),services=new ProjectServices(workspace);
   const result=await services.scanChangedRoutes(scope,'server.js',[route]);
   assert.equal(result.routes.length,2);
@@ -59,7 +59,7 @@ test('修改服務入口時掃描其匯入模組中的 Express 路由',async t=>
   const entry=path.join(project,'server.js'),route=path.join(project,'routes','health.js');
   await fs.writeFile(entry,"import {health as healthRoutes} from './routes/health';const app=require('express')();app.use('/health',healthRoutes);app.listen(3000);");
   await fs.writeFile(route,"const router=require('express').Router();router.get('/ready',(req,res)=>res.json({ready:true}));module.exports=router;");
-  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'../examples'));
+  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'fixtures/code-edit'));
   const root=await workspace.authorize(project,{write:true,ai:true}),scope=new ProjectScope(workspace,root.id),services=new ProjectServices(workspace);
   const result=await services.scanChangedRoutes(scope,'server.js',[entry]);
   assert.deepEqual(result.routes.map(item=>`${item.method} ${item.path}`),['GET /health/ready']);
@@ -71,7 +71,7 @@ test('外部依賴分開列出正式與開發套件，專案內路徑不可用',
   const project=path.join(base,'project'),external=path.join(base,'external');
   await fs.mkdir(project);await fs.mkdir(external);
   await fs.writeFile(path.join(project,'package.json'),JSON.stringify({dependencies:{express:'^4.0.0'},devDependencies:{nodemon:'^3.0.0'}}));
-  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'../examples'));
+  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'fixtures/code-edit'));
   const root=await workspace.authorize(project,{write:true,ai:true}),scope=new ProjectScope(workspace,root.id),services=new ProjectServices(workspace);
   const modules=path.join(external,'node_modules');
   assert.deepEqual((await services.dependencies(scope,modules)).missing,[{name:'express',version:'^4.0.0'}]);
@@ -87,7 +87,7 @@ test('package.json 的單一 Node 入口可委派監聽程式',async t=>{
   await fs.writeFile(path.join(project,'package.json'),JSON.stringify({scripts:{start:'node app.js'}}));
   await fs.writeFile(path.join(project,'app.js'),"require('./listener.js');");
   await fs.writeFile(path.join(project,'listener.js'),"require('node:http').createServer((req,res)=>res.end('ok')).listen(3015);");
-  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'../examples'));
+  const workspace=new Workspace(path.join(base,'state'),limits);await workspace.init(path.join(__dirname,'fixtures/code-edit'));
   const root=await workspace.authorize(project,{write:true,ai:true}),scope=new ProjectScope(workspace,root.id),services=new ProjectServices(workspace);
   assert.ok((await services.candidates(scope)).some(item=>item.entry==='app.js'&&item.command==='node app.js'));
 });

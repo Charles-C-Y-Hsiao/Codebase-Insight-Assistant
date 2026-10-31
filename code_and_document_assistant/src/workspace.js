@@ -14,12 +14,12 @@ const editable = new Map([
 const codeExtensions=new Set(['.js','.cjs','.mjs','.py','.html','.css','.json','.md']);
 class Workspace {
   constructor(base,limits) { this.base=base; this.limits=limits; this.rules=new VerificationRules(base); this.roots=[]; this.files=[]; this.issues=[]; this.updatedAt=null; this.indexing=false; this.proposals=new Map(); this.writing=false; }
-  async init(examples, extraExamples=[]) {
+  async init(examples=null, extraExamples=[]) {
     await fs.mkdir(this.base,{recursive:true});
     await this.rules.init();
     this.demo=path.join(this.base,'demo');
     await fs.mkdir(this.demo,{recursive:true});
-    for (const source of [examples,...extraExamples]) {
+    for (const source of [examples,...extraExamples].filter(Boolean)) {
       for (const file of await fs.readdir(source)) {
         try { await fs.copyFile(path.join(source,file),path.join(this.demo,file),require('node:fs').constants.COPYFILE_EXCL); }
         catch(e) { if(e.code!=='EEXIST') throw e; }

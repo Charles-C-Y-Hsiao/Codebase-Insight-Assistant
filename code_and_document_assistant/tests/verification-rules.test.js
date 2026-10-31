@@ -9,7 +9,7 @@ const limits=require('../config/example.json').limits;
 
 async function workspaceFixture(t){
   const base=await fs.mkdtemp(path.join(os.tmpdir(),'cda-rules-'));t.after(()=>fs.rm(base,{recursive:true,force:true}));
-  const workspace=new Workspace(path.join(base,'runtime'),limits);await workspace.init(path.join(__dirname,'../examples'));
+  const workspace=new Workspace(path.join(base,'runtime'),limits);await workspace.init(path.join(__dirname,'fixtures/code-edit'));
   return {base,workspace};
 }
 
@@ -19,7 +19,7 @@ test('驗證規則預設啟用、可持久停用，CSS 基本檢查不執行程�
   const broken=await workspace.verify('theme.css','body { color: red; /* missing');assert.equal(broken.status,'failed');assert.equal(broken.profile,'css-basic');
   assert.equal((await workspace.verify('theme.css','body { color red; }')).status,'failed');assert.equal((await workspace.verify('theme.css','body { color: red; }')).status,'passed');
   await workspace.setVerificationRule('css-basic',false);assert.equal((await workspace.verify('theme.css','body {')).status,'not_run');
-  const next=new Workspace(path.join(base,'runtime'),limits);await next.init(path.join(__dirname,'../examples'));assert.equal(next.verificationRules().find(rule=>rule.id==='css-basic').enabled,false);
+  const next=new Workspace(path.join(base,'runtime'),limits);await next.init(path.join(__dirname,'fixtures/code-edit'));assert.equal(next.verificationRules().find(rule=>rule.id==='css-basic').enabled,false);
   await assert.rejects(()=>workspace.setVerificationRule('powershell',true),/不合法/);
 });
 

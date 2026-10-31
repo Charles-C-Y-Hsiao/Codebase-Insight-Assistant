@@ -1144,11 +1144,8 @@ input,textarea  {
   background:white;
   color:#203047
 }
-#folder, #grant-minutes,#admin,#project-name,#project-root  {
+#folder, #grant-minutes,#admin  {
   height:30px;
-}
-#project-root {
-  padding:3px 10px;
 }
 #folder-label,#minutes-label,#admin-label  {
   display:flex;
@@ -2113,8 +2110,7 @@ ol  {
 #issues-panel>summary,
 #registry-panel>summary,
 #version-panel>summary,
-#demo-panel>summary,
-#project-builder>summary {
+#demo-panel>summary {
   display:flex;
   align-items:center;
   gap:2px;
@@ -2129,8 +2125,7 @@ ol  {
 #issues-panel>summary::-webkit-details-marker,
 #registry-panel>summary::-webkit-details-marker,
 #version-panel>summary::-webkit-details-marker,
-#demo-panel>summary::-webkit-details-marker,
-#project-builder>summary::-webkit-details-marker { display:none; }
+#demo-panel>summary::-webkit-details-marker { display:none; }
 #global-reference-panel>summary::marker,
 #manual-editor>summary::marker,
 #edit-result-panel>summary::marker,
@@ -2141,8 +2136,7 @@ ol  {
 #issues-panel>summary::marker,
 #registry-panel>summary::marker,
 #version-panel>summary::marker,
-#demo-panel>summary::marker,
-#project-builder>summary::marker { content:''; }
+#demo-panel>summary::marker { content:''; }
 #global-reference-panel>summary>.fi,
 #manual-editor>summary>.fi,
 #edit-result-panel>summary>.fi,
@@ -2153,8 +2147,7 @@ ol  {
 #issues-panel>summary>.fi,
 #registry-panel>summary>.fi,
 #version-panel>summary>.fi,
-#demo-panel>summary>.fi,
-#project-builder>summary>.fi {
+#demo-panel>summary>.fi {
   flex:0 0 18px;
   transform:translateY(1px);
 }
@@ -2172,27 +2165,6 @@ ol  {
   border:1px solid #c4d2df;
   border-radius:6px;
   font:inherit
-}
-#project-output  {
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  overflow-wrap:anywhere
-}
-#project-builder {
-  margin:9px 0 0 0;
-}
-#project-builder-content {
-  display:flex;
-  flex-direction:column;
-  gap:3px;
-}
-#project-builder-content > * { margin:0; }
-#project-output > * { margin:0; }
-#project-output a  {
-  display:inline-block;
-  margin:0;
-  color:#205a69
 }
 input[type=checkbox]  {
   width:auto

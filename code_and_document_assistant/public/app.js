@@ -149,7 +149,7 @@ $('task-id-copy-dialog').addEventListener('click',event=>{
   const dialog=$('task-id-copy-dialog'),bounds=dialog.getBoundingClientRect();
   if(event.target===dialog&&(event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom))dialog.close();
 });
-for(const [detailId,iconId] of [['workspace-tools-panel','workspace-tools-toggle-icon'],['global-reference-panel','global-reference-toggle-icon'],['files-panel','files-toggle-icon'],['connections-panel','connections-toggle-icon'],['verification-rules-panel','verification-rules-toggle-icon'],['issues-panel','issues-toggle-icon'],['registry-panel','registry-toggle-icon'],['version-panel','version-toggle-icon'],['demo-panel','demo-toggle-icon'],['project-builder','project-builder-toggle-icon'],['manual-editor','manual-editor-toggle-icon'],['edit-result-panel','edit-result-toggle-icon'],['composer-panel','composer-panel-toggle-icon'],['root-permission-panel','root-permission-toggle-icon'],['project-service-api-settings','project-service-api-settings-toggle-icon']]){const detail=$(detailId),icon=$(iconId),sync=()=>{icon.className='fi fi-br-angle-small-'+(detail.open?'down':'right');};detail.addEventListener('toggle',sync);sync();}
+for(const [detailId,iconId] of [['workspace-tools-panel','workspace-tools-toggle-icon'],['global-reference-panel','global-reference-toggle-icon'],['files-panel','files-toggle-icon'],['connections-panel','connections-toggle-icon'],['verification-rules-panel','verification-rules-toggle-icon'],['issues-panel','issues-toggle-icon'],['registry-panel','registry-toggle-icon'],['version-panel','version-toggle-icon'],['demo-panel','demo-toggle-icon'],['manual-editor','manual-editor-toggle-icon'],['edit-result-panel','edit-result-toggle-icon'],['composer-panel','composer-panel-toggle-icon'],['root-permission-panel','root-permission-toggle-icon'],['project-service-api-settings','project-service-api-settings-toggle-icon']]){const detail=$(detailId),icon=$(iconId),sync=()=>{icon.className='fi fi-br-angle-small-'+(detail.open?'down':'right');};detail.addEventListener('toggle',sync);sync();}
 function closeOtherRootDetails(active){const panel=$('root-permission-panel');if(active!==panel)panel.open=false;document.querySelectorAll('#roots details').forEach(detail=>{if(detail!==active)detail.open=false;});}
 $('root-permission-panel').addEventListener('toggle',()=>{if($('root-permission-panel').open)closeOtherRootDetails($('root-permission-panel'));});
 $('open-permission').onclick=()=>openPermission();
@@ -507,8 +507,8 @@ function clearTaskView(){
   state.epoch++;state.selected.clear();state.job=null;state.editor=null;state.request=null;state.articles.clear();state.files=[];
   state.questionBaseline='';state.editorBaseline='';state.openedDiffs.clear();state.grantedProject=null;$('open-granted-project').hidden=true;
   endTaskEdit(false);
-  for(const id of ['history','project-output','verification','editor-file','mentions','root-status'])$(id).replaceChildren();
-  $('edit-content').value='';$('question').value='';$('cancel').disabled=true;$('send').disabled=false;$('project-propose').disabled=false;$('progress').textContent='等待提問';$('notice').textContent='';renderFiles();
+  for(const id of ['history','verification','editor-file','mentions','root-status'])$(id).replaceChildren();
+  $('edit-content').value='';$('question').value='';$('cancel').disabled=true;$('send').disabled=false;$('progress').textContent='等待提問';$('notice').textContent='';renderFiles();
 }
 async function catalog(){
   const catalogData=await api('/api/catalog');state.catalog=catalogData.projects;state.globalReferences=catalogData.globalReferences||[];
@@ -1090,7 +1090,6 @@ $('question').addEventListener('keydown',event=>{
 $('refresh').onclick=()=>inventory(true).catch(fail);
 $('cancel').onclick=async()=>{try{if(state.job)show(await api('/api/jobs/'+state.job+'/cancel',{}));}catch(e){fail(e);}};
 for(const btn of document.querySelectorAll('[data-question]'))btn.onclick=()=>{setMode('query');state.selected.clear();renderFiles();$('question').value=btn.dataset.question;scheduleMemoryPreview();$('question').focus();};
-$('demo-edit').onclick=()=>{setMode('query');state.selected.clear();const f=state.files.find(f=>f.name==='discount.js'&&f.writable);if(f)state.selected.add(f.id);renderFiles();$('question').value='請修正 @discount.js 的折扣計算';scheduleMemoryPreview();};
 $('question').oninput=()=>{
   scheduleSkillSuggestions();
   scheduleMemoryPreview();
@@ -1121,25 +1120,3 @@ $('version-load').onclick=async()=>{try{const adminCode=$('admin').value.trim();
 $('version-cleanup').onclick=async()=>{const ids=[...document.querySelectorAll('.version-choice:checked')].map(e=>e.value);try{const result=await api('/api/versions/cleanup',{adminToken:$('admin').value.trim(),ids});$('notice').textContent=result.message;await $('version-load').onclick();}catch(e){fail(e);}};
 $('propose-edit').onclick=async()=>{try{if(!state.editor)throw new Error('請先載入檔案');const after=$('edit-content').value;const j=await api('/api/proposals',{fileId:state.editor.id,version:state.editor.hash,after,adminToken:$('admin').value});state.editorBaseline=after;state.job=j.id;show(j);await listConversations(state.project);}catch(e){fail(e);}};
 $('verify-file').onclick=async()=>{try{if(!state.editor)throw new Error('請先載入檔案');$('verification').textContent=JSON.stringify(await api('/api/files/'+state.editor.id+'/verify',{adminToken:$('admin').value}),null,2);}catch(e){fail(e);}};
-
-$('project-builder').addEventListener('toggle',async()=>{
-  if(!$('project-builder').open)return;
-  try{const data=await api('/api/files');const previous=$('project-root').value;
-    $('project-root').replaceChildren(...data.roots.filter(r=>r.id===state.project&&r.active&&r.permissions.write).map(r=>{const o=node('option',r.label+' · '+r.path);o.value=r.id;return o;}));
-    if([...$('project-root').options].some(o=>o.value===previous))$('project-root').value=previous;
-  }catch(e){fail(e);}
-});
-function showProject(p){
-  const output=$('project-output');output.replaceChildren(node('span','MOCK 範本 · '+p.status+' · '+p.path));
-  const plan=node('ol');plan.append(...p.plan.map(s=>node('li',s)));output.append(plan);
-  for(const f of p.files){const d=node('details');d.append(node('summary','新增 '+f.name+'（原先不存在）'),node('pre',f.after,'diff-after'));output.append(d);}
-  if(p.status==='awaiting_approval'){
-    const apply=node('button','主機確認建立專案','primary');apply.id='project-apply';
-    const cancel=node('button','取消建立');cancel.id='project-cancel';
-    apply.onclick=async()=>{apply.disabled=true;cancel.disabled=true;try{showProject(await api('/api/projects/'+p.id+'/apply',{adminToken:$('admin').value}));await inventory();}catch(e){fail(e);output.append(node('p',e.message));}};
-    cancel.onclick=async()=>{try{showProject(await api('/api/projects/'+p.id+'/cancel',{adminToken:$('admin').value}));}catch(e){fail(e);}};
-    output.append(apply,cancel);
-  }
-  if(p.result){output.append(node('pre',JSON.stringify(p.result,null,2)));const link=node('a','開啟 Select2 功能預覽（會載入 CDN）');link.id='project-preview';link.href=p.result.previewUrl;link.target='_blank';link.rel='noopener noreferrer';output.append(link);}
-}
-$('project-propose').onclick=async()=>{const btn=$('project-propose');btn.disabled=true;$('notice').textContent='';try{showProject(await api('/api/projects',{rootId:$('project-root').value,name:$('project-name').value,template:'select2-products',adminToken:$('admin').value}));}catch(e){fail(e);}finally{btn.disabled=false;}};
